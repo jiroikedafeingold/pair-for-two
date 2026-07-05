@@ -44,11 +44,14 @@ final class GameViewModel {
 
     // MARK: Init / factories
 
+    private let scoringMode: ScoringMode
+
     private init(transport: any GameTransport,
                  isLoopback: Bool,
                  localName: String,
                  localColorID: Int,
                  seed: UInt64,
+                 scoringMode: ScoringMode,
                  state: GameState?,
                  snapshot: PlayerSnapshot,
                  connection: ConnectionState) {
@@ -58,6 +61,7 @@ final class GameViewModel {
         self.localName = localName
         self.localColorID = localColorID
         self.seed = seed
+        self.scoringMode = scoringMode
         self.fixedPlayer = transport.isHost ? .one : .two
         self.state = state
         self.snapshot = snapshot
@@ -69,26 +73,30 @@ final class GameViewModel {
     /// Single-device pass-and-play. Host owns state immediately for both players.
     static func loopback(names: [PlayerID: String],
                          colorIDs: [PlayerID: Int],
-                         seed: UInt64 = UInt64.random(in: 0...UInt64.max)) -> GameViewModel {
+                         seed: UInt64 = UInt64.random(in: 0...UInt64.max),
+                         scoringMode: ScoringMode = .feedback) -> GameViewModel {
         let transport = LoopbackTransport()
-        var s = GameState.newMatch(matchID: UUID(), seed: seed, names: names, colorIDs: colorIDs)
+        var s = GameState.newMatch(matchID: UUID(), seed: seed, names: names, colorIDs: colorIDs, scoringMode: scoringMode)
         CribbageEngine.begin(&s)
         return GameViewModel(transport: transport, isLoopback: true,
                              localName: names[.one] ?? "Player 1", localColorID: colorIDs[.one] ?? 1,
-                             seed: seed, state: s, snapshot: s.snapshot(for: .one), connection: .connected)
+                             seed: seed, scoringMode: scoringMode,
+                             state: s, snapshot: s.snapshot(for: .one), connection: .connected)
     }
 
     /// Two-device play over a real transport (Multipeer). The host builds state once the guest's
-    /// `.hello` arrives; the guest renders incoming snapshots.
+    /// `.hello` arrives; the guest renders incoming snapshots. The host's `scoringMode` governs.
     static func networked(transport: any GameTransport,
                           localName: String,
                           localColorID: Int,
+                          scoringMode: ScoringMode = .feedback,
                           seed: UInt64 = UInt64.random(in: 0...UInt64.max)) -> GameViewModel {
         let you: PlayerID = transport.isHost ? .one : .two
         let placeholder = GameViewModel.placeholderSnapshot(you: you, name: localName, colorID: localColorID)
         return GameViewModel(transport: transport, isLoopback: false,
                              localName: localName, localColorID: localColorID,
-                             seed: seed, state: nil, snapshot: placeholder, connection: .connecting)
+                             seed: seed, scoringMode: scoringMode,
+                             state: nil, snapshot: placeholder, connection: .connecting)
     }
 
     /// Resume a previously-persisted single-device game (pass-and-play host).
@@ -97,7 +105,8 @@ final class GameViewModel {
         return GameViewModel(transport: LoopbackTransport(), isLoopback: true,
                              localName: savedState.names[.one] ?? "Player 1",
                              localColorID: savedState.colorIDs[.one] ?? 1,
-                             seed: savedState.seed, state: savedState,
+                             seed: savedState.seed, scoringMode: savedState.scoringMode,
+                             state: savedState,
                              snapshot: savedState.snapshot(for: render), connection: .connected)
     }
 
@@ -105,7 +114,8 @@ final class GameViewModel {
         PlayerSnapshot(matchID: UUID(), you: you, phase: .connecting, yourSeat: .pone, dealer: .one,
                        yourHand: [], opponentHandCount: 0, opponentHand: nil, crib: nil, cribCount: 0,
                        starter: nil, playSequence: [], runningCount: 0, whoseTurn: nil, lastToPlay: nil,
-                       yourScore: 0, opponentScore: 0, flags: [], cutForDeal: [:], winner: nil,
+                       yourScore: 0, opponentScore: 0, flags: [], scoringMode: .feedback,
+                       cutForDeal: [:], winner: nil,
                        yourName: name, opponentName: "Opponent",
                        yourColorID: colorID, opponentColorID: you == .one ? 7 : 1,
                        playersWithClaims: [],
@@ -179,7 +189,8 @@ final class GameViewModel {
     private func startHostedGame(guestName: String, guestColorID: Int) {
         var s = GameState.newMatch(matchID: UUID(), seed: seed,
                                    names: [.one: localName, .two: guestName],
-                                   colorIDs: [.one: localColorID, .two: guestColorID])
+                                   colorIDs: [.one: localColorID, .two: guestColorID],
+                                   scoringMode: scoringMode)
         CribbageEngine.begin(&s)
         state = s
         Task { await transport.send(.assignSeat(.two)) }

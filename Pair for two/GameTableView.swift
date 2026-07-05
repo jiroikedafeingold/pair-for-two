@@ -16,6 +16,11 @@ struct GameTableView: View {
     @State private var oppPending: Int = 0
     @State private var oppPendingTask: Task<Void, Never>? = nil
 
+    // Uncommitted slider/​+1 amount on the local panel, so Continue can prompt to add it.
+    @State private var uncommittedLocal = 0
+    @State private var clearScoreSignal = 0
+    @State private var showPendingAlert = false
+
     var body: some View {
         GeometryReader { geo in
             let s = vm.snapshot
@@ -50,6 +55,18 @@ struct GameTableView: View {
         }
         .sheet(isPresented: $showingSettings) {
             SettingsView(onDone: { showingSettings = false })
+        }
+        .alert("Add your pending \(uncommittedLocal) points?", isPresented: $showPendingAlert) {
+            Button("Add & continue") {
+                vm.claim(uncommittedLocal, for: vm.snapshot.you)
+                clearScoreSignal += 1; uncommittedLocal = 0
+                vm.advance()
+            }
+            Button("Continue without adding", role: .destructive) {
+                clearScoreSignal += 1; uncommittedLocal = 0
+                vm.advance()
+            }
+            Button("Cancel", role: .cancel) {}
         }
         // Push name/colour changes into the running game when Settings closes, so the highlight,
         // slider and score colours update live (for this device and the opponent).
@@ -160,6 +177,8 @@ struct GameTableView: View {
             requirePlusConfirm: isLocal ? confirmPlus : false,
             opponentColor: vm.theme(for: player.opponent).primary,
             opponentPending: isLocal ? oppPending : 0,
+            uncommitted: isLocal ? $uncommittedLocal : nil,
+            clearSignal: isLocal ? clearScoreSignal : 0,
             onAdd: { vm.claim($0, for: player) },
             onPlusOne: { vm.claim(1, for: player) },
             onUndo: { vm.undo(for: player) }
@@ -322,8 +341,10 @@ struct GameTableView: View {
             if vm.youAreCounting {
                 Text("Count it on your slider, then Continue")
                     .font(.caption).foregroundStyle(.white.opacity(0.7))
-                Button("Continue") { vm.advance() }
-                    .buttonStyle(.borderedProminent).tint(.cribGold).foregroundStyle(.black)
+                Button("Continue") {
+                    if uncommittedLocal > 0 { showPendingAlert = true } else { vm.advance() }
+                }
+                .buttonStyle(.borderedProminent).tint(.cribGold).foregroundStyle(.black)
             } else {
                 waitingLabel("Waiting for \(vm.name(of: vm.showCountingPlayer ?? s.you)) to count…")
             }

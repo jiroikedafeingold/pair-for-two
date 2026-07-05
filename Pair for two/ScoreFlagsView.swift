@@ -22,6 +22,16 @@ struct ScoreFlagsView: View {
                     .background(Capsule().fill(Color.cribGold))
                     .foregroundStyle(Color.black.opacity(0.82))
                 }
+
+                // Running total of the detected points.
+                if flags.count > 1 {
+                    Text("= \(flags.totalPoints)")
+                        .font(.caption.weight(.heavy))
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 5)
+                        .background(Capsule().fill(.white))
+                        .foregroundStyle(.black)
+                }
             }
             .padding(.horizontal, 2)
         }

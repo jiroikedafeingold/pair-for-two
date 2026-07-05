@@ -77,6 +77,34 @@ nonisolated enum Seat: String, Codable, Hashable, Sendable {
     var other: Seat { self == .dealer ? .pone : .dealer }
 }
 
+// MARK: - Scoring mode
+
+/// How the app handles scoring. Chosen by the host; governs the whole game.
+nonisolated enum ScoringMode: Int, Codable, Sendable, CaseIterable {
+    case auto = 0       // automatically score all play + show feedback
+    case feedback = 1   // show scoring feedback (flags), but the players enter points manually
+    case off = 2        // no feedback, no auto-scoring — fully manual
+
+    var showsFlags: Bool { self != .off }
+    var isAuto: Bool { self == .auto }
+
+    var title: String {
+        switch self {
+        case .auto:     return "Automatic scoring"
+        case .feedback: return "Feedback only"
+        case .off:      return "No feedback"
+        }
+    }
+
+    var detail: String {
+        switch self {
+        case .auto:     return "The app adds every score for you and shows what it counted."
+        case .feedback: return "The app flags every score and the total, but you enter points yourself."
+        case .off:      return "No hints — count and score everything yourself."
+        }
+    }
+}
+
 // MARK: - Phases
 
 /// The full lifecycle of a hand/game, driven by the host-authoritative engine.

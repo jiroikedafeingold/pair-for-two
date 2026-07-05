@@ -113,6 +113,7 @@ nonisolated enum CribbageEngine {
         s.goPlayers = []
         s.lastToPlay = nil
         s.whoseTurn = s.pone       // pone leads the play
+        autoScore(&s, to: s.dealer)   // his heels, if any
     }
 
     // MARK: Pegging — play a card
@@ -134,6 +135,7 @@ nonisolated enum CribbageEngine {
         if count == 31 {
             s.activeFlags = flags                      // "31 for 2" already included
             if done { finishPegging(&s) } else { resetLap(&s, nextLeadPreferring: player.opponent) }
+            autoScore(&s, to: player)
             return true
         }
 
@@ -141,6 +143,7 @@ nonisolated enum CribbageEngine {
             flags.append(ScoreFlag(.lastCard, points: 1, detail: "Last card"))
             s.activeFlags = flags
             finishPegging(&s)
+            autoScore(&s, to: player)
             return true
         }
 
@@ -150,7 +153,15 @@ nonisolated enum CribbageEngine {
         let opp = player.opponent
         let oppInPlay = !s.goPlayers.contains(opp) && !s.unplayed(of: opp).isEmpty
         s.whoseTurn = oppInPlay ? opp : player
+        autoScore(&s, to: player)
         return true
+    }
+
+    /// In automatic mode, immediately claim the just-surfaced flags for `player`.
+    private static func autoScore(_ s: inout GameState, to player: PlayerID) {
+        guard s.scoringMode == .auto else { return }
+        let points = s.activeFlags.totalPoints
+        if points > 0 { claim(&s, player: player, amount: points) }
     }
 
     // MARK: Pegging — say "go"
@@ -173,11 +184,13 @@ nonisolated enum CribbageEngine {
 
         // Neither can add — the lap ends. Last player to lay a card pegs 1 for the go.
         s.activeFlags = [ScoreFlag(.go, points: 1, detail: "Go")]
+        let goScorer = s.lastToPlay ?? player
         if s.allCardsPlayed {
             finishPegging(&s)
         } else {
-            resetLap(&s, nextLeadPreferring: (s.lastToPlay ?? player).opponent)
+            resetLap(&s, nextLeadPreferring: goScorer.opponent)
         }
+        autoScore(&s, to: goScorer)
         return true
     }
 
@@ -210,10 +223,13 @@ nonisolated enum CribbageEngine {
         switch phase {
         case .showPone:
             s.activeFlags = CribbageScorer.handScore(hand: s.hands[s.pone] ?? [], starter: starter, isCrib: false)
+            autoScore(&s, to: s.pone)
         case .showDealer:
             s.activeFlags = CribbageScorer.handScore(hand: s.hands[s.dealer] ?? [], starter: starter, isCrib: false)
+            autoScore(&s, to: s.dealer)
         case .showCrib:
             s.activeFlags = CribbageScorer.handScore(hand: s.crib, starter: starter, isCrib: true)
+            autoScore(&s, to: s.dealer)
         default:
             s.activeFlags = []
         }

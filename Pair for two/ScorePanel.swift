@@ -20,6 +20,11 @@ struct ScorePanel: View {
     /// score updates), so this player can see what the other is scoring.
     var opponentColor: Color = .gray
     var opponentPending: Int = 0
+    /// Reports this panel's currently-uncommitted amount (slider/​+1 staged in a confirm mode) so the
+    /// screen can prompt before advancing. `clearSignal` (when it changes) tells the panel to drop its
+    /// staged pending — used after the amount has been claimed elsewhere.
+    var uncommitted: Binding<Int>? = nil
+    var clearSignal: Int = 0
     let onAdd: (Int) -> Void
     let onPlusOne: () -> Void
     let onUndo: () -> Void
@@ -251,6 +256,21 @@ struct ScorePanel: View {
             }
         }
         .animation(.spring(response: 0.3, dampingFraction: 0.7), value: opponentPending)
+        .onChange(of: pending) { _, _ in reportUncommitted() }
+        .onChange(of: plusPending) { _, _ in reportUncommitted() }
+        .onChange(of: clearSignal) { _, _ in
+            plusTask?.cancel()
+            withAnimation(.spring(response: 0.3, dampingFraction: 0.78)) {
+                pending = 0; plusPending = 0; plusSettled = false
+            }
+            reportUncommitted()
+        }
+    }
+
+    /// The amount staged but not yet added (only in the confirm modes).
+    private func reportUncommitted() {
+        let amount = (requireConfirm ? pending : 0) + (requirePlusConfirm ? plusPending : 0)
+        uncommitted?.wrappedValue = amount
     }
 }
 

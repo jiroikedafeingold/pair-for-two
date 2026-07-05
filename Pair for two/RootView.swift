@@ -11,6 +11,7 @@ struct RootView: View {
 
     @AppStorage("localName") private var name = "Player"
     @AppStorage("localColorID") private var colorID = 1
+    @AppStorage("scoringMode") private var scoringModeRaw = ScoringMode.feedback.rawValue
 
     /// Trimmed, non-empty player name.
     private var playerName: String {
@@ -28,7 +29,8 @@ struct RootView: View {
                         onConnected: { session in
                             vm = GameViewModel.networked(transport: session,
                                                          localName: playerName,
-                                                         localColorID: colorID)
+                                                         localColorID: colorID,
+                                                         scoringMode: ScoringMode(rawValue: scoringModeRaw) ?? .feedback)
                             screen = .game
                         },
                         onCancel: { screen = .menu })

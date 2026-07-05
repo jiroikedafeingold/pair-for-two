@@ -50,11 +50,7 @@ struct WinnerOverlay: View {
     @State private var animateIn = false
     @State private var rotate = false
     @State private var pulse = false
-    @State private var faceAngle: Double = 0
 
-    // The phone is always landscape and shared between the two players (P1 bottom, P2 top).
-    private var winnerAngle: Double { winner == .one ? 0 : 180 }
-    private var loserAngle: Double { winner == .one ? 180 : 0 }
     private var winnerColor: Color { winnerTheme.primary }
 
     var body: some View {
@@ -190,21 +186,12 @@ struct WinnerOverlay: View {
             )
             .scaleEffect(animateIn ? 1 : 0.8)
             .opacity(animateIn ? 1 : 0)
-            .rotationEffect(.degrees(faceAngle))
-            .animation(.easeInOut(duration: 0.85), value: faceAngle)
         }
         .onAppear {
-            faceAngle = winnerAngle
             withAnimation(.spring(response: 0.6, dampingFraction: 0.7)) { animateIn = true }
             rotate = true
             pulse = true
             WinHaptics.shared.play(skunk: skunk)
-        }
-        .task {
-            while !Task.isCancelled {
-                try? await Task.sleep(for: .seconds(3))
-                faceAngle = (faceAngle == winnerAngle) ? loserAngle : winnerAngle
-            }
         }
     }
 

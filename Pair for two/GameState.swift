@@ -28,6 +28,7 @@ nonisolated struct GameState: Codable, Sendable {
     var matchID: UUID
     var phase: GamePhase = .connecting
     var handNumber: Int = 0
+    var scoringMode: ScoringMode = .feedback
 
     // Players
     var names: [PlayerID: String]
@@ -88,8 +89,10 @@ nonisolated struct GameState: Codable, Sendable {
     static func newMatch(matchID: UUID,
                          seed: UInt64,
                          names: [PlayerID: String],
-                         colorIDs: [PlayerID: Int]) -> GameState {
+                         colorIDs: [PlayerID: Int],
+                         scoringMode: ScoringMode = .feedback) -> GameState {
         GameState(matchID: matchID,
+                  scoringMode: scoringMode,
                   names: names,
                   colorIDs: colorIDs,
                   dealer: .one,
@@ -150,7 +153,8 @@ extension GameState {
             lastToPlay: lastToPlay,
             yourScore: scores[you] ?? 0,
             opponentScore: scores[opponent] ?? 0,
-            flags: activeFlags,
+            flags: scoringMode.showsFlags ? activeFlags : [],
+            scoringMode: scoringMode,
             cutForDeal: cutForDeal,
             winner: winner,
             yourName: names[you] ?? "You",
@@ -193,6 +197,7 @@ nonisolated struct PlayerSnapshot: Codable, Hashable, Sendable {
     let opponentScore: Int
 
     let flags: [ScoreFlag]
+    let scoringMode: ScoringMode
     let cutForDeal: [PlayerID: Card]
     let winner: PlayerID?
 
