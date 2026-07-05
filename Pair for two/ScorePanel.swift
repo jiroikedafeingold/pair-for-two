@@ -16,6 +16,10 @@ struct ScorePanel: View {
     let canUndo: Bool
     var requireConfirm: Bool = false
     var requirePlusConfirm: Bool = false
+    /// Opponent's colour + a pending "+X" they're about to add (shown for a few seconds before their
+    /// score updates), so this player can see what the other is scoring.
+    var opponentColor: Color = .gray
+    var opponentPending: Int = 0
     let onAdd: (Int) -> Void
     let onPlusOne: () -> Void
     let onUndo: () -> Void
@@ -231,6 +235,22 @@ struct ScorePanel: View {
                 .shadow(color: .black.opacity(0.35), radius: 14, y: 6)
         )
         .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+        // The opponent's pending "+X", shown next to their score (the "/ N" side) before it lands.
+        .overlay(alignment: .topTrailing) {
+            if opponentPending > 0 {
+                Text("+\(opponentPending)")
+                    .font(.system(size: 17, weight: .heavy, design: .rounded))
+                    .monospacedDigit()
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 9).padding(.vertical, 3)
+                    .background(Capsule().fill(opponentColor))
+                    .overlay(Capsule().stroke(.white.opacity(0.5), lineWidth: 1))
+                    .shadow(color: opponentColor.opacity(0.7), radius: 6)
+                    .padding(6)
+                    .transition(.scale.combined(with: .opacity))
+            }
+        }
+        .animation(.spring(response: 0.3, dampingFraction: 0.7), value: opponentPending)
     }
 }
 

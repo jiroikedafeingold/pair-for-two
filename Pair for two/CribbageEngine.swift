@@ -227,6 +227,7 @@ nonisolated enum CribbageEngine {
         guard s.phase != .gameOver, amount > 0 else { return false }
         s.scores[player, default: 0] += amount
         s.claimHistory.append(Claim(player: player, amount: amount, phase: s.phase))
+        s.claimTick += 1
         if (s.scores[player] ?? 0) >= 121 {
             s.winner = player
             s.whoseTurn = nil

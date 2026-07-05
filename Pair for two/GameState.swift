@@ -56,6 +56,7 @@ nonisolated struct GameState: Codable, Sendable {
     // Scoring assist (surfaced to the coach UI, never auto-applied)
     var activeFlags: [ScoreFlag] = []
     var claimHistory: [Claim] = []
+    var claimTick: Int = 0            // increments on each claim, so devices can preview "+X"
 
     var winner: PlayerID?
 
@@ -156,7 +157,10 @@ extension GameState {
             opponentName: names[opponent] ?? "Opponent",
             yourColorID: colorIDs[you] ?? 0,
             opponentColorID: colorIDs[opponent] ?? 1,
-            playersWithClaims: Set(claimHistory.map(\.player))
+            playersWithClaims: Set(claimHistory.map(\.player)),
+            claimTick: claimTick,
+            lastClaimPlayer: claimHistory.last?.player,
+            lastClaimAmount: claimHistory.last?.amount ?? 0
         )
     }
 }
@@ -200,6 +204,12 @@ nonisolated struct PlayerSnapshot: Codable, Hashable, Sendable {
     /// Players that currently have at least one undoable claim (so the guest, which holds no
     /// authoritative state, can still enable/disable its undo button).
     let playersWithClaims: Set<PlayerID>
+
+    /// Increments on each claim; the most recent claim's player + amount, so the *other* device can
+    /// preview "+X" next to that player's score before it lands.
+    let claimTick: Int
+    let lastClaimPlayer: PlayerID?
+    let lastClaimAmount: Int
 
     /// True when it is this device's turn to act during pegging.
     var isYourTurn: Bool { whoseTurn == you }

@@ -108,7 +108,8 @@ final class GameViewModel {
                        yourScore: 0, opponentScore: 0, flags: [], cutForDeal: [:], winner: nil,
                        yourName: name, opponentName: "Opponent",
                        yourColorID: colorID, opponentColorID: you == .one ? 7 : 1,
-                       playersWithClaims: [])
+                       playersWithClaims: [],
+                       claimTick: 0, lastClaimPlayer: nil, lastClaimAmount: 0)
     }
 
     // MARK: Transport event loop
@@ -278,6 +279,46 @@ final class GameViewModel {
     /// True when this device is waiting to act and should show the cut / go / play controls.
     var canActNow: Bool { connection == .connected }
 
+    // MARK: The show (counting)
+
+    /// Who is counting during the current show phase (pone counts first, then the dealer, then the
+    /// dealer counts the crib). Nil outside the show.
+    var showCountingPlayer: PlayerID? {
+        switch snapshot.phase {
+        case .showPone:             return snapshot.pone
+        case .showDealer, .showCrib: return snapshot.dealer
+        default:                    return nil
+        }
+    }
+
+    /// This device is the one counting right now.
+    var youAreCounting: Bool { showCountingPlayer == snapshot.you }
+
+    /// The cards currently being counted, resolved from this device's snapshot (both devices see the
+    /// same hand — the counter's own, the watcher's via the revealed opponent hand).
+    var showCards: [Card] {
+        switch snapshot.phase {
+        case .showPone:
+            return snapshot.pone == snapshot.you ? snapshot.yourHand : (snapshot.opponentHand ?? [])
+        case .showDealer:
+            return snapshot.dealer == snapshot.you ? snapshot.yourHand : (snapshot.opponentHand ?? [])
+        case .showCrib:
+            return snapshot.crib ?? []
+        default:
+            return []
+        }
+    }
+
+    /// Name-based label for what's being counted (never the "pone/dealer" jargon).
+    var showLabel: String {
+        switch snapshot.phase {
+        case .showPone:   return "\(name(of: snapshot.pone))'s hand"
+        case .showDealer: return "\(name(of: snapshot.dealer))'s hand"
+        case .showCrib:   return "\(name(of: snapshot.dealer))'s crib"
+        default:          return ""
+        }
+    }
+
     var coachBanner: String {
         let s = snapshot
         switch s.phase {
@@ -298,9 +339,9 @@ final class GameViewModel {
                 return canSayGo ? "\(s.yourName): no card to play — say Go" : "\(s.yourName)'s play"
             }
             return "Waiting for \(s.opponentName)"
-        case .showPone:    return "Count the pone's hand — \(name(of: s.pone))"
-        case .showDealer:  return "Count the dealer's hand — \(name(of: s.dealer))"
-        case .showCrib:    return "Count the crib — \(name(of: s.dealer))'s"
+        case .showPone:    return "\(name(of: s.pone)) counts their hand"
+        case .showDealer:  return "\(name(of: s.dealer)) counts their hand"
+        case .showCrib:    return "\(name(of: s.dealer)) counts the crib"
         case .handComplete: return "Hand complete"
         case .gameOver:
             let w = s.winner == s.you ? s.yourName : s.opponentName

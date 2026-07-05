@@ -11,6 +11,11 @@ struct GameTableView: View {
     @AppStorage("localName") private var localName = "Player"
     @AppStorage("localColorID") private var localColorID = 1
 
+    // Opponent "+X" score preview: hold their displayed score for 3s while showing what they added.
+    @State private var displayedOppScore: Int? = nil
+    @State private var oppPending: Int = 0
+    @State private var oppPendingTask: Task<Void, Never>? = nil
+
     var body: some View {
         GeometryReader { geo in
             let s = vm.snapshot
@@ -53,7 +58,24 @@ struct GameTableView: View {
                 vm.updateLocalIdentity(name: localName.trimmingCharacters(in: .whitespaces), colorID: localColorID)
             }
         }
+        // Preview the opponent's "+X" for 3s before their score updates on this device.
+        .onChange(of: vm.snapshot.claimTick) { _, _ in previewOpponentClaim() }
         .ignoresSafeArea(.container, edges: .bottom)
+    }
+
+    private func previewOpponentClaim() {
+        let s = vm.snapshot
+        guard let claimer = s.lastClaimPlayer, s.lastClaimAmount > 0, claimer == s.you.opponent else { return }
+        if oppPending == 0 {
+            displayedOppScore = s.opponentScore - s.lastClaimAmount   // hold at the pre-claim value
+        }
+        oppPending += s.lastClaimAmount
+        oppPendingTask?.cancel()
+        oppPendingTask = Task { @MainActor in
+            try? await Task.sleep(for: .seconds(3))
+            guard !Task.isCancelled else { return }
+            withAnimation { displayedOppScore = nil; oppPending = 0 }
+        }
     }
 
     // MARK: Connection banner (non-blocking)
@@ -123,16 +145,21 @@ struct GameTableView: View {
 
     @ViewBuilder private func scorePanel(for player: PlayerID, s: PlayerSnapshot) -> some View {
         let theme = vm.theme(for: player)
+        let isLocal = player == s.you
+        // On the local panel, delay the opponent's score by 3s and show their "+X" preview.
+        let oppScore = isLocal ? (displayedOppScore ?? vm.score(of: player.opponent)) : vm.score(of: player.opponent)
         ScorePanel(
             name: vm.name(of: player),
             score: vm.score(of: player),
-            opponentScore: vm.score(of: player.opponent),
+            opponentScore: oppScore,
             primary: theme.primary,
             deep: theme.deep,
             disabled: s.phase == .gameOver,
             canUndo: vm.canUndo(for: player),
-            requireConfirm: player == s.you ? confirmRelease : false,
-            requirePlusConfirm: player == s.you ? confirmPlus : false,
+            requireConfirm: isLocal ? confirmRelease : false,
+            requirePlusConfirm: isLocal ? confirmPlus : false,
+            opponentColor: vm.theme(for: player.opponent).primary,
+            opponentPending: isLocal ? oppPending : 0,
             onAdd: { vm.claim($0, for: player) },
             onPlusOne: { vm.claim(1, for: player) },
             onUndo: { vm.undo(for: player) }
@@ -150,11 +177,8 @@ struct GameTableView: View {
                 discardArea(s, width: handWidth)
             case .pegging:
                 peggingArea(s, handWidth: peggingHandWidth, pileWidth: pileWidth)
-            case .showPone, .showDealer:
-                showArea(s, cards: s.yourHand, width: handWidth, pileWidth: showWidth,
-                         label: s.phase == .showPone ? "Pone's hand" : "Dealer's hand")
-            case .showCrib:
-                showArea(s, cards: s.crib ?? [], width: handWidth, pileWidth: showWidth, label: "The crib")
+            case .showPone, .showDealer, .showCrib:
+                showArea(s, pileWidth: showWidth)
             case .handComplete:
                 handCompleteArea(s)
             default:
@@ -279,7 +303,7 @@ struct GameTableView: View {
 
     // MARK: Show
 
-    @ViewBuilder private func showArea(_ s: PlayerSnapshot, cards: [Card], width: CGFloat, pileWidth: CGFloat, label: String) -> some View {
+    @ViewBuilder private func showArea(_ s: PlayerSnapshot, pileWidth: CGFloat) -> some View {
         VStack(spacing: 12) {
             HStack(alignment: .top, spacing: 24) {
                 VStack(spacing: 4) {
@@ -287,17 +311,22 @@ struct GameTableView: View {
                     if let starter = s.starter { CardView(card: starter, width: pileWidth) }
                 }
                 VStack(spacing: 4) {
-                    Text(label).font(.caption2).foregroundStyle(.white.opacity(0.7))
+                    Text(vm.showLabel).font(.caption2).foregroundStyle(.white.opacity(0.7))
                     HStack(spacing: 8) {
-                        ForEach(cards) { CardView(card: $0, width: pileWidth) }
+                        ForEach(vm.showCards) { CardView(card: $0, width: pileWidth) }
                     }
                 }
             }
             .frame(maxHeight: .infinity)
-            Text("True count: \(s.flags.totalPoints) — claim it above, then Continue")
-                .font(.caption).foregroundStyle(.white.opacity(0.7))
-            Button("Continue") { vm.advance() }
-                .buttonStyle(.borderedProminent).tint(.cribGold).foregroundStyle(.black)
+
+            if vm.youAreCounting {
+                Text("Count it on your slider, then Continue")
+                    .font(.caption).foregroundStyle(.white.opacity(0.7))
+                Button("Continue") { vm.advance() }
+                    .buttonStyle(.borderedProminent).tint(.cribGold).foregroundStyle(.black)
+            } else {
+                waitingLabel("Waiting for \(vm.name(of: vm.showCountingPlayer ?? s.you)) to count…")
+            }
         }
     }
 
@@ -334,12 +363,21 @@ struct GameTableView: View {
 
 private struct GameTablePreview: View {
     @State private var vm: GameViewModel = {
-        let vm = GameViewModel.loopback(names: [.one: "Ann", .two: "Ben"], colorIDs: [.one: 1, .two: 7])
+        let vm = GameViewModel.loopback(names: [.one: "Ann", .two: "Ben"],
+                                        colorIDs: [.one: 1, .two: 7], seed: 42)
         vm.cut(); vm.cut(); vm.advance()          // both cut, then deal
-        for _ in 0..<2 {                          // both players discard 2 → into pegging
+        for _ in 0..<2 where vm.snapshot.phase == .discardToCrib {   // both discard 2 → pegging
             let hand = vm.snapshot.yourHand
-            vm.toggleDiscard(hand[0]); vm.toggleDiscard(hand[1]); vm.confirmDiscard()
+            if hand.count >= 2 { vm.toggleDiscard(hand[0]); vm.toggleDiscard(hand[1]); vm.confirmDiscard() }
         }
+        var guardCount = 0                        // play out pegging → the show
+        while vm.snapshot.phase == .pegging && !vm.peggingComplete {
+            guardCount += 1; if guardCount > 60 { break }
+            let s = vm.snapshot
+            let legal = CribbageScorer.legalPlays(hand: s.yourHand, count: s.runningCount)
+            if let c = legal.min(by: { $0.countingValue < $1.countingValue }) { vm.play(c) } else { vm.sayGo() }
+        }
+        if vm.peggingComplete { vm.advance() }    // → showPone (count the pone's hand)
         return vm
     }()
     var body: some View { GameTableView(vm: vm) }
