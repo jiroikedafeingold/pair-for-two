@@ -10,6 +10,7 @@ struct GameTableView: View {
     @AppStorage("confirmPlus") private var confirmPlus = false
     @AppStorage("localName") private var localName = "Player"
     @AppStorage("localColorID") private var localColorID = 1
+    @AppStorage("scoringMode") private var scoringModeRaw = ScoringMode.feedback.rawValue
 
     // Opponent "+X" score preview: hold their displayed score for 3s while showing what they added.
     @State private var displayedOppScore: Int? = nil
@@ -73,6 +74,7 @@ struct GameTableView: View {
         .onChange(of: showingSettings) { _, isShowing in
             if !isShowing {
                 vm.updateLocalIdentity(name: localName.trimmingCharacters(in: .whitespaces), colorID: localColorID)
+                vm.setScoringMode(ScoringMode(rawValue: scoringModeRaw) ?? .feedback)
             }
         }
         // Preview the opponent's "+X" for 3s before their score updates on this device.

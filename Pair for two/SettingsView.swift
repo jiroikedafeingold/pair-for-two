@@ -35,6 +35,7 @@ struct SettingsView: View {
                         }
                     }
                     .pickerStyle(.inline)
+                    .labelsHidden()
                 } header: {
                     Text("Scoring")
                 } footer: {

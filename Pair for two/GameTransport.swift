@@ -20,6 +20,7 @@ nonisolated enum GameMessage: Codable, Sendable {
     case advance                            // "continue" through cut-for-deal recut / show steps / next deal
     case playAgain
     case updateIdentity(name: String, colorID: Int)   // live name/colour change from Settings
+    case setScoringMode(Int)                          // live scoring-mode change from Settings
 }
 
 // MARK: - Transport events

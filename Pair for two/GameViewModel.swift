@@ -44,7 +44,7 @@ final class GameViewModel {
 
     // MARK: Init / factories
 
-    private let scoringMode: ScoringMode
+    private var scoringMode: ScoringMode
 
     private init(transport: any GameTransport,
                  isLoopback: Bool,
@@ -423,6 +423,14 @@ final class GameViewModel {
         submit(.updateIdentity(name: name, colorID: colorID))
     }
 
+    /// A live scoring-mode change from Settings — applies to the running game (either device can set
+    /// it; it governs both). Auto-scoring then takes effect for subsequent scores.
+    func setScoringMode(_ mode: ScoringMode) {
+        guard mode != scoringMode else { return }
+        scoringMode = mode
+        submit(.setScoringMode(mode.rawValue))
+    }
+
     // MARK: Intent plumbing
 
     /// Host applies locally + broadcasts; guest forwards to the host. Intents are ignored while a
@@ -464,6 +472,8 @@ final class GameViewModel {
         case .updateIdentity(let name, let colorID):
             s.names[player] = name
             s.colorIDs[player] = colorID
+        case .setScoringMode(let raw):
+            s.scoringMode = ScoringMode(rawValue: raw) ?? s.scoringMode
         case .hello, .assignSeat, .snapshot:
             break
         }
