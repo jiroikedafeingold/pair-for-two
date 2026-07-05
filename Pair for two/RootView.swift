@@ -1,48 +1,34 @@
 import SwiftUI
 
-/// App entry view. Offers single-device pass-and-play (`LoopbackTransport`) and two-device play over
-/// Multipeer (`MultipeerSession`) — both behind the same `GameTransport`, so the game screen is
-/// identical either way.
+/// App entry. Two-phone play over Multipeer: set up your own name/colour, then Play → find or host a
+/// nearby game. (Single-device pass-and-play was removed — this is a two-phone game.)
 struct RootView: View {
-    private enum Screen {
-        case menu, connect, game
-    }
+    private enum Screen { case menu, connect, game }
 
     @State private var screen: Screen = .menu
     @State private var vm: GameViewModel?
-    @State private var resumeSummary: String? = GamePersistence.savedGameSummary()
+    @State private var showingSettings = false
 
-    // Local player identity (also the pass-and-play "Player 1"); Player 2 is used only for loopback.
-    @State private var name1 = "Player 1"
-    @State private var name2 = "Player 2"
-    @State private var color1 = 1   // coral
-    @State private var color2 = 7   // sky
+    @AppStorage("localName") private var name = "Player"
+    @AppStorage("localColorID") private var colorID = 1
+
+    /// Trimmed, non-empty player name.
+    private var playerName: String {
+        let trimmed = name.trimmingCharacters(in: .whitespaces)
+        return trimmed.isEmpty ? "Player" : trimmed
+    }
 
     var body: some View {
         switch screen {
         case .menu:
-            StartMenu(name1: $name1, name2: $name2, color1: $color1, color2: $color2,
-                      resumeSummary: resumeSummary,
-                      onResume: {
-                          if let saved = GamePersistence.loadState() {
-                              vm = GameViewModel.resume(saved)
-                              screen = .game
-                          }
-                      },
-                      onPassAndPlay: {
-                          GamePersistence.clear()
-                          vm = GameViewModel.loopback(
-                              names: [.one: name1, .two: name2],
-                              colorIDs: [.one: color1, .two: color2])
-                          screen = .game
-                      },
-                      onPlayNearby: { screen = .connect })
+            menu
 
         case .connect:
-            ConnectView(localName: name1, localColorID: color1,
+            ConnectView(localName: playerName, localColorID: colorID,
                         onConnected: { session in
                             vm = GameViewModel.networked(transport: session,
-                                                         localName: name1, localColorID: color1)
+                                                         localName: playerName,
+                                                         localColorID: colorID)
                             screen = .game
                         },
                         onCancel: { screen = .menu })
@@ -55,93 +41,50 @@ struct RootView: View {
             }
         }
     }
-}
 
-/// Start screen: name/colour for both pass-and-play players, plus the two ways to play.
-private struct StartMenu: View {
-    @Binding var name1: String
-    @Binding var name2: String
-    @Binding var color1: Int
-    @Binding var color2: Int
-    var resumeSummary: String?
-    var onResume: () -> Void
-    var onPassAndPlay: () -> Void
-    var onPlayNearby: () -> Void
-
-    var body: some View {
+    private var menu: some View {
         ZStack {
             LinearGradient(colors: [.feltMid, .feltDark], startPoint: .top, endPoint: .bottom)
                 .ignoresSafeArea()
 
-            ScrollView {
-                VStack(spacing: 20) {
+            VStack(spacing: 24) {
+                VStack(spacing: 6) {
                     Text("Pair for Two")
                         .font(.system(size: 46, weight: .heavy, design: .serif))
                         .foregroundStyle(.white)
                     Text("Two-phone cribbage")
                         .font(.headline).foregroundStyle(Color.cribGold)
-
-                    HStack(spacing: 40) {
-                        playerSetup(name: $name1, color: $color1)
-                        playerSetup(name: $name2, color: $color2)
-                    }
-
-                    HStack(spacing: 18) {
-                        Button(action: onPassAndPlay) {
-                            actionLabel("Play on one phone", systemImage: "iphone")
-                        }
-                        .buttonStyle(.borderedProminent).tint(.cribGold).foregroundStyle(.black)
-
-                        Button(action: onPlayNearby) {
-                            actionLabel("Play nearby", systemImage: "dot.radiowaves.left.and.right")
-                        }
-                        .buttonStyle(.bordered).tint(.white)
-                    }
-
-                    if let resumeSummary {
-                        Button(action: onResume) {
-                            actionLabel("Resume game  (\(resumeSummary))", systemImage: "arrow.clockwise.circle.fill")
-                        }
-                        .buttonStyle(.bordered).tint(Color.cribGold)
-                    }
-
-                    Text("Pass-and-play uses both names above. Play nearby uses the left player as you.")
-                        .font(.caption).foregroundStyle(.white.opacity(0.6))
-                        .multilineTextAlignment(.center)
                 }
-                .padding(28)
-            }
-        }
-    }
 
-    private func actionLabel(_ title: String, systemImage: String) -> some View {
-        HStack(spacing: 8) {
-            Image(systemName: systemImage)
-            Text(title).fontWeight(.bold)
-        }
-        .font(.title3)
-        .padding(.horizontal, 18).padding(.vertical, 12)
-    }
-
-    @ViewBuilder private func playerSetup(name: Binding<String>, color: Binding<Int>) -> some View {
-        VStack(spacing: 10) {
-            TextField("Name", text: name)
-                .textFieldStyle(.roundedBorder)
-                .frame(width: 180)
-                .multilineTextAlignment(.center)
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 8) {
-                    ForEach(Array(playerThemes.enumerated()), id: \.offset) { index, theme in
-                        Circle()
-                            .fill(theme.primary)
-                            .frame(width: 22, height: 22)
-                            .overlay(Circle().strokeBorder(.white, lineWidth: color.wrappedValue == index ? 3 : 0))
-                            .onTapGesture { color.wrappedValue = index }
+                // Your identity, tap to edit in Settings.
+                Button { showingSettings = true } label: {
+                    HStack(spacing: 10) {
+                        Circle().fill(playerTheme(colorID: colorID).primary).frame(width: 22, height: 22)
+                        Text(name.isEmpty ? "Player" : name).fontWeight(.semibold).foregroundStyle(.white)
+                        Image(systemName: "pencil.circle.fill").foregroundStyle(.white.opacity(0.6))
                     }
+                    .padding(.horizontal, 18).padding(.vertical, 10)
+                    .background(Capsule().fill(Color.white.opacity(0.10)))
                 }
-                .padding(.horizontal, 4)
+                .buttonStyle(.plain)
+
+                Button { screen = .connect } label: {
+                    HStack(spacing: 8) {
+                        Image(systemName: "dot.radiowaves.left.and.right")
+                        Text("Play").fontWeight(.bold)
+                    }
+                    .font(.title3)
+                    .padding(.horizontal, 30).padding(.vertical, 14)
+                }
+                .buttonStyle(.borderedProminent).tint(.cribGold).foregroundStyle(.black)
+
+                Button("Settings") { showingSettings = true }
+                    .buttonStyle(.bordered).tint(.white)
             }
-            .frame(width: 210)
+            .padding(28)
+        }
+        .sheet(isPresented: $showingSettings) {
+            SettingsView(onDone: { showingSettings = false })
         }
     }
 }

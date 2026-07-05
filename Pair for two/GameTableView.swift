@@ -6,6 +6,8 @@ import SwiftUI
 struct GameTableView: View {
     @State var vm: GameViewModel
     @State private var showingSettings = false
+    @AppStorage("confirmRelease") private var confirmRelease = false
+    @AppStorage("confirmPlus") private var confirmPlus = false
 
     var body: some View {
         GeometryReader { geo in
@@ -40,7 +42,7 @@ struct GameTableView: View {
             .overlay { if s.phase == .gameOver { winnerOverlay(s) } }
         }
         .sheet(isPresented: $showingSettings) {
-            SettingsView(vm: vm, onDone: { showingSettings = false })
+            SettingsView(onDone: { showingSettings = false })
         }
         .ignoresSafeArea(.container, edges: .bottom)
     }
@@ -120,8 +122,8 @@ struct GameTableView: View {
             deep: theme.deep,
             disabled: s.phase == .gameOver,
             canUndo: vm.canUndo(for: player),
-            requireConfirm: vm.confirmAfterRelease[player] ?? false,
-            requirePlusConfirm: vm.confirmAfterPlusOne[player] ?? false,
+            requireConfirm: player == s.you ? confirmRelease : false,
+            requirePlusConfirm: player == s.you ? confirmPlus : false,
             onAdd: { vm.claim($0, for: player) },
             onPlusOne: { vm.claim(1, for: player) },
             onUndo: { vm.undo(for: player) }
@@ -156,19 +158,24 @@ struct GameTableView: View {
 
     // MARK: Cut for deal
 
-    /// Each player taps to cut; both cut cards stay on show. Once both have cut, the lower card wins
-    /// the deal (and the first crib) and a "Deal" button appears.
+    /// Each player cuts once. Their card is shown to both. Once both have cut, the lower card wins the
+    /// deal (and the first crib); the dealer then taps "Deal".
     @ViewBuilder private func cutForDealArea(_ s: PlayerSnapshot, width: CGFloat) -> some View {
         VStack(spacing: 14) {
             HStack(spacing: 34) {
                 cutResult(for: .one, s: s, width: width)
                 cutResult(for: .two, s: s, width: width)
             }
+
             if vm.cutForDealDecided {
-                Button("Deal") { vm.advance() }
-                    .buttonStyle(.borderedProminent).tint(.cribGold).foregroundStyle(.black)
-                    .controlSize(.large)
-            } else {
+                if vm.youDeal {
+                    Button("Deal") { vm.advance() }
+                        .buttonStyle(.borderedProminent).tint(.cribGold).foregroundStyle(.black)
+                        .controlSize(.large)
+                } else {
+                    waitingLabel("Waiting for \(vm.name(of: s.dealer)) to deal…")
+                }
+            } else if vm.youNeedToCut {
                 Button { vm.cut() } label: {
                     VStack(spacing: 6) {
                         CardView(card: nil, faceUp: false, width: width * 0.85)
@@ -176,9 +183,18 @@ struct GameTableView: View {
                     }
                 }
                 .buttonStyle(.plain)
+            } else {
+                waitingLabel("Waiting for \(s.opponentName) to cut…")
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    private func waitingLabel(_ text: String) -> some View {
+        HStack(spacing: 8) {
+            ProgressView().tint(.white)
+            Text(text).font(.callout).foregroundStyle(.white.opacity(0.8))
+        }
     }
 
     @ViewBuilder private func cutResult(for player: PlayerID, s: PlayerSnapshot, width: CGFloat) -> some View {
@@ -220,19 +236,33 @@ struct GameTableView: View {
     // MARK: Pegging
 
     @ViewBuilder private func peggingArea(_ s: PlayerSnapshot, handWidth: CGFloat, pileWidth: CGFloat) -> some View {
-        VStack(spacing: 14) {
+        VStack(spacing: 10) {
+            // Running count — always visible during the play.
+            Text("Count  \(s.runningCount)")
+                .font(.title3.weight(.heavy)).monospacedDigit()
+                .foregroundStyle(.white)
+                .padding(.horizontal, 16).padding(.vertical, 5)
+                .background(Capsule().fill(Color.black.opacity(0.45)))
+
             PlayPileView(snapshot: s, vm: vm, cardWidth: pileWidth)
                 .frame(maxHeight: .infinity)
-            HStack(spacing: 16) {
-                HandView(cards: s.yourHand,
-                         isEnabled: { vm.isLegalPlay($0) },
-                         onTap: { vm.play($0) },
-                         cardWidth: handWidth)
-                if vm.canSayGo {
-                    Button("Go") { vm.sayGo() }
-                        .buttonStyle(.borderedProminent)
-                        .tint(.orange)
-                        .controlSize(.large)
+
+            if vm.peggingComplete {
+                Button("Count the hands") { vm.advance() }
+                    .buttonStyle(.borderedProminent).tint(.cribGold).foregroundStyle(.black)
+                    .controlSize(.large)
+            } else {
+                HStack(spacing: 16) {
+                    HandView(cards: s.yourHand,
+                             isEnabled: { vm.isLegalPlay($0) },
+                             onTap: { vm.play($0) },
+                             cardWidth: handWidth)
+                    if vm.canSayGo {
+                        Button("Go") { vm.sayGo() }
+                            .buttonStyle(.borderedProminent)
+                            .tint(.orange)
+                            .controlSize(.large)
+                    }
                 }
             }
         }

@@ -36,11 +36,7 @@ struct PlayPileView: View {
 
     private var playedStack: some View {
         VStack(spacing: 6) {
-            Text("Count \(snapshot.runningCount)")
-                .font(.caption.weight(.bold))
-                .foregroundStyle(.white)
-                .padding(.horizontal, 10).padding(.vertical, 3)
-                .background(Capsule().fill(Color.black.opacity(0.35)))
+            Text("Play").font(.caption2.weight(.semibold)).foregroundStyle(.white.opacity(0.7))
 
             if snapshot.playSequence.isEmpty {
                 RoundedRectangle(cornerRadius: 10, style: .continuous)

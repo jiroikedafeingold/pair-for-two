@@ -1,39 +1,41 @@
 import SwiftUI
 
-/// Scoring-slider preferences, per player. Mirrors Criboard's options:
-/// - **Confirm after release**: dragging the slider stages the value; you tap the +N button to apply.
-/// - **Confirm after +1**: +1 taps batch up and commit together instead of scoring each tap.
-///
-/// In pass-and-play both players are shown; when networked, only the local player's peg exists but
-/// both rows remain editable (the setting for the other seat is simply unused on this device).
+/// Your player settings: name, colour, and the two scoring-slider confirm options. Backed by
+/// `@AppStorage`, so the same screen works from the start menu and from inside a game, and changes
+/// persist. Only the current player is configured (this is a two-phone game — the other player sets
+/// their own on their device).
 struct SettingsView: View {
-    var vm: GameViewModel
     var onDone: () -> Void
+
+    @AppStorage("localName") private var name = "Player"
+    @AppStorage("localColorID") private var colorID = 1
+    @AppStorage("confirmRelease") private var confirmRelease = false
+    @AppStorage("confirmPlus") private var confirmPlus = false
 
     var body: some View {
         NavigationStack {
             Form {
-                ForEach(playersToShow, id: \.self) { player in
-                    Section {
-                        Toggle("Confirm after release",
-                               isOn: bindingRelease(player))
-                        Toggle("Confirm after +1",
-                               isOn: bindingPlus(player))
-                    } header: {
-                        HStack(spacing: 8) {
-                            Circle().fill(vm.theme(for: player).primary).frame(width: 12, height: 12)
-                            Text(vm.name(of: player).uppercased())
-                        }
+                Section("You") {
+                    LabeledContent("Name") {
+                        TextField("Name", text: $name)
+                            .multilineTextAlignment(.trailing)
+                            .textInputAutocapitalization(.words)
+                            .submitLabel(.done)
                     }
+                    colorRow
                 }
 
                 Section {
+                    Toggle("Confirm after release", isOn: $confirmRelease)
+                    Toggle("Confirm after +1", isOn: $confirmPlus)
+                } header: {
+                    Text("Scoring slider")
+                } footer: {
                     Text("“Confirm after release” holds the slider value until you tap the +N button. "
                          + "“Confirm after +1” batches +1 taps before adding them to your score.")
-                        .font(.footnote).foregroundStyle(.secondary)
                 }
             }
-            .navigationTitle("Scoring")
+            .navigationTitle("Settings")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
@@ -43,17 +45,21 @@ struct SettingsView: View {
         }
     }
 
-    private var playersToShow: [PlayerID] {
-        vm.isLoopback ? [.one, .two] : [.one, .two]
-    }
-
-    private func bindingRelease(_ player: PlayerID) -> Binding<Bool> {
-        Binding(get: { vm.confirmAfterRelease[player] ?? false },
-                set: { vm.setConfirmAfterRelease($0, for: player) })
-    }
-
-    private func bindingPlus(_ player: PlayerID) -> Binding<Bool> {
-        Binding(get: { vm.confirmAfterPlusOne[player] ?? false },
-                set: { vm.setConfirmAfterPlusOne($0, for: player) })
+    private var colorRow: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Colour").font(.subheadline).foregroundStyle(.secondary)
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 12) {
+                    ForEach(Array(playerThemes.enumerated()), id: \.offset) { index, theme in
+                        Circle()
+                            .fill(theme.primary)
+                            .frame(width: 30, height: 30)
+                            .overlay(Circle().strokeBorder(.primary, lineWidth: colorID == index ? 3 : 0))
+                            .onTapGesture { colorID = index }
+                    }
+                }
+                .padding(.vertical, 2)
+            }
+        }
     }
 }

@@ -23,26 +23,6 @@ final class GameViewModel {
     var selectedForDiscard: Set<Card> = []
     private(set) var connection: ConnectionState
 
-    // Per-player scoring-slider preferences (persisted). "Confirm after release" holds the slider
-    // value until you tap the +N button to commit; "Confirm after +1" batches +1 taps before applying.
-    private(set) var confirmAfterRelease: [PlayerID: Bool] = [
-        .one: UserDefaults.standard.bool(forKey: "confirmRelease.one"),
-        .two: UserDefaults.standard.bool(forKey: "confirmRelease.two"),
-    ]
-    private(set) var confirmAfterPlusOne: [PlayerID: Bool] = [
-        .one: UserDefaults.standard.bool(forKey: "confirmPlus.one"),
-        .two: UserDefaults.standard.bool(forKey: "confirmPlus.two"),
-    ]
-
-    func setConfirmAfterRelease(_ on: Bool, for player: PlayerID) {
-        confirmAfterRelease[player] = on
-        UserDefaults.standard.set(on, forKey: "confirmRelease.\(player.rawValue)")
-    }
-    func setConfirmAfterPlusOne(_ on: Bool, for player: PlayerID) {
-        confirmAfterPlusOne[player] = on
-        UserDefaults.standard.set(on, forKey: "confirmPlus.\(player.rawValue)")
-    }
-
     private let transport: any GameTransport
     let isHost: Bool
     let isLoopback: Bool
@@ -217,7 +197,9 @@ final class GameViewModel {
     /// The player whose perspective to render in pass-and-play, given the state's phase.
     static func loopbackViewer(_ state: GameState) -> PlayerID {
         switch state.phase {
-        case .cutForDeal:  return state.cutForDeal[.one] == nil ? .one : .two
+        case .cutForDeal:
+            if state.cutForDeal.count == 2 { return state.dealer }   // result shown → dealer deals
+            return state.cutForDeal[.one] == nil ? .one : .two
         case .discardToCrib: return state.discarded.contains(.one) ? .two : .one
         case .pegging: return state.whoseTurn ?? state.pone
         case .showPone: return state.pone
@@ -254,6 +236,27 @@ final class GameViewModel {
         snapshot.phase == .cutForDeal && snapshot.cutForDeal.count == 2
     }
 
+    /// This device's player still needs to cut for deal. (In pass-and-play the rendered player is
+    /// always the one due to cut, so this is true until both have cut.)
+    var youNeedToCut: Bool {
+        snapshot.phase == .cutForDeal && !cutForDealDecided && snapshot.cutForDeal[snapshot.you] == nil
+    }
+
+    /// You have cut but the opponent hasn't yet (networked "waiting" state).
+    var waitingForOpponentCut: Bool {
+        snapshot.phase == .cutForDeal && !cutForDealDecided && snapshot.cutForDeal[snapshot.you] != nil
+    }
+
+    /// After the cut is decided, the dealer deals. (Pass-and-play renders the dealer, so always true.)
+    var youDeal: Bool {
+        cutForDealDecided && (isLoopback || snapshot.you == snapshot.dealer)
+    }
+
+    /// Every card has been played; the hand is over and it's time to count.
+    var peggingComplete: Bool {
+        snapshot.phase == .pegging && snapshot.whoseTurn == nil
+    }
+
     /// Which pegs this device may score. Loopback shows both (pass-and-play); networked shows only
     /// the local player's panel.
     var scorablePlayers: [PlayerID] { isLoopback ? [.one, .two] : [snapshot.you] }
@@ -283,12 +286,14 @@ final class GameViewModel {
             if cutForDealDecided {
                 return "\(name(of: s.dealer)) wins the cut — deals & takes the crib"
             }
+            if waitingForOpponentCut { return "Waiting for \(s.opponentName) to cut…" }
             return "\(s.yourName), cut for deal"
         case .dealing:     return "Dealing…"
         case .discardToCrib:
             let whose = s.yourSeat == .dealer ? "your crib" : "the crib"
             return "\(s.yourName), discard 2 to \(whose)"
         case .pegging:
+            if peggingComplete { return "All cards played — count the hands" }
             if s.isYourTurn {
                 return canSayGo ? "\(s.yourName): no card to play — say Go" : "\(s.yourName)'s play"
             }
