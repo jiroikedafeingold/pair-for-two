@@ -8,6 +8,8 @@ struct RootView: View {
     @State private var screen: Screen = .menu
     @State private var vm: GameViewModel?
     @State private var showingSettings = false
+    @State private var resumeSummary: String? = GamePersistence.savedGameSummary()
+    @State private var resuming = false
     @Environment(\.scenePhase) private var scenePhase
 
     @AppStorage("localName") private var name = "Player"
@@ -22,9 +24,12 @@ struct RootView: View {
 
     var body: some View {
         content
-            // Returning from the background tears down Multipeer; re-pair when we become active again.
             .onChange(of: scenePhase) { _, phase in
-                if phase == .active { vm?.reconnect() }
+                switch phase {
+                case .active:                 vm?.reconnect()   // re-pair after returning from background
+                case .background, .inactive:  vm?.persist()      // save the game if we're being closed
+                @unknown default:             break
+                }
             }
     }
 
@@ -34,12 +39,16 @@ struct RootView: View {
             menu
 
         case .connect:
-            ConnectView(localName: playerName, localColorID: colorID,
+            ConnectView(localName: playerName, localColorID: colorID, resuming: resuming,
                         onConnected: { session in
-                            vm = GameViewModel.networked(transport: session,
-                                                         localName: playerName,
-                                                         localColorID: colorID,
-                                                         scoringMode: ScoringMode(rawValue: scoringModeRaw) ?? .feedback)
+                            if resuming, let saved = GamePersistence.loadState() {
+                                vm = GameViewModel.resumeHost(transport: session, savedState: saved)
+                            } else {
+                                vm = GameViewModel.networked(transport: session,
+                                                             localName: playerName,
+                                                             localColorID: colorID,
+                                                             scoringMode: ScoringMode(rawValue: scoringModeRaw) ?? .feedback)
+                            }
                             screen = .game
                         },
                         onCancel: { screen = .menu })
@@ -79,21 +88,47 @@ struct RootView: View {
                 }
                 .buttonStyle(.plain)
 
-                Button { screen = .connect } label: {
+                if let resumeSummary {
+                    Button {
+                        resuming = true
+                        screen = .connect
+                    } label: {
+                        VStack(spacing: 2) {
+                            HStack(spacing: 8) {
+                                Image(systemName: "arrow.clockwise.circle.fill")
+                                Text("Continue game").fontWeight(.bold)
+                            }
+                            Text(resumeSummary).font(.caption).foregroundStyle(.black.opacity(0.6))
+                        }
+                        .font(.title3)
+                        .padding(.horizontal, 26).padding(.vertical, 12)
+                    }
+                    .buttonStyle(.borderedProminent).tint(.cribGold).foregroundStyle(.black)
+                }
+
+                Button {
+                    resuming = false
+                    GamePersistence.clear()   // fresh game supersedes any saved one
+                    resumeSummary = nil
+                    screen = .connect
+                } label: {
                     HStack(spacing: 8) {
                         Image(systemName: "dot.radiowaves.left.and.right")
-                        Text("Play").fontWeight(.bold)
+                        Text(resumeSummary == nil ? "Play" : "New game").fontWeight(.bold)
                     }
                     .font(.title3)
                     .padding(.horizontal, 30).padding(.vertical, 14)
                 }
-                .buttonStyle(.borderedProminent).tint(.cribGold).foregroundStyle(.black)
+                .buttonStyle(.borderedProminent)
+                .tint(resumeSummary == nil ? .cribGold : Color.white.opacity(0.22))
+                .foregroundStyle(resumeSummary == nil ? .black : .white)
 
                 Button("Settings") { showingSettings = true }
                     .buttonStyle(.bordered).tint(.white)
             }
             .padding(28)
         }
+        .onAppear { resumeSummary = GamePersistence.savedGameSummary() }
         .sheet(isPresented: $showingSettings) {
             SettingsView(onDone: { showingSettings = false })
         }

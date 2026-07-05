@@ -6,16 +6,18 @@ import MultipeerConnectivity
 struct ConnectView: View {
     let localName: String
     let localColorID: Int
+    var resuming: Bool = false      // resuming a saved game as host → auto-host, wait for rejoin
     var onConnected: (MultipeerSession) -> Void
     var onCancel: () -> Void
 
     @State private var session: MultipeerSession
 
-    init(localName: String, localColorID: Int,
+    init(localName: String, localColorID: Int, resuming: Bool = false,
          onConnected: @escaping (MultipeerSession) -> Void,
          onCancel: @escaping () -> Void) {
         self.localName = localName
         self.localColorID = localColorID
+        self.resuming = resuming
         self.onConnected = onConnected
         self.onCancel = onCancel
         _session = State(initialValue: MultipeerSession(displayName: localName))
@@ -27,7 +29,7 @@ struct ConnectView: View {
                 .ignoresSafeArea()
 
             VStack(spacing: 20) {
-                Text("Play Nearby")
+                Text(resuming ? "Resume Game" : "Play Nearby")
                     .font(.system(size: 34, weight: .heavy, design: .serif))
                     .foregroundStyle(.white)
                 Text("Bluetooth / Wi-Fi · no internet needed")
@@ -57,6 +59,9 @@ struct ConnectView: View {
         .onChange(of: session.phase) { _, phase in
             if phase == .connected { onConnected(session) }
         }
+        .onAppear {
+            if resuming && session.phase == .idle { session.startHosting() }   // auto-host to resume
+        }
     }
 
     @ViewBuilder private var content: some View {
@@ -74,8 +79,9 @@ struct ConnectView: View {
         case .hosting:
             VStack(spacing: 14) {
                 ProgressView().tint(.white).controlSize(.large)
-                Text("Waiting for a player to join…").foregroundStyle(.white)
-                Text("Have the other player tap **Join a game** on their phone.")
+                Text(resuming ? "Waiting for the other player to rejoin…" : "Waiting for a player to join…")
+                    .foregroundStyle(.white)
+                Text("Have the other player tap **\(resuming ? "Play" : "Join a game")** on their phone.")
                     .font(.caption).foregroundStyle(.white.opacity(0.6)).multilineTextAlignment(.center)
             }
 

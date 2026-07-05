@@ -69,6 +69,9 @@ final class GameViewModel {
         self.connection = connection
         self.lastViewer = state != nil ? .one : nil
         listen()
+        // Resuming host: state is pre-loaded, so start the heartbeat now (normally started once the
+        // guest joins). The guest resyncs on reconnect.
+        if isHost, state != nil, !isLoopback { startHeartbeat() }
     }
 
     /// Single-device pass-and-play. Host owns state immediately for both players.
@@ -100,15 +103,21 @@ final class GameViewModel {
                              state: nil, snapshot: placeholder, connection: .connecting)
     }
 
-    /// Resume a previously-persisted single-device game (pass-and-play host).
-    static func resume(_ savedState: GameState) -> GameViewModel {
-        let render = GameViewModel.loopbackViewer(savedState)
-        return GameViewModel(transport: LoopbackTransport(), isLoopback: true,
-                             localName: savedState.names[.one] ?? "Player 1",
-                             localColorID: savedState.colorIDs[.one] ?? 1,
-                             seed: savedState.seed, scoringMode: savedState.scoringMode,
-                             state: savedState,
-                             snapshot: savedState.snapshot(for: render), connection: .connected)
+    /// Resume a saved game as the host (the authoritative state was persisted on the host device).
+    /// The other player rejoins normally and gets resynced.
+    static func resumeHost(transport: any GameTransport, savedState: GameState) -> GameViewModel {
+        GameViewModel(transport: transport, isLoopback: false,
+                      localName: savedState.names[.one] ?? "Player 1",
+                      localColorID: savedState.colorIDs[.one] ?? 1,
+                      seed: savedState.seed, scoringMode: savedState.scoringMode,
+                      state: savedState,
+                      snapshot: savedState.snapshot(for: .one), connection: .connecting)
+    }
+
+    /// Save the current authoritative state (host only) — called when the app is backgrounded/closed.
+    func persist() {
+        guard isHost, let state, state.phase != .gameOver else { return }
+        GamePersistence.save(state)
     }
 
     static func placeholderSnapshot(you: PlayerID, name: String, colorID: Int) -> PlayerSnapshot {

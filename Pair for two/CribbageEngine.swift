@@ -295,13 +295,17 @@ nonisolated enum CribbageEngine {
 
     // MARK: Play again
 
-    /// Reset scores and start a fresh game (keeps names/colors, opens with a new cut for deal).
+    /// Reset scores and start a fresh game (keeps names/colours/scoring mode). No cut for deal — the
+    /// player who was NOT the dealer last game deals first, and we go straight to the deal.
     static func playAgain(_ s: inout GameState) {
+        let nextDealer = s.dealer.opponent
         var fresh = GameState.newMatch(matchID: s.matchID,
                                        seed: s.seed &+ 0x7777_7777,
                                        names: s.names,
-                                       colorIDs: s.colorIDs)
-        fresh.phase = .cutForDeal
+                                       colorIDs: s.colorIDs,
+                                       scoringMode: s.scoringMode)
+        fresh.dealer = nextDealer
+        dealNewHand(&fresh)   // straight to discardToCrib, no cut-for-deal
         s = fresh
     }
 }
