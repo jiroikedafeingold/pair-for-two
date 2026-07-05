@@ -119,18 +119,32 @@ struct ScorePanel: View {
 
     var body: some View {
         ZStack {
-            // Live score readout behind the controls (replaces Criboard's name watermark).
-            Text("\(score) / \(opponentScore)")
-                .font(.system(size: 60, weight: .black, design: .rounded))
-                .tracking(2)
-                .lineLimit(1)
-                .minimumScaleFactor(0.4)
-                .monospacedDigit()
-                .foregroundStyle(primary.opacity(0.42))
-                .shadow(color: primary.opacity(0.55), radius: 14)
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .allowsHitTesting(false)
-                .accessibilityLabel("\(name): \(score) points, opponent \(opponentScore)")
+            // Live score readout behind the controls (replaces Criboard's name watermark): your score
+            // in your colour, the opponent's in theirs, with their pending "+X" right beside it.
+            HStack(spacing: 6) {
+                Text("\(score)").foregroundStyle(primary.opacity(0.85))
+                Text("/").foregroundStyle(.white.opacity(0.35))
+                Text("\(opponentScore)").foregroundStyle(opponentColor.opacity(0.85))
+                if opponentPending > 0 {
+                    Text("+\(opponentPending)")
+                        .font(.system(size: 26, weight: .heavy, design: .rounded))
+                        .monospacedDigit()
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 8).padding(.vertical, 2)
+                        .background(Capsule().fill(opponentColor))
+                        .overlay(Capsule().stroke(.white.opacity(0.5), lineWidth: 1))
+                        .transition(.scale.combined(with: .opacity))
+                }
+            }
+            .font(.system(size: 56, weight: .black, design: .rounded))
+            .tracking(2)
+            .lineLimit(1)
+            .minimumScaleFactor(0.4)
+            .monospacedDigit()
+            .shadow(color: primary.opacity(0.4), radius: 12)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .allowsHitTesting(false)
+            .accessibilityLabel("\(name): \(score) points, opponent \(opponentScore)")
 
             HStack(spacing: 12) {
                 Button {
@@ -240,21 +254,6 @@ struct ScorePanel: View {
                 .shadow(color: .black.opacity(0.35), radius: 14, y: 6)
         )
         .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
-        // The opponent's pending "+X", shown next to their score (the "/ N" side) before it lands.
-        .overlay(alignment: .topTrailing) {
-            if opponentPending > 0 {
-                Text("+\(opponentPending)")
-                    .font(.system(size: 17, weight: .heavy, design: .rounded))
-                    .monospacedDigit()
-                    .foregroundStyle(.white)
-                    .padding(.horizontal, 9).padding(.vertical, 3)
-                    .background(Capsule().fill(opponentColor))
-                    .overlay(Capsule().stroke(.white.opacity(0.5), lineWidth: 1))
-                    .shadow(color: opponentColor.opacity(0.7), radius: 6)
-                    .padding(6)
-                    .transition(.scale.combined(with: .opacity))
-            }
-        }
         .animation(.spring(response: 0.3, dampingFraction: 0.7), value: opponentPending)
         .onChange(of: pending) { _, _ in reportUncommitted() }
         .onChange(of: plusPending) { _, _ in reportUncommitted() }
@@ -272,6 +271,17 @@ struct ScorePanel: View {
         let amount = (requireConfirm ? pending : 0) + (requirePlusConfirm ? plusPending : 0)
         uncommitted?.wrappedValue = amount
     }
+}
+
+#Preview(traits: .landscapeLeft) {
+    ScorePanel(name: "Ann", score: 42, opponentScore: 67,
+               primary: playerThemes[1].primary, deep: playerThemes[1].deep,
+               disabled: false, canUndo: true,
+               opponentColor: playerThemes[7].primary, opponentPending: 3,
+               onAdd: { _ in }, onPlusOne: {}, onUndo: {})
+        .frame(width: 420, height: 90)
+        .padding()
+        .background(Color.feltDark)
 }
 
 // MARK: - Points Slider (reused as-is from Criboard)

@@ -341,7 +341,7 @@ struct GameTableView: View {
             .frame(maxHeight: .infinity)
 
             if vm.youAreCounting {
-                Text("Count it on your slider, then Continue")
+                Text(s.scoringMode == .auto ? "Scored automatically" : "Count it on your slider, then Continue")
                     .font(.caption).foregroundStyle(.white.opacity(0.7))
                 Button("Continue") {
                     if uncommittedLocal > 0 { showPendingAlert = true } else { vm.advance() }

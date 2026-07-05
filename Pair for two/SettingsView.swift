@@ -29,17 +29,26 @@ struct SettingsView: View {
                 }
 
                 Section {
-                    Picker("Scoring", selection: $scoringModeRaw) {
-                        ForEach(ScoringMode.allCases, id: \.rawValue) { mode in
-                            Text(mode.title).tag(mode.rawValue)
+                    ForEach(ScoringMode.allCases, id: \.rawValue) { mode in
+                        Button {
+                            scoringModeRaw = mode.rawValue
+                        } label: {
+                            HStack(alignment: .top, spacing: 12) {
+                                Image(systemName: scoringModeRaw == mode.rawValue ? "checkmark.circle.fill" : "circle")
+                                    .foregroundStyle(scoringModeRaw == mode.rawValue ? Color.accentColor : .secondary)
+                                    .font(.title3)
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(mode.title).font(.body).foregroundStyle(.primary)
+                                    Text(mode.detail).font(.caption).foregroundStyle(.secondary)
+                                }
+                            }
                         }
+                        .buttonStyle(.plain)
                     }
-                    .pickerStyle(.inline)
-                    .labelsHidden()
                 } header: {
                     Text("Scoring")
                 } footer: {
-                    Text(scoringMode.detail + "  (The host's choice is used for the game.)")
+                    Text("Applies to the whole game — either player can change it.")
                 }
 
                 if scoringMode != .off {
@@ -81,4 +90,8 @@ struct SettingsView: View {
             }
         }
     }
+}
+
+#Preview {
+    SettingsView(onDone: {})
 }
