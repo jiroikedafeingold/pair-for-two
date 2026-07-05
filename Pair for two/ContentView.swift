@@ -1,25 +1,14 @@
 import SwiftUI
-import Playgrounds
 
-@main struct MyApp: App {
+@main
+struct PairForTwoApp: App {
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            RootView()
         }
     }
 }
 
-struct ContentView: View {
-    var body: some View {
-        Text("Hello, world!")
-            .padding()
-    }
-}
-
 #Preview {
-    ContentView()
-}
-
-#Playground {
-    _ = 1 + 2
+    RootView()
 }
