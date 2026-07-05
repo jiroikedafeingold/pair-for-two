@@ -85,7 +85,6 @@ nonisolated enum GamePhase: String, Codable, Hashable, Sendable {
     case cutForDeal
     case dealing
     case discardToCrib
-    case cutStarter
     case pegging
     case showPone
     case showDealer

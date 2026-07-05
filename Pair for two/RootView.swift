@@ -10,6 +10,7 @@ struct RootView: View {
 
     @State private var screen: Screen = .menu
     @State private var vm: GameViewModel?
+    @State private var resumeSummary: String? = GamePersistence.savedGameSummary()
 
     // Local player identity (also the pass-and-play "Player 1"); Player 2 is used only for loopback.
     @State private var name1 = "Player 1"
@@ -21,7 +22,15 @@ struct RootView: View {
         switch screen {
         case .menu:
             StartMenu(name1: $name1, name2: $name2, color1: $color1, color2: $color2,
+                      resumeSummary: resumeSummary,
+                      onResume: {
+                          if let saved = GamePersistence.loadState() {
+                              vm = GameViewModel.resume(saved)
+                              screen = .game
+                          }
+                      },
                       onPassAndPlay: {
+                          GamePersistence.clear()
                           vm = GameViewModel.loopback(
                               names: [.one: name1, .two: name2],
                               colorIDs: [.one: color1, .two: color2])
@@ -54,6 +63,8 @@ private struct StartMenu: View {
     @Binding var name2: String
     @Binding var color1: Int
     @Binding var color2: Int
+    var resumeSummary: String?
+    var onResume: () -> Void
     var onPassAndPlay: () -> Void
     var onPlayNearby: () -> Void
 
@@ -85,6 +96,13 @@ private struct StartMenu: View {
                             actionLabel("Play nearby", systemImage: "dot.radiowaves.left.and.right")
                         }
                         .buttonStyle(.bordered).tint(.white)
+                    }
+
+                    if let resumeSummary {
+                        Button(action: onResume) {
+                            actionLabel("Resume game  (\(resumeSummary))", systemImage: "arrow.clockwise.circle.fill")
+                        }
+                        .buttonStyle(.bordered).tint(Color.cribGold)
                     }
 
                     Text("Pass-and-play uses both names above. Play nearby uses the left player as you.")

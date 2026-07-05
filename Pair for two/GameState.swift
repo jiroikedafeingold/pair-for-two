@@ -107,7 +107,6 @@ extension GamePhase {
         case .cutForDeal:    return 1
         case .dealing:       return 2
         case .discardToCrib: return 3
-        case .cutStarter:    return 4
         case .pegging:       return 5
         case .showPone:      return 6
         case .showDealer:    return 7

@@ -109,7 +109,7 @@ struct ConnectView: View {
                 }
             }
 
-        case .connecting:
+        case .connecting, .reconnecting:
             VStack(spacing: 12) {
                 ProgressView().tint(.white).controlSize(.large)
                 Text("Connecting…").foregroundStyle(.white)

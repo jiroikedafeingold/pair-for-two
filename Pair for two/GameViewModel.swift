@@ -23,6 +23,26 @@ final class GameViewModel {
     var selectedForDiscard: Set<Card> = []
     private(set) var connection: ConnectionState
 
+    // Per-player scoring-slider preferences (persisted). "Confirm after release" holds the slider
+    // value until you tap the +N button to commit; "Confirm after +1" batches +1 taps before applying.
+    private(set) var confirmAfterRelease: [PlayerID: Bool] = [
+        .one: UserDefaults.standard.bool(forKey: "confirmRelease.one"),
+        .two: UserDefaults.standard.bool(forKey: "confirmRelease.two"),
+    ]
+    private(set) var confirmAfterPlusOne: [PlayerID: Bool] = [
+        .one: UserDefaults.standard.bool(forKey: "confirmPlus.one"),
+        .two: UserDefaults.standard.bool(forKey: "confirmPlus.two"),
+    ]
+
+    func setConfirmAfterRelease(_ on: Bool, for player: PlayerID) {
+        confirmAfterRelease[player] = on
+        UserDefaults.standard.set(on, forKey: "confirmRelease.\(player.rawValue)")
+    }
+    func setConfirmAfterPlusOne(_ on: Bool, for player: PlayerID) {
+        confirmAfterPlusOne[player] = on
+        UserDefaults.standard.set(on, forKey: "confirmPlus.\(player.rawValue)")
+    }
+
     private let transport: any GameTransport
     let isHost: Bool
     let isLoopback: Bool
@@ -91,6 +111,16 @@ final class GameViewModel {
                              seed: seed, state: nil, snapshot: placeholder, connection: .connecting)
     }
 
+    /// Resume a previously-persisted single-device game (pass-and-play host).
+    static func resume(_ savedState: GameState) -> GameViewModel {
+        let render = GameViewModel.loopbackViewer(savedState)
+        return GameViewModel(transport: LoopbackTransport(), isLoopback: true,
+                             localName: savedState.names[.one] ?? "Player 1",
+                             localColorID: savedState.colorIDs[.one] ?? 1,
+                             seed: savedState.seed, state: savedState,
+                             snapshot: savedState.snapshot(for: render), connection: .connected)
+    }
+
     static func placeholderSnapshot(you: PlayerID, name: String, colorID: Int) -> PlayerSnapshot {
         PlayerSnapshot(matchID: UUID(), you: you, phase: .connecting, yourSeat: .pone, dealer: .one,
                        yourHand: [], opponentHandCount: 0, opponentHand: nil, crib: nil, cribCount: 0,
@@ -118,6 +148,8 @@ final class GameViewModel {
         case .connected:
             connection = .connected
             onConnected()
+            // On a *re*connect the game already exists — the host just replays the current snapshot.
+            if isHost, state != nil { refreshAndBroadcast() }
         case .reconnecting:
             connection = .reconnecting
         case .disconnected:
@@ -128,7 +160,8 @@ final class GameViewModel {
     }
 
     private func onConnected() {
-        // A guest announces itself; the host waits for that hello before dealing.
+        // A guest announces itself; the host waits for that hello before dealing. On reconnect the
+        // host treats a repeat hello as a resync (see `receive`), so re-sending is safe.
         if !isHost {
             Task { await transport.send(.hello(name: localName, colorID: localColorID, playerToken: UUID())) }
         }
@@ -138,7 +171,11 @@ final class GameViewModel {
         if isHost {
             switch message {
             case .hello(let name, let colorID, _):
-                startHostedGame(guestName: name, guestColorID: colorID)
+                if state == nil {
+                    startHostedGame(guestName: name, guestColorID: colorID)   // first join
+                } else {
+                    refreshAndBroadcast()                                     // reconnect resync
+                }
             default:
                 hostApply(message, from: fixedPlayer.opponent)   // the peer is the other player
                 refreshAndBroadcast()
@@ -174,10 +211,15 @@ final class GameViewModel {
     /// networked is fixed to the local device's player.
     var viewer: PlayerID {
         guard isLoopback, let state else { return fixedPlayer }
+        return GameViewModel.loopbackViewer(state)
+    }
+
+    /// The player whose perspective to render in pass-and-play, given the state's phase.
+    static func loopbackViewer(_ state: GameState) -> PlayerID {
         switch state.phase {
         case .cutForDeal:  return state.cutForDeal[.one] == nil ? .one : .two
         case .discardToCrib: return state.discarded.contains(.one) ? .two : .one
-        case .cutStarter, .pegging: return state.whoseTurn ?? state.pone
+        case .pegging: return state.whoseTurn ?? state.pone
         case .showPone: return state.pone
         case .showDealer, .showCrib: return state.dealer
         case .handComplete, .gameOver, .dealing, .connecting: return state.winner ?? .one
@@ -196,12 +238,21 @@ final class GameViewModel {
             let guestSnapshot = state.snapshot(for: fixedPlayer.opponent)
             Task { await transport.send(.snapshot(guestSnapshot)) }
         }
+        // Persist for resume-after-relaunch (host is the single source of truth). Clear on game over.
+        if isHost {
+            if state.phase == .gameOver { GamePersistence.clear() } else { GamePersistence.save(state) }
+        }
     }
 
     // MARK: Derived UI helpers
 
     var runningCount: Int { snapshot.runningCount }
     var isGameOver: Bool { snapshot.phase == .gameOver }
+
+    /// Both players have cut for deal and the dealer is decided — show the result + "Deal".
+    var cutForDealDecided: Bool {
+        snapshot.phase == .cutForDeal && snapshot.cutForDeal.count == 2
+    }
 
     /// Which pegs this device may score. Loopback shows both (pass-and-play); networked shows only
     /// the local player's panel.
@@ -228,12 +279,15 @@ final class GameViewModel {
         let s = snapshot
         switch s.phase {
         case .connecting:  return isHost ? "Waiting for a player to join…" : "Connecting…"
-        case .cutForDeal:  return "\(s.yourName), cut for deal"
+        case .cutForDeal:
+            if cutForDealDecided {
+                return "\(name(of: s.dealer)) wins the cut — deals & takes the crib"
+            }
+            return "\(s.yourName), cut for deal"
         case .dealing:     return "Dealing…"
         case .discardToCrib:
             let whose = s.yourSeat == .dealer ? "your crib" : "the crib"
             return "\(s.yourName), discard 2 to \(whose)"
-        case .cutStarter:  return "\(s.yourName), cut the starter"
         case .pegging:
             if s.isYourTurn {
                 return canSayGo ? "\(s.yourName): no card to play — say Go" : "\(s.yourName)'s play"
@@ -306,8 +360,10 @@ final class GameViewModel {
 
     // MARK: Intent plumbing
 
-    /// Host applies locally + broadcasts; guest forwards to the host.
+    /// Host applies locally + broadcasts; guest forwards to the host. Intents are ignored while a
+    /// networked game is disconnected (pass-and-play is always "connected").
     private func submit(_ message: GameMessage) {
+        guard isLoopback || connection == .connected else { return }
         if isHost {
             hostApply(message, from: isLoopback ? viewer : fixedPlayer)
             refreshAndBroadcast()
@@ -322,8 +378,6 @@ final class GameViewModel {
         case .intentCut(let index):
             if s.phase == .cutForDeal {
                 CribbageEngine.cutForDeal(&s, player: player, index: index)
-            } else if s.phase == .cutStarter {
-                CribbageEngine.cutStarter(&s, player: player, index: index)
             }
         case .intentDiscard(let cards):
             CribbageEngine.discard(&s, player: player, cards: cards)

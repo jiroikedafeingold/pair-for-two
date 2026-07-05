@@ -21,7 +21,9 @@ nonisolated enum CribbageEngine {
 
     // MARK: Cut for deal
 
-    /// Each player cuts once; the lower card deals. A tie triggers a reshuffle and recut.
+    /// Each player cuts once; the **lower** card wins the deal (and therefore the first crib). A tie
+    /// triggers a reshuffle and recut. Both cut cards stay on the table so each player sees the other's
+    /// — dealing then happens on the next `advance` (the "Deal" tap), not automatically.
     @discardableResult
     static func cutForDeal(_ s: inout GameState, player: PlayerID, index: Int) -> Bool {
         guard s.phase == .cutForDeal, s.cutForDeal[player] == nil else { return false }
@@ -34,10 +36,15 @@ nonisolated enum CribbageEngine {
             s.seed = s.seed &+ 0x1111_1111
             s.deck = Deck.shuffled(seed: s.seed)
         } else {
+            // Lower card deals and takes the crib. Hold here so the result is visible; `advance` deals.
             s.dealer = a.orderValue < b.orderValue ? .one : .two
-            dealNewHand(&s)
         }
         return true
+    }
+
+    /// True once both players have cut for deal and the dealer is decided (result is on show).
+    static func cutForDealDecided(_ s: GameState) -> Bool {
+        s.phase == .cutForDeal && s.cutForDeal.count == 2
     }
 
     // MARK: Deal
@@ -64,7 +71,8 @@ nonisolated enum CribbageEngine {
 
     // MARK: Discard to crib
 
-    /// A player lays 2 cards into the crib. When both have discarded, move to the starter cut.
+    /// A player lays 2 cards into the crib. When both have discarded, the starter is cut automatically
+    /// and pegging begins (there is no separate manual starter-cut step).
     @discardableResult
     static func discard(_ s: inout GameState, player: PlayerID, cards: [Card]) -> Bool {
         guard s.phase == .discardToCrib, !s.discarded.contains(player), cards.count == 2 else { return false }
@@ -75,19 +83,16 @@ nonisolated enum CribbageEngine {
         s.discarded.insert(player)
 
         if s.discarded.count == 2 {
-            s.phase = .cutStarter
-            s.whoseTurn = s.pone   // the pone cuts the starter
+            beginPegging(&s)
         }
         return true
     }
 
-    // MARK: Cut the starter
-
-    /// The pone cuts; the dealer turns the starter. A Jack flags "His Heels" (2 for the dealer).
-    /// Begins pegging with the pone to lead.
-    @discardableResult
-    static func cutStarter(_ s: inout GameState, player: PlayerID, index: Int) -> Bool {
-        guard s.phase == .cutStarter, player == s.pone else { return false }
+    /// Auto-cuts the starter and begins pegging (pone leads). A Jack starter flags "His Heels" (2 for
+    /// the dealer). The starter is not shown during the play — only at the show — but the his-heels
+    /// flag is surfaced now so the dealer can peg it.
+    private static func beginPegging(_ s: inout GameState) {
+        let index = Int(s.seed % 47) &+ s.handNumber &* 13 &+ 7
         let starter = s.deck.card(atCut: index)
         s.starter = starter
         s.activeFlags = CribbageScorer.isHisHeels(starter: starter)
@@ -100,7 +105,6 @@ nonisolated enum CribbageEngine {
         s.goPlayers = []
         s.lastToPlay = nil
         s.whoseTurn = s.pone       // pone leads the play
-        return true
     }
 
     // MARK: Pegging — play a card
@@ -242,6 +246,8 @@ nonisolated enum CribbageEngine {
     @discardableResult
     static func advance(_ s: inout GameState) -> Bool {
         switch s.phase {
+        case .cutForDeal where cutForDealDecided(s):
+            dealNewHand(&s); return true
         case .pegging where s.whoseTurn == nil:
             beginShow(&s, phase: .showPone); return true
         case .showPone:

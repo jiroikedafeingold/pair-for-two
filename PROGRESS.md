@@ -19,13 +19,29 @@ Full original design is in **`PLAN.md`** (repo root). This file tracks what's ac
 | 2 | Engine + LoopbackTransport | ✅ Done |
 | 3 | Card + table UI on Loopback | ✅ Done |
 | 4 | ScorePanel slider + WinnerOverlay + Haptics | ✅ Done |
-| 5 | MultipeerTransport + ConnectView (two-device) | ✅ Done (code); ⏳ needs 2-device smoke test |
+| 5 | MultipeerTransport + ConnectView (two-device) | ✅ Done + **2-device smoke test passed** |
 | 6 | Polish — **iPad** | ✅ Done |
 | 6 | Polish — accessibility/VoiceOver, localization | ⛔ Deferred (user's call) |
-| 7 | Reconnect / resume + persistence | ⛔ Not started |
+| 7 | Reconnect / resume + persistence | ✅ Done (relaunch-resume verified; live Multipeer reconnect built) |
 
 **The project builds clean** on iPhone 17 Pro and iPad Pro 13" (iOS 27 simulators). Active run
 destination is currently iPhone 17 Pro.
+
+### Recent changes (2026-07-05)
+
+- **Game-start flow reworked**: cut-for-deal now holds the result (each taps to cut → both cards
+  shown → **lower card wins, deals & takes the first crib** → tap **Deal**). The separate manual
+  "cut the starter" step is **gone** — the starter is auto-cut after discards and pegging begins
+  immediately. **The starter card is not shown during pegging** (only at the show).
+- **Reconnect/resume**: host persists `GameState` to Application Support (`Persistence.swift`); the
+  menu offers **Resume game** after a relaunch (verified). `MultipeerSession` auto-rejoins after a
+  drop (`.reconnecting` → re-advertise/browse → resync).
+- **Settings** (gear, top-right of table): per-player **Confirm after release** / **Confirm after +1**
+  toggles → `ScorePanel`, persisted to UserDefaults.
+- **Bigger cards**: discard/show cards enlarged; pegging hand clamped so the pile+hand still fit the
+  short landscape band. All phases verified within a 402pt-tall screen.
+- Known minor: **his-heels** flag window is brief (overwritten by the first pegging play) — fine for
+  v1 manual scoring.
 
 ---
 

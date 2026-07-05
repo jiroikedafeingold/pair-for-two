@@ -1,7 +1,8 @@
 import SwiftUI
 
-/// The shared table centre: the cut/starter card, the running pegging count, the sequence of played
-/// cards (visible to both players), and a face-down crib indicator.
+/// The shared table centre during pegging: the running count, the sequence of played cards (visible
+/// to both players), and a face-down crib indicator. The starter is deliberately NOT shown during the
+/// play — it only appears at the show.
 struct PlayPileView: View {
     let snapshot: PlayerSnapshot
     var vm: GameViewModel
@@ -9,22 +10,8 @@ struct PlayPileView: View {
 
     var body: some View {
         HStack(alignment: .top, spacing: cardWidth * 0.5) {
-            starterStack
             playedStack
             cribStack
-        }
-    }
-
-    // MARK: Starter
-
-    private var starterStack: some View {
-        VStack(spacing: 6) {
-            Text("Starter").font(.caption2.weight(.semibold)).foregroundStyle(.white.opacity(0.7))
-            if let starter = snapshot.starter {
-                CardView(card: starter, width: cardWidth)
-            } else {
-                CardView(card: nil, faceUp: false, width: cardWidth)
-            }
         }
     }
 

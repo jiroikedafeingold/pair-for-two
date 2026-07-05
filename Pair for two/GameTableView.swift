@@ -5,15 +5,24 @@ import SwiftUI
 /// the geometry, so the same layout simply grows on iPad — no device checks.
 struct GameTableView: View {
     @State var vm: GameViewModel
+    @State private var showingSettings = false
 
     var body: some View {
         GeometryReader { geo in
             let s = vm.snapshot
-            let handWidth = min(geo.size.width * 0.105, geo.size.height * 0.30)
-            let pileWidth = handWidth * 0.8
             // Cap the scoreboard band so it doesn't leave a tall dead zone on iPad; the play area
             // takes the rest, giving the cards more room on bigger screens.
             let topBandHeight = min(geo.size.height * 0.34, 210)
+            let playHeight = geo.size.height - topBandHeight
+            // Discard shows a full 6-card hand and nothing else, so those cards can be large (fill the
+            // width, leave room for one button). Pegging must stack a pile ABOVE the hand, so its cards
+            // are clamped to the shorter vertical budget. Show cards sit in a single row.
+            let handWidth = min((geo.size.width - 40) / 7.0, (playHeight - 60) / 1.55)
+            let peggingHandWidth = min(handWidth, (playHeight - 64) / 2.25)
+            let pileWidth = peggingHandWidth * 0.5
+            let showWidth = handWidth * 0.72
+            // Cut-for-deal stacks two cards vertically, so size them to the band height to avoid spill.
+            let cutWidth = min(handWidth * 0.6, playHeight * 0.24)
 
             VStack(spacing: 0) {
                 topBand(s)
@@ -21,12 +30,17 @@ struct GameTableView: View {
                     .frame(maxWidth: .infinity)
                     .background(Color.black.opacity(0.22))
 
-                bottomBand(s, handWidth: handWidth, pileWidth: pileWidth)
+                bottomBand(s, handWidth: handWidth, peggingHandWidth: peggingHandWidth,
+                           pileWidth: pileWidth, showWidth: showWidth, cutWidth: cutWidth)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
             .background(felt)
             .overlay(alignment: .top) { connectionBanner }
+            .overlay(alignment: .topTrailing) { settingsButton }
             .overlay { if s.phase == .gameOver { winnerOverlay(s) } }
+        }
+        .sheet(isPresented: $showingSettings) {
+            SettingsView(vm: vm, onDone: { showingSettings = false })
         }
         .ignoresSafeArea(.container, edges: .bottom)
     }
@@ -45,6 +59,18 @@ struct GameTableView: View {
             .padding(.top, 6)
             .transition(.move(edge: .top).combined(with: .opacity))
         }
+    }
+
+    private var settingsButton: some View {
+        Button { showingSettings = true } label: {
+            Image(systemName: "gearshape.fill")
+                .font(.system(size: 15, weight: .semibold))
+                .foregroundStyle(.white.opacity(0.7))
+                .padding(8)
+                .background(Circle().fill(Color.black.opacity(0.3)))
+        }
+        .padding(.top, 6)
+        .padding(.trailing, 10)
     }
 
     // MARK: Background
@@ -94,6 +120,8 @@ struct GameTableView: View {
             deep: theme.deep,
             disabled: s.phase == .gameOver,
             canUndo: vm.canUndo(for: player),
+            requireConfirm: vm.confirmAfterRelease[player] ?? false,
+            requirePlusConfirm: vm.confirmAfterPlusOne[player] ?? false,
             onAdd: { vm.claim($0, for: player) },
             onPlusOne: { vm.claim(1, for: player) },
             onUndo: { vm.undo(for: player) }
@@ -102,22 +130,20 @@ struct GameTableView: View {
 
     // MARK: Bottom band
 
-    @ViewBuilder private func bottomBand(_ s: PlayerSnapshot, handWidth: CGFloat, pileWidth: CGFloat) -> some View {
+    @ViewBuilder private func bottomBand(_ s: PlayerSnapshot, handWidth: CGFloat, peggingHandWidth: CGFloat, pileWidth: CGFloat, showWidth: CGFloat, cutWidth: CGFloat) -> some View {
         VStack(spacing: 12) {
             switch s.phase {
             case .cutForDeal:
-                cutArea(s, title: "Tap to cut for deal", width: handWidth) { vm.cut() }
+                cutForDealArea(s, width: cutWidth)
             case .discardToCrib:
                 discardArea(s, width: handWidth)
-            case .cutStarter:
-                cutArea(s, title: "Tap to cut the starter", width: handWidth) { vm.cut() }
             case .pegging:
-                peggingArea(s, handWidth: handWidth, pileWidth: pileWidth)
+                peggingArea(s, handWidth: peggingHandWidth, pileWidth: pileWidth)
             case .showPone, .showDealer:
-                showArea(s, cards: s.yourHand, width: handWidth, pileWidth: pileWidth,
+                showArea(s, cards: s.yourHand, width: handWidth, pileWidth: showWidth,
                          label: s.phase == .showPone ? "Pone's hand" : "Dealer's hand")
             case .showCrib:
-                showArea(s, cards: s.crib ?? [], width: handWidth, pileWidth: pileWidth, label: "The crib")
+                showArea(s, cards: s.crib ?? [], width: handWidth, pileWidth: showWidth, label: "The crib")
             case .handComplete:
                 handCompleteArea(s)
             default:
@@ -128,33 +154,46 @@ struct GameTableView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
-    // MARK: Cut areas (deal + starter)
+    // MARK: Cut for deal
 
-    @ViewBuilder private func cutArea(_ s: PlayerSnapshot, title: String, width: CGFloat, action: @escaping () -> Void) -> some View {
-        // Single centered row so nothing spills off the bottom: P1 result · deck · P2 result.
-        HStack(spacing: 28) {
-            cutResult(for: .one, s: s, width: width * 0.7)
-            Button(action: action) {
-                VStack(spacing: 8) {
-                    CardView(card: nil, faceUp: false, width: width * 0.9)
-                    Text(title).font(.callout.weight(.semibold)).foregroundStyle(.white)
-                }
+    /// Each player taps to cut; both cut cards stay on show. Once both have cut, the lower card wins
+    /// the deal (and the first crib) and a "Deal" button appears.
+    @ViewBuilder private func cutForDealArea(_ s: PlayerSnapshot, width: CGFloat) -> some View {
+        VStack(spacing: 14) {
+            HStack(spacing: 34) {
+                cutResult(for: .one, s: s, width: width)
+                cutResult(for: .two, s: s, width: width)
             }
-            .buttonStyle(.plain)
-            cutResult(for: .two, s: s, width: width * 0.7)
+            if vm.cutForDealDecided {
+                Button("Deal") { vm.advance() }
+                    .buttonStyle(.borderedProminent).tint(.cribGold).foregroundStyle(.black)
+                    .controlSize(.large)
+            } else {
+                Button { vm.cut() } label: {
+                    VStack(spacing: 6) {
+                        CardView(card: nil, faceUp: false, width: width * 0.85)
+                        Text("Tap to cut").font(.callout.weight(.semibold)).foregroundStyle(.white)
+                    }
+                }
+                .buttonStyle(.plain)
+            }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
     @ViewBuilder private func cutResult(for player: PlayerID, s: PlayerSnapshot, width: CGFloat) -> some View {
+        let isWinner = vm.cutForDealDecided && s.dealer == player
         VStack(spacing: 4) {
             Text(vm.name(of: player)).font(.caption).foregroundStyle(.white.opacity(0.7)).lineLimit(1)
             if let card = s.cutForDeal[player] {
-                CardView(card: card, width: width)
+                CardView(card: card, isHighlighted: isWinner, width: width)
             } else {
                 CardView(card: nil, faceUp: false, width: width)
                     .opacity(0.35)
             }
+            Text(isWinner ? "deals · crib" : " ")
+                .font(.caption2.weight(.bold))
+                .foregroundStyle(Color.cribGold)
         }
         .frame(width: width + 12)
     }
@@ -257,7 +296,7 @@ struct GameTableView: View {
 private struct GameTablePreview: View {
     @State private var vm: GameViewModel = {
         let vm = GameViewModel.loopback(names: [.one: "Ann", .two: "Ben"], colorIDs: [.one: 1, .two: 7])
-        vm.cut(); vm.cut()   // advance past cut-for-deal into a dealt hand
+        vm.cut(); vm.cut(); vm.advance()   // both cut, then deal into a hand
         return vm
     }()
     var body: some View { GameTableView(vm: vm) }

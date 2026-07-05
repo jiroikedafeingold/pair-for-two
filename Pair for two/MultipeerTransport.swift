@@ -13,12 +13,13 @@ import MultipeerConnectivity
 @Observable
 final class MultipeerSession: NSObject, GameTransport {
 
-    enum Phase: Sendable { case idle, hosting, browsing, connecting, connected, disconnected }
+    enum Phase: Sendable { case idle, hosting, browsing, connecting, connected, reconnecting, disconnected }
 
     var isHost: Bool = false
     private(set) var phase: Phase = .idle
     private(set) var discoveredPeers: [MCPeerID] = []
     private(set) var connectedPeerName: String?
+    private var didConnect = false   // once true, a drop triggers auto-rejoin rather than a plain disconnect
 
     nonisolated let events: AsyncStream<TransportEvent>
     nonisolated private let continuation: AsyncStream<TransportEvent>.Continuation
@@ -97,13 +98,28 @@ final class MultipeerSession: NSObject, GameTransport {
     private func markConnected(peerName: String) {
         phase = .connected
         connectedPeerName = peerName
+        didConnect = true
         stopDiscovery()
+        continuation.yield(.connected)
     }
 
-    private func markConnecting() { phase = .connecting }
+    private func markConnecting() { if phase != .reconnecting { phase = .connecting } }
 
-    private func markDisconnected() {
-        phase = .disconnected
+    /// A session state drop. If we had already connected, treat it as a temporary drop and keep
+    /// trying to rejoin the peer (advertise/browse again, guest auto-invites on rediscovery).
+    private func handleDrop() {
+        if didConnect {
+            phase = .reconnecting
+            continuation.yield(.reconnecting)
+            if isHost {
+                advertiser?.startAdvertisingPeer()
+            } else {
+                browser?.startBrowsingForPeers()
+            }
+        } else {
+            phase = .disconnected
+            continuation.yield(.disconnected)
+        }
     }
 
     private func addPeer(_ peer: MCPeerID) {
@@ -122,13 +138,11 @@ extension MultipeerSession: MCSessionDelegate {
         let name = peerID.displayName
         switch state {
         case .connected:
-            continuation.yield(.connected)
             Task { @MainActor in self.markConnected(peerName: name) }
         case .connecting:
             Task { @MainActor in self.markConnecting() }
         case .notConnected:
-            continuation.yield(.disconnected)
-            Task { @MainActor in self.markDisconnected() }
+            Task { @MainActor in self.handleDrop() }
         @unknown default:
             break
         }
@@ -162,7 +176,10 @@ extension MultipeerSession: MCNearbyServiceAdvertiserDelegate {
 extension MultipeerSession: MCNearbyServiceBrowserDelegate {
     nonisolated func browser(_ browser: MCNearbyServiceBrowser, foundPeer peerID: MCPeerID, withDiscoveryInfo info: [String: String]?) {
         let peer = peerID
-        Task { @MainActor in self.addPeer(peer) }
+        Task { @MainActor in
+            self.addPeer(peer)
+            if self.phase == .reconnecting { self.invite(peer) }   // auto-rejoin after a drop
+        }
     }
 
     nonisolated func browser(_ browser: MCNearbyServiceBrowser, lostPeer peerID: MCPeerID) {
