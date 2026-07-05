@@ -27,11 +27,19 @@ nonisolated enum CribbageEngine {
     @discardableResult
     static func cutForDeal(_ s: inout GameState, player: PlayerID, index: Int) -> Bool {
         guard s.phase == .cutForDeal, s.cutForDeal[player] == nil else { return false }
-        s.cutForDeal[player] = s.deck.card(atCut: index)
+
+        // Two players can never cut the same physical card. Each device generates its cut index
+        // independently and they can collide, so if this draw matches the opponent's, take a
+        // different position of the deck (a genuine same-rank tie with *different* cards still recuts).
+        var card = s.deck.card(atCut: index)
+        if let other = s.cutForDeal[player.opponent], card == other {
+            card = s.deck.card(atCut: index + 26)
+        }
+        s.cutForDeal[player] = card
 
         guard let a = s.cutForDeal[.one], let b = s.cutForDeal[.two] else { return true }
         if a.orderValue == b.orderValue {
-            // Tie — reshuffle and recut.
+            // Genuine tie (two different cards, same rank) — reshuffle and recut.
             s.cutForDeal = [:]
             s.seed = s.seed &+ 0x1111_1111
             s.deck = Deck.shuffled(seed: s.seed)
