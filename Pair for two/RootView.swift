@@ -8,6 +8,7 @@ struct RootView: View {
     @State private var screen: Screen = .menu
     @State private var vm: GameViewModel?
     @State private var showingSettings = false
+    @Environment(\.scenePhase) private var scenePhase
 
     @AppStorage("localName") private var name = "Player"
     @AppStorage("localColorID") private var colorID = 1
@@ -20,6 +21,14 @@ struct RootView: View {
     }
 
     var body: some View {
+        content
+            // Returning from the background tears down Multipeer; re-pair when we become active again.
+            .onChange(of: scenePhase) { _, phase in
+                if phase == .active { vm?.reconnect() }
+            }
+    }
+
+    @ViewBuilder private var content: some View {
         switch screen {
         case .menu:
             menu

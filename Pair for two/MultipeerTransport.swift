@@ -25,7 +25,7 @@ final class MultipeerSession: NSObject, GameTransport {
     nonisolated private let continuation: AsyncStream<TransportEvent>.Continuation
 
     private let serviceType = "pairfortwo"     // Bonjour: _pairfortwo._tcp
-    nonisolated(unsafe) private let session: MCSession
+    nonisolated(unsafe) private var session: MCSession
     nonisolated(unsafe) private let myPeerID: MCPeerID
     private var advertiser: MCNearbyServiceAdvertiser?
     private var browser: MCNearbyServiceBrowser?
@@ -47,24 +47,51 @@ final class MultipeerSession: NSObject, GameTransport {
     func startHosting() {
         isHost = true
         phase = .hosting
-        let adv = MCNearbyServiceAdvertiser(peer: myPeerID, discoveryInfo: nil, serviceType: serviceType)
-        adv.delegate = self
-        adv.startAdvertisingPeer()
-        advertiser = adv
+        startRole()
     }
 
     func startBrowsing() {
         isHost = false
         phase = .browsing
-        let br = MCNearbyServiceBrowser(peer: myPeerID, serviceType: serviceType)
-        br.delegate = self
-        br.startBrowsingForPeers()
-        browser = br
+        startRole()
+    }
+
+    /// (Re)create and start the advertiser (host) or browser (guest). Fresh instances are used so a
+    /// resume-after-background reliably re-advertises/re-browses.
+    private func startRole() {
+        if isHost {
+            browser?.stopBrowsingForPeers(); browser = nil
+            advertiser?.stopAdvertisingPeer()
+            let adv = MCNearbyServiceAdvertiser(peer: myPeerID, discoveryInfo: nil, serviceType: serviceType)
+            adv.delegate = self
+            adv.startAdvertisingPeer()
+            advertiser = adv
+        } else {
+            advertiser?.stopAdvertisingPeer(); advertiser = nil
+            browser?.stopBrowsingForPeers()
+            let br = MCNearbyServiceBrowser(peer: myPeerID, serviceType: serviceType)
+            br.delegate = self
+            br.startBrowsingForPeers()
+            browser = br
+        }
     }
 
     func invite(_ peer: MCPeerID) {
         phase = .connecting
         browser?.invitePeer(peer, to: session, withContext: nil, timeout: 20)
+    }
+
+    /// Attempt to re-establish the connection after a drop (e.g. resuming from the background).
+    /// MCSession can't reliably re-add a peer after a disconnect, so we rebuild the session and role.
+    func reconnect() {
+        guard didConnect, session.connectedPeers.isEmpty else { return }
+        phase = .reconnecting
+        continuation.yield(.reconnecting)
+        session.delegate = nil
+        session.disconnect()
+        session = MCSession(peer: myPeerID, securityIdentity: nil, encryptionPreference: .required)
+        session.delegate = self
+        startRole()
     }
 
     func stop() {
@@ -132,13 +159,7 @@ final class MultipeerSession: NSObject, GameTransport {
     /// trying to rejoin the peer (advertise/browse again, guest auto-invites on rediscovery).
     private func handleDrop() {
         if didConnect {
-            phase = .reconnecting
-            continuation.yield(.reconnecting)
-            if isHost {
-                advertiser?.startAdvertisingPeer()
-            } else {
-                browser?.startBrowsingForPeers()
-            }
+            reconnect()   // rebuild the session + role and re-pair
         } else {
             phase = .disconnected
             continuation.yield(.disconnected)

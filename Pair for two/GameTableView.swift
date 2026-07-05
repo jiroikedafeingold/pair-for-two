@@ -33,7 +33,7 @@ struct GameTableView: View {
             // width, leave room for one button). Pegging must stack a pile ABOVE the hand, so its cards
             // are clamped to the shorter vertical budget. Show cards sit in a single row.
             let handWidth = min((geo.size.width - 40) / 7.0, (playHeight - 60) / 1.55)
-            let peggingHandWidth = min(handWidth, (playHeight - 64) / 2.25)
+            let peggingHandWidth = min(handWidth, (playHeight - 44) / 2.15)
             let pileWidth = peggingHandWidth * 0.5
             let showWidth = handWidth * 0.72
             // Cut-for-deal stacks two cards vertically, so size them to the band height to avoid spill.
@@ -141,8 +141,10 @@ struct GameTableView: View {
                 .font(.headline.weight(.bold))
                 .foregroundStyle(.white)
                 .multilineTextAlignment(.center)
-                .minimumScaleFactor(0.7)
+                .minimumScaleFactor(0.6)
                 .lineLimit(1)
+                .frame(maxWidth: .infinity)
+                .padding(.horizontal, 44)   // keep clear of the settings gear / screen edges
 
             ScoreFlagsView(flags: s.flags)
                 .padding(.horizontal, 16)
@@ -172,23 +174,24 @@ struct GameTableView: View {
     @ViewBuilder private func autoScoreboard(_ s: PlayerSnapshot) -> some View {
         HStack(spacing: 0) {
             scoreColumn(for: s.you, s: s)
-            Rectangle().fill(.white.opacity(0.15)).frame(width: 1, height: 56)
+            Rectangle().fill(.white.opacity(0.15)).frame(width: 1, height: 64)
             scoreColumn(for: s.you.opponent, s: s)
         }
         .frame(maxWidth: 700)
         .padding(.horizontal, 12)
+        .padding(.bottom, 14)   // breathing room under the scores
     }
 
     @ViewBuilder private func scoreColumn(for player: PlayerID, s: PlayerSnapshot) -> some View {
         let theme = vm.theme(for: player)
         let isOpponent = player != s.you
         let value = isOpponent ? (displayedOppScore ?? vm.score(of: player)) : vm.score(of: player)
-        VStack(spacing: 0) {
+        VStack(spacing: 2) {
             Text(vm.name(of: player).uppercased())
-                .font(.subheadline.weight(.heavy))
+                .font(.title2.weight(.heavy))
                 .foregroundStyle(theme.primary)
                 .lineLimit(1).minimumScaleFactor(0.6)
-            HStack(alignment: .firstTextBaseline, spacing: 6) {
+            HStack(alignment: .center, spacing: 6) {   // "+X" centered vertically against the score
                 Text("\(value)")
                     .font(.system(size: 64, weight: .heavy, design: .rounded))
                     .foregroundStyle(.white)
@@ -335,14 +338,8 @@ struct GameTableView: View {
     // MARK: Pegging
 
     @ViewBuilder private func peggingArea(_ s: PlayerSnapshot, handWidth: CGFloat, pileWidth: CGFloat) -> some View {
-        VStack(spacing: 10) {
-            // Running count — always visible during the play.
-            Text("Count  \(s.runningCount)")
-                .font(.title3.weight(.heavy)).monospacedDigit()
-                .foregroundStyle(.white)
-                .padding(.horizontal, 16).padding(.vertical, 5)
-                .background(Capsule().fill(Color.black.opacity(0.45)))
-
+        VStack(spacing: 8) {
+            // The running count now lives inside the play pile, freeing this space for bigger cards.
             PlayPileView(snapshot: s, vm: vm, cardWidth: pileWidth)
                 .frame(maxHeight: .infinity)
 
@@ -438,14 +435,13 @@ private struct GameTablePreview: View {
             let hand = vm.snapshot.yourHand
             if hand.count >= 2 { vm.toggleDiscard(hand[0]); vm.toggleDiscard(hand[1]); vm.confirmDiscard() }
         }
-        var guardCount = 0                        // play out pegging → the show
-        while vm.snapshot.phase == .pegging && !vm.peggingComplete {
-            guardCount += 1; if guardCount > 60 { break }
+        var guardCount = 0                        // play a few cards, then stay in pegging
+        while vm.snapshot.phase == .pegging && !vm.peggingComplete && guardCount < 3 {
+            guardCount += 1
             let s = vm.snapshot
             let legal = CribbageScorer.legalPlays(hand: s.yourHand, count: s.runningCount)
             if let c = legal.min(by: { $0.countingValue < $1.countingValue }) { vm.play(c) } else { vm.sayGo() }
         }
-        if vm.peggingComplete { vm.advance() }    // → showPone (count the pone's hand)
         return vm
     }()
     var body: some View { GameTableView(vm: vm) }

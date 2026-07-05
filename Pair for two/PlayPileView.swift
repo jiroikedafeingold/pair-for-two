@@ -36,7 +36,13 @@ struct PlayPileView: View {
 
     private var playedStack: some View {
         VStack(spacing: 6) {
-            Text("Play").font(.caption2.weight(.semibold)).foregroundStyle(.white.opacity(0.7))
+            // Running count lives here (frees vertical space above the play area for bigger cards).
+            Text("Count \(snapshot.runningCount)")
+                .font(.caption.weight(.bold)).monospacedDigit()
+                .foregroundStyle(.white)
+                .lineLimit(1).fixedSize()
+                .padding(.horizontal, 10).padding(.vertical, 2)
+                .background(Capsule().fill(Color.black.opacity(0.4)))
 
             if snapshot.playSequence.isEmpty {
                 RoundedRectangle(cornerRadius: 10, style: .continuous)
@@ -50,11 +56,13 @@ struct PlayPileView: View {
                         CardView(card: pc.card,
                                  isHighlighted: pc == snapshot.playSequence.last,
                                  width: cardWidth)
+                            // Thin colour bar along the card's bottom edge shows who played it.
                             .overlay(alignment: .bottom) {
-                                Circle()
+                                RoundedRectangle(cornerRadius: 2, style: .continuous)
                                     .fill(vm.theme(for: pc.player).primary)
-                                    .frame(width: cardWidth * 0.18, height: cardWidth * 0.18)
-                                    .offset(y: cardWidth * 0.12)
+                                    .frame(height: max(3, cardWidth * 0.07))
+                                    .padding(.horizontal, cardWidth * 0.12)
+                                    .padding(.bottom, cardWidth * 0.05)
                             }
                     }
                 }

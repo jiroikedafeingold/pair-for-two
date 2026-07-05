@@ -427,6 +427,9 @@ final class GameViewModel {
         submit(.intentPlay(card))
     }
 
+    /// Called when the app returns to the foreground — nudge the transport to re-pair if it dropped.
+    func reconnect() { transport.reconnect() }
+
     func sayGo() { submit(.intentGo) }
     func claim(_ amount: Int, for player: PlayerID) { submit(.claimPoints(player: player, amount: amount)) }
     func undo(for player: PlayerID) { submit(.undo(player: player)) }

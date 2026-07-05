@@ -47,4 +47,11 @@ protocol GameTransport: Sendable {
 
     /// Sends a message to the peer. On the host this typically means a snapshot; on a guest, an intent.
     func send(_ message: GameMessage) async
+
+    /// Ask the transport to re-establish the connection (e.g. after returning from the background).
+    func reconnect()
+}
+
+extension GameTransport {
+    func reconnect() {}   // no-op by default (e.g. loopback)
 }
