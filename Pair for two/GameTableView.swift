@@ -244,7 +244,7 @@ struct GameTableView: View {
         VStack(spacing: 12) {
             HStack(alignment: .top, spacing: 24) {
                 VStack(spacing: 4) {
-                    Text("Starter").font(.caption2).foregroundStyle(.white.opacity(0.7))
+                    Text("The Cut").font(.caption2).foregroundStyle(.white.opacity(0.7))
                     if let starter = s.starter { CardView(card: starter, width: pileWidth) }
                 }
                 VStack(spacing: 4) {
@@ -296,7 +296,11 @@ struct GameTableView: View {
 private struct GameTablePreview: View {
     @State private var vm: GameViewModel = {
         let vm = GameViewModel.loopback(names: [.one: "Ann", .two: "Ben"], colorIDs: [.one: 1, .two: 7])
-        vm.cut(); vm.cut(); vm.advance()   // both cut, then deal into a hand
+        vm.cut(); vm.cut(); vm.advance()          // both cut, then deal
+        for _ in 0..<2 {                          // both players discard 2 → into pegging
+            let hand = vm.snapshot.yourHand
+            vm.toggleDiscard(hand[0]); vm.toggleDiscard(hand[1]); vm.confirmDiscard()
+        }
         return vm
     }()
     var body: some View { GameTableView(vm: vm) }

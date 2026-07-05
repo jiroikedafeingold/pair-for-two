@@ -1,17 +1,34 @@
 import SwiftUI
 
-/// The shared table centre during pegging: the running count, the sequence of played cards (visible
-/// to both players), and a face-down crib indicator. The starter is deliberately NOT shown during the
-/// play — it only appears at the show.
+/// The shared table centre during pegging: the cut card set off to the side (it counts for everyone's
+/// hands but is never played during the pegging), the running count, the sequence of played cards
+/// (visible to both players), and a face-down crib indicator.
 struct PlayPileView: View {
     let snapshot: PlayerSnapshot
     var vm: GameViewModel
     var cardWidth: CGFloat = 60
 
     var body: some View {
-        HStack(alignment: .top, spacing: cardWidth * 0.5) {
+        HStack(alignment: .top, spacing: cardWidth * 0.4) {
+            cutStack
+            Rectangle()                       // divider making clear the cut isn't part of the play
+                .fill(Color.white.opacity(0.15))
+                .frame(width: 1, height: cardWidth * 1.35)
             playedStack
             cribStack
+        }
+    }
+
+    // MARK: The cut card (off to the side — counts for hands, but isn't played)
+
+    private var cutStack: some View {
+        VStack(spacing: 6) {
+            Text("The Cut").font(.caption2.weight(.semibold)).foregroundStyle(Color.cribGold)
+            if let cut = snapshot.starter {
+                CardView(card: cut, width: cardWidth)
+            } else {
+                CardView(card: nil, faceUp: false, width: cardWidth)
+            }
         }
     }
 
