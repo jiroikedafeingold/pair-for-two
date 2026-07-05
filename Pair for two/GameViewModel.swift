@@ -34,8 +34,8 @@ final class GameViewModel {
     /// `viewer` instead of this.
     private var fixedPlayer: PlayerID
 
-    private let localName: String
-    private let localColorID: Int
+    private var localName: String
+    private var localColorID: Int
     private let seed: UInt64
 
     private var cutCounter = 17
@@ -363,6 +363,14 @@ final class GameViewModel {
     func advance() { submit(.advance) }
     func playAgain() { submit(.playAgain) }
 
+    /// A live name/colour change from Settings — propagates into the running game so this device's
+    /// (and the opponent's) highlight, slider, and score colours update immediately.
+    func updateLocalIdentity(name: String, colorID: Int) {
+        localName = name
+        localColorID = colorID
+        submit(.updateIdentity(name: name, colorID: colorID))
+    }
+
     // MARK: Intent plumbing
 
     /// Host applies locally + broadcasts; guest forwards to the host. Intents are ignored while a
@@ -401,6 +409,9 @@ final class GameViewModel {
             CribbageEngine.advance(&s)
         case .playAgain:
             CribbageEngine.playAgain(&s)
+        case .updateIdentity(let name, let colorID):
+            s.names[player] = name
+            s.colorIDs[player] = colorID
         case .hello, .assignSeat, .snapshot:
             break
         }

@@ -19,6 +19,7 @@ nonisolated enum GameMessage: Codable, Sendable {
     case undo(player: PlayerID)
     case advance                            // "continue" through cut-for-deal recut / show steps / next deal
     case playAgain
+    case updateIdentity(name: String, colorID: Int)   // live name/colour change from Settings
 }
 
 // MARK: - Transport events

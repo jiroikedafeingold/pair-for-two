@@ -8,6 +8,8 @@ struct GameTableView: View {
     @State private var showingSettings = false
     @AppStorage("confirmRelease") private var confirmRelease = false
     @AppStorage("confirmPlus") private var confirmPlus = false
+    @AppStorage("localName") private var localName = "Player"
+    @AppStorage("localColorID") private var localColorID = 1
 
     var body: some View {
         GeometryReader { geo in
@@ -43,6 +45,13 @@ struct GameTableView: View {
         }
         .sheet(isPresented: $showingSettings) {
             SettingsView(onDone: { showingSettings = false })
+        }
+        // Push name/colour changes into the running game when Settings closes, so the highlight,
+        // slider and score colours update live (for this device and the opponent).
+        .onChange(of: showingSettings) { _, isShowing in
+            if !isShowing {
+                vm.updateLocalIdentity(name: localName.trimmingCharacters(in: .whitespaces), colorID: localColorID)
+            }
         }
         .ignoresSafeArea(.container, edges: .bottom)
     }
