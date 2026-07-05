@@ -6,7 +6,7 @@ import SwiftUI
 struct GameTableView: View {
     @State var vm: GameViewModel
     @State private var showingSettings = false
-    @AppStorage("confirmRelease") private var confirmRelease = false
+    @AppStorage("confirmRelease") private var confirmRelease = true
     @AppStorage("localName") private var localName = "Player"
     @AppStorage("localColorID") private var localColorID = 1
     @AppStorage("scoringMode") private var scoringModeRaw = ScoringMode.feedback.rawValue

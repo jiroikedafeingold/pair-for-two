@@ -9,7 +9,7 @@ struct SettingsView: View {
 
     @AppStorage("localName") private var name = "Player"
     @AppStorage("localColorID") private var colorID = 1
-    @AppStorage("confirmRelease") private var confirmRelease = false
+    @AppStorage("confirmRelease") private var confirmRelease = true
     @AppStorage("scoringMode") private var scoringModeRaw = ScoringMode.feedback.rawValue
 
     private var scoringMode: ScoringMode { ScoringMode(rawValue: scoringModeRaw) ?? .feedback }
