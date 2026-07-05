@@ -10,7 +10,6 @@ struct SettingsView: View {
     @AppStorage("localName") private var name = "Player"
     @AppStorage("localColorID") private var colorID = 1
     @AppStorage("confirmRelease") private var confirmRelease = false
-    @AppStorage("confirmPlus") private var confirmPlus = false
     @AppStorage("scoringMode") private var scoringModeRaw = ScoringMode.feedback.rawValue
 
     private var scoringMode: ScoringMode { ScoringMode(rawValue: scoringModeRaw) ?? .feedback }
@@ -54,12 +53,11 @@ struct SettingsView: View {
                 if scoringMode != .off {
                     Section {
                         Toggle("Confirm after release", isOn: $confirmRelease)
-                        Toggle("Confirm after +1", isOn: $confirmPlus)
                     } header: {
                         Text("Scoring slider")
                     } footer: {
-                        Text("“Confirm after release” holds the slider value until you tap the +N button. "
-                             + "“Confirm after +1” batches +1 taps before adding them to your score.")
+                        Text("Holds the slider value until you tap the +N button, instead of adding it "
+                             + "the moment you let go.")
                     }
                 }
             }

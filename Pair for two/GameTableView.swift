@@ -7,7 +7,6 @@ struct GameTableView: View {
     @State var vm: GameViewModel
     @State private var showingSettings = false
     @AppStorage("confirmRelease") private var confirmRelease = false
-    @AppStorage("confirmPlus") private var confirmPlus = false
     @AppStorage("localName") private var localName = "Player"
     @AppStorage("localColorID") private var localColorID = 1
     @AppStorage("scoringMode") private var scoringModeRaw = ScoringMode.feedback.rawValue
@@ -224,7 +223,6 @@ struct GameTableView: View {
             disabled: s.phase == .gameOver,
             canUndo: vm.canUndo(for: player),
             requireConfirm: isLocal ? confirmRelease : false,
-            requirePlusConfirm: isLocal ? confirmPlus : false,
             opponentColor: vm.theme(for: player.opponent).primary,
             opponentPending: isLocal ? oppPending : 0,
             uncommitted: isLocal ? $uncommittedLocal : nil,

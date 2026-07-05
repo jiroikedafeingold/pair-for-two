@@ -15,7 +15,6 @@ struct ScorePanel: View {
     let disabled: Bool
     let canUndo: Bool
     var requireConfirm: Bool = false
-    var requirePlusConfirm: Bool = false
     /// Opponent's colour + a pending "+X" they're about to add (shown for a few seconds before their
     /// score updates), so this player can see what the other is scoring.
     var opponentColor: Color = .gray
@@ -32,17 +31,12 @@ struct ScorePanel: View {
     @State private var pending: Int = 0
     @State private var sliderIsDragging: Bool = false
     @State private var plusPending: Int = 0
-    @State private var plusSettled: Bool = false
     @State private var plusTask: Task<Void, Never>? = nil
     @State private var plusHeavy = UIImpactFeedbackGenerator(style: .heavy)
     @State private var plusRigid = UIImpactFeedbackGenerator(style: .rigid)
     @State private var glowPulse: Bool = false
 
-    private let plusSettleDelay: TimeInterval = 0.8
-    private let plusAutoAcceptDelay: TimeInterval = 2.2
-
     private var awaitingConfirm: Bool { requireConfirm && pending > 0 && !sliderIsDragging }
-    private var awaitingPlusConfirm: Bool { requirePlusConfirm && plusPending > 0 }
 
     private var displayValue: Int {
         if sliderIsDragging || awaitingConfirm { return pending }
@@ -51,7 +45,7 @@ struct ScorePanel: View {
     }
 
     private var showingElevatedValue: Bool { displayValue != 1 }
-    private var highlighted: Bool { showingElevatedValue || awaitingConfirm || awaitingPlusConfirm }
+    private var highlighted: Bool { showingElevatedValue || awaitingConfirm }
 
     private func firePlusHaptic() {
         plusHeavy.impactOccurred(intensity: 1.0)
@@ -64,31 +58,12 @@ struct ScorePanel: View {
         plusHeavy.prepare(); plusRigid.prepare()
     }
 
+    // +1 always adds immediately; `plusPending` is just a fading running count of the streak.
     private func handlePlusTap() {
-        if requirePlusConfirm {
-            if plusSettled { commitPlus(); return }
-            firePlusHaptic()
-            withAnimation(.spring(response: 0.3, dampingFraction: 0.78)) { plusPending += 1 }
-            schedulePlusConfirm()
-        } else {
-            firePlusHaptic()
-            onPlusOne()
-            withAnimation(.spring(response: 0.3, dampingFraction: 0.78)) { plusPending += 1 }
-            scheduleStreakReset()
-        }
-    }
-
-    private func schedulePlusConfirm() {
-        plusTask?.cancel()
-        plusSettled = false
-        plusTask = Task { @MainActor in
-            try? await Task.sleep(for: .seconds(plusSettleDelay))
-            guard !Task.isCancelled else { return }
-            plusSettled = true
-            try? await Task.sleep(for: .seconds(plusAutoAcceptDelay - plusSettleDelay))
-            guard !Task.isCancelled else { return }
-            commitPlus()
-        }
+        firePlusHaptic()
+        onPlusOne()
+        withAnimation(.spring(response: 0.3, dampingFraction: 0.78)) { plusPending += 1 }
+        scheduleStreakReset()
     }
 
     private func scheduleStreakReset() {
@@ -98,23 +73,6 @@ struct ScorePanel: View {
             guard !Task.isCancelled else { return }
             withAnimation(.spring(response: 0.3, dampingFraction: 0.78)) { plusPending = 0 }
         }
-    }
-
-    private func commitPlus() {
-        plusTask?.cancel()
-        let amount = plusPending
-        plusSettled = false
-        withAnimation(.spring(response: 0.3, dampingFraction: 0.78)) { plusPending = 0 }
-        if amount > 0 {
-            onAdd(amount)
-            fireCommitHaptic()
-        }
-    }
-
-    private func cancelPlus() {
-        plusTask?.cancel()
-        plusSettled = false
-        withAnimation(.spring(response: 0.3, dampingFraction: 0.78)) { plusPending = 0 }
     }
 
     var body: some View {
@@ -215,8 +173,6 @@ struct ScorePanel: View {
                 Button {
                     if pending > 0 {
                         withAnimation(.spring(response: 0.3, dampingFraction: 0.78)) { pending = 0 }
-                    } else if awaitingPlusConfirm {
-                        cancelPlus()
                     } else {
                         onUndo()
                     }
@@ -233,8 +189,8 @@ struct ScorePanel: View {
                                 .overlay(Circle().stroke(Color.white.opacity(0.15), lineWidth: 1))
                         )
                 }
-                .disabled((!canUndo && pending == 0 && !awaitingPlusConfirm) || disabled)
-                .opacity(((!canUndo && pending == 0 && !awaitingPlusConfirm) || disabled) ? 0.30 : 1.0)
+                .disabled((!canUndo && pending == 0) || disabled)
+                .opacity(((!canUndo && pending == 0) || disabled) ? 0.30 : 1.0)
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 8)
@@ -256,20 +212,18 @@ struct ScorePanel: View {
         .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
         .animation(.spring(response: 0.3, dampingFraction: 0.7), value: opponentPending)
         .onChange(of: pending) { _, _ in reportUncommitted() }
-        .onChange(of: plusPending) { _, _ in reportUncommitted() }
         .onChange(of: clearSignal) { _, _ in
             plusTask?.cancel()
             withAnimation(.spring(response: 0.3, dampingFraction: 0.78)) {
-                pending = 0; plusPending = 0; plusSettled = false
+                pending = 0; plusPending = 0
             }
             reportUncommitted()
         }
     }
 
-    /// The amount staged but not yet added (only in the confirm modes).
+    /// The amount staged but not yet added (only "confirm after release").
     private func reportUncommitted() {
-        let amount = (requireConfirm ? pending : 0) + (requirePlusConfirm ? plusPending : 0)
-        uncommitted?.wrappedValue = amount
+        uncommitted?.wrappedValue = requireConfirm ? pending : 0
     }
 }
 
