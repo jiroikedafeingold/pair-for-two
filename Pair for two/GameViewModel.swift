@@ -41,6 +41,7 @@ final class GameViewModel {
     private var cutCounter = 17
     private var lastViewer: PlayerID?
     nonisolated(unsafe) private var eventsTask: Task<Void, Never>?
+    nonisolated(unsafe) private var heartbeatTask: Task<Void, Never>?
 
     // MARK: Init / factories
 
@@ -195,6 +196,23 @@ final class GameViewModel {
         state = s
         Task { await transport.send(.assignSeat(.two)) }
         refreshAndBroadcast()
+        startHeartbeat()
+    }
+
+    /// The host re-broadcasts its authoritative snapshot every couple of seconds so a dropped update
+    /// (e.g. a cut that didn't reach the other phone) self-heals — the host keeps its state and keeps
+    /// resending it. Idempotent: the guest just re-renders the latest snapshot.
+    private func startHeartbeat() {
+        guard isHost, !isLoopback else { return }
+        heartbeatTask?.cancel()
+        heartbeatTask = Task { @MainActor [weak self] in
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .seconds(2))
+                guard let self, let state = self.state else { continue }
+                let guestSnapshot = state.snapshot(for: self.fixedPlayer.opponent)
+                await self.transport.send(.snapshot(guestSnapshot))
+            }
+        }
     }
 
     // MARK: Viewer / rendering
@@ -342,7 +360,7 @@ final class GameViewModel {
             return "\(s.yourName), cut for deal"
         case .dealing:     return "Dealing…"
         case .discardToCrib:
-            let whose = s.yourSeat == .dealer ? "your crib" : "the crib"
+            let whose = s.yourSeat == .dealer ? "your crib" : "\(name(of: s.dealer))'s crib"
             return "\(s.yourName), discard 2 to \(whose)"
         case .pegging:
             if peggingComplete { return "All cards played — count the hands" }
@@ -482,5 +500,6 @@ final class GameViewModel {
 
     deinit {
         eventsTask?.cancel()
+        heartbeatTask?.cancel()
     }
 }

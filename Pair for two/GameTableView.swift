@@ -147,19 +147,64 @@ struct GameTableView: View {
             ScoreFlagsView(flags: s.flags)
                 .padding(.horizontal, 16)
 
-            // A slider panel per peg this device may score: both for pass-and-play, just the local
-            // player's when networked. Constrain the width so a single panel doesn't stretch across
-            // a wide iPad.
-            HStack(spacing: 12) {
-                ForEach(vm.scorablePlayers, id: \.self) { player in
-                    scorePanel(for: player, s: s)
+            if s.scoringMode == .auto {
+                // Auto mode: no manual controls — just a big names + scores scoreboard.
+                autoScoreboard(s)
+            } else {
+                // A slider panel per peg this device may score: both for pass-and-play, just the
+                // local player's when networked. Constrain the width so a single panel doesn't
+                // stretch across a wide iPad.
+                HStack(spacing: 12) {
+                    ForEach(vm.scorablePlayers, id: \.self) { player in
+                        scorePanel(for: player, s: s)
+                    }
                 }
+                .frame(maxWidth: 900)
+                .padding(.horizontal, 12)
             }
-            .frame(maxWidth: 900)
-            .padding(.horizontal, 12)
         }
         .frame(maxHeight: .infinity)   // center vertically within the capped band
         .padding(.vertical, 8)
+    }
+
+    /// Auto-scoring scoreboard: each player's name over a big score, in their colour. The opponent's
+    /// column carries the 3-second "+X" preview.
+    @ViewBuilder private func autoScoreboard(_ s: PlayerSnapshot) -> some View {
+        HStack(spacing: 0) {
+            scoreColumn(for: s.you, s: s)
+            Rectangle().fill(.white.opacity(0.15)).frame(width: 1, height: 56)
+            scoreColumn(for: s.you.opponent, s: s)
+        }
+        .frame(maxWidth: 700)
+        .padding(.horizontal, 12)
+    }
+
+    @ViewBuilder private func scoreColumn(for player: PlayerID, s: PlayerSnapshot) -> some View {
+        let theme = vm.theme(for: player)
+        let isOpponent = player != s.you
+        let value = isOpponent ? (displayedOppScore ?? vm.score(of: player)) : vm.score(of: player)
+        VStack(spacing: 0) {
+            Text(vm.name(of: player).uppercased())
+                .font(.subheadline.weight(.heavy))
+                .foregroundStyle(theme.primary)
+                .lineLimit(1).minimumScaleFactor(0.6)
+            HStack(alignment: .firstTextBaseline, spacing: 6) {
+                Text("\(value)")
+                    .font(.system(size: 64, weight: .heavy, design: .rounded))
+                    .foregroundStyle(.white)
+                    .monospacedDigit()
+                if isOpponent && oppPending > 0 {
+                    Text("+\(oppPending)")
+                        .font(.system(size: 22, weight: .heavy, design: .rounded))
+                        .monospacedDigit()
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 8).padding(.vertical, 2)
+                        .background(Capsule().fill(theme.primary))
+                        .transition(.scale.combined(with: .opacity))
+                }
+            }
+        }
+        .frame(maxWidth: .infinity)
     }
 
     @ViewBuilder private func scorePanel(for player: PlayerID, s: PlayerSnapshot) -> some View {
@@ -277,7 +322,7 @@ struct GameTableView: View {
                      selected: vm.selectedForDiscard,
                      onTap: { vm.toggleDiscard($0) },
                      cardWidth: width)
-            Button("Send 2 to \(s.yourSeat == .dealer ? "your crib" : "the crib")") {
+            Button("Send 2 to \(s.yourSeat == .dealer ? "your crib" : "\(vm.name(of: s.dealer))'s crib")") {
                 vm.confirmDiscard()
             }
             .buttonStyle(.borderedProminent)
@@ -387,7 +432,7 @@ struct GameTableView: View {
 private struct GameTablePreview: View {
     @State private var vm: GameViewModel = {
         let vm = GameViewModel.loopback(names: [.one: "Ann", .two: "Ben"],
-                                        colorIDs: [.one: 1, .two: 7], seed: 42)
+                                        colorIDs: [.one: 1, .two: 7], seed: 42, scoringMode: .auto)
         vm.cut(); vm.cut(); vm.advance()          // both cut, then deal
         for _ in 0..<2 where vm.snapshot.phase == .discardToCrib {   // both discard 2 → pegging
             let hand = vm.snapshot.yourHand

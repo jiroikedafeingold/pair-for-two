@@ -82,14 +82,36 @@ final class MultipeerSession: NSObject, GameTransport {
 
     // MARK: GameTransport
 
+    // Messages that couldn't be delivered (no peer connected at the moment) are held here and flushed
+    // on the next connect, so a tap during a brief connectivity gap is never silently lost.
+    nonisolated(unsafe) private var outbox: [GameMessage] = []
+    private let outboxLock = NSLock()
+
     nonisolated func send(_ message: GameMessage) async {
         let peers = session.connectedPeers
-        guard !peers.isEmpty else { return }
+        guard !peers.isEmpty else { buffer(message); return }
         do {
             let data = try JSONEncoder().encode(message)
             try session.send(data, toPeers: peers, with: .reliable)
         } catch {
-            // Best-effort; a drop surfaces via the session state delegate.
+            buffer(message)   // couldn't hand off — keep it for the next connect
+        }
+    }
+
+    private nonisolated func buffer(_ message: GameMessage) {
+        outboxLock.lock(); defer { outboxLock.unlock() }
+        outbox.append(message)
+        if outbox.count > 200 { outbox.removeFirst(outbox.count - 200) }   // safety cap
+    }
+
+    private nonisolated func flushOutbox() {
+        let peers = session.connectedPeers
+        guard !peers.isEmpty else { return }
+        outboxLock.lock(); let pending = outbox; outbox.removeAll(); outboxLock.unlock()
+        for message in pending {
+            if let data = try? JSONEncoder().encode(message) {
+                try? session.send(data, toPeers: peers, with: .reliable)
+            }
         }
     }
 
@@ -100,6 +122,7 @@ final class MultipeerSession: NSObject, GameTransport {
         connectedPeerName = peerName
         didConnect = true
         stopDiscovery()
+        flushOutbox()               // deliver anything queued during the gap
         continuation.yield(.connected)
     }
 
