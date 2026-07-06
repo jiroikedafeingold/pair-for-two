@@ -41,10 +41,20 @@ struct RootView: View {
         case .connect:
             ConnectView(localName: playerName, localColorID: colorID, resumeRole: resumeRole,
                         onConnected: { session in
-                            if resumeRole == .host, let saved = GamePersistence.loadState() {
+                            // For a resume, the host is whichever phone actually holds the saved
+                            // state — not the (possibly stale) role marker. This keeps the two phones
+                            // from both trying to host after a rendezvous reconnect.
+                            if resumeRole != nil, let saved = GamePersistence.loadState() {
+                                session.isHost = true
                                 vm = GameViewModel.resumeHost(transport: session, savedState: saved)
+                            } else if resumeRole != nil {
+                                session.isHost = false   // guest rejoining; the host resyncs it
+                                vm = GameViewModel.networked(transport: session,
+                                                             localName: playerName,
+                                                             localColorID: colorID,
+                                                             scoringMode: ScoringMode(rawValue: scoringModeRaw) ?? .feedback)
                             } else {
-                                // Fresh game, or guest rejoining (the host resyncs it on reconnect).
+                                // Fresh game — isHost was already set by Host/Join.
                                 vm = GameViewModel.networked(transport: session,
                                                              localName: playerName,
                                                              localColorID: colorID,

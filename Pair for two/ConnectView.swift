@@ -14,6 +14,7 @@ struct ConnectView: View {
     var onCancel: () -> Void
 
     @State private var session: MultipeerSession
+    @State private var resumeStalled = false   // surfaced after a while so a stuck resume isn't a silent spinner
 
     private var resuming: Bool { resumeRole != nil }
 
@@ -65,17 +66,16 @@ struct ConnectView: View {
             if phase == .connected { onConnected(session) }
         }
         .onAppear {
-            switch resumeRole {
-            case .host:  if session.phase == .idle { session.startHosting() }   // re-host the saved game
-            case .guest: if session.phase == .idle { session.startBrowsing() }  // find & rejoin the host
-            case .none:  break
-            }
+            // Resuming: both phones advertise *and* browse and auto-pair, regardless of their stored
+            // role — so a stale "both are host" marker state can't deadlock. The host is decided by
+            // who holds the saved state (in onConnected), not by who advertises.
+            if resuming, session.phase == .idle { session.startRendezvous() }
         }
-        // Guest rejoin: auto-invite the host as soon as it's found (no manual peer tap).
-        .onChange(of: session.discoveredPeers) { _, peers in
-            if resumeRole == .guest, session.phase == .browsing, let host = peers.first {
-                session.invite(host)
-            }
+        .task {
+            // If a resume hasn't paired after a while, stop pretending and offer a way out.
+            guard resuming else { return }
+            try? await Task.sleep(for: .seconds(15))
+            if session.phase != .connected { resumeStalled = true }
         }
     }
 
@@ -141,7 +141,21 @@ struct ConnectView: View {
         case .connecting, .reconnecting:
             VStack(spacing: 12) {
                 ProgressView().tint(.white).controlSize(.large)
-                Text("Connecting…").foregroundStyle(.white)
+                Text(resuming ? "Reconnecting your game…" : "Connecting…").foregroundStyle(.white)
+                if resuming {
+                    Text("Make sure the other phone also tapped **Rejoin game**.")
+                        .font(.caption).foregroundStyle(.white.opacity(0.6)).multilineTextAlignment(.center)
+                }
+                if resumeStalled {
+                    VStack(spacing: 8) {
+                        Text("Still can't find the other phone. If it keeps failing, both players can go back and start a **New game** — or check that Local Network access is allowed in Settings (it can reset after reinstalling).")
+                            .font(.caption).foregroundStyle(Color.cribGold).multilineTextAlignment(.center)
+                        Button("Back to menu") { session.stop(); onCancel() }
+                            .buttonStyle(.borderedProminent).tint(.cribGold).foregroundStyle(.black)
+                    }
+                    .padding(.top, 6)
+                    .frame(maxWidth: 360)
+                }
             }
 
         case .connected:

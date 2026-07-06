@@ -39,6 +39,13 @@ enum GamePersistence {
         return try? JSONDecoder().decode(GameState.self, from: data)
     }
 
+    /// True only on the device that holds the authoritative full state — i.e. the host. Used at
+    /// resume time to pick who re-hosts, independent of the (possibly stale) role marker.
+    static var hasSavedState: Bool {
+        guard let url else { return false }
+        return FileManager.default.fileExists(atPath: url.path)
+    }
+
     // MARK: Marker — both roles
 
     static func saveMarker(isHost: Bool, summary: String) {
@@ -46,6 +53,9 @@ enum GamePersistence {
         d.set(true, forKey: kActive)
         d.set(isHost, forKey: kIsHost)
         d.set(summary, forKey: kSummary)
+        // A guest never holds full state — drop any stale file left over from a game it once hosted,
+        // so `hasSavedState` reliably identifies the one true host when resuming.
+        if !isHost, let url { try? FileManager.default.removeItem(at: url) }
     }
 
     static func loadMarker() -> ResumeMarker? {

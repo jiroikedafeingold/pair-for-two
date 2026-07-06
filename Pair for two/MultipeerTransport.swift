@@ -56,6 +56,15 @@ final class MultipeerSession: NSObject, GameTransport {
         startRole()
     }
 
+    /// Rejoin a saved game without relying on the stored host/guest role: advertise *and* browse at
+    /// once, so two phones both tapping "Rejoin" always discover each other. Whichever one holds the
+    /// saved state becomes the host (decided by the caller). This avoids the deadlock where both
+    /// markers say "host", so both would only advertise and never find each other.
+    func startRendezvous() {
+        phase = .connecting
+        startBoth()
+    }
+
     /// (Re)create and start the advertiser (host) or browser (guest). Fresh instances are used so a
     /// resume-after-background reliably re-advertises/re-browses.
     private func startRole() {
@@ -76,13 +85,36 @@ final class MultipeerSession: NSObject, GameTransport {
         }
     }
 
+    /// Advertise and browse simultaneously (fresh instances). Used for rendezvous and reconnect so
+    /// discovery works regardless of which side each phone believes it is.
+    private func startBoth() {
+        advertiser?.stopAdvertisingPeer()
+        browser?.stopBrowsingForPeers()
+        let adv = MCNearbyServiceAdvertiser(peer: myPeerID, discoveryInfo: nil, serviceType: serviceType)
+        adv.delegate = self
+        adv.startAdvertisingPeer()
+        advertiser = adv
+        let br = MCNearbyServiceBrowser(peer: myPeerID, serviceType: serviceType)
+        br.delegate = self
+        br.startBrowsingForPeers()
+        browser = br
+    }
+
     func invite(_ peer: MCPeerID) {
         phase = .connecting
         browser?.invitePeer(peer, to: session, withContext: nil, timeout: 20)
     }
 
+    /// When both sides browse (rendezvous/reconnect), only one may send the invitation or they race
+    /// two half-open connections. The peer with the lexicographically smaller name invites; the other
+    /// auto-accepts. `<=` so identically-named peers still both invite (MCSession dedupes).
+    private func shouldInvite(_ peer: MCPeerID) -> Bool {
+        myPeerID.displayName <= peer.displayName
+    }
+
     /// Attempt to re-establish the connection after a drop (e.g. resuming from the background).
-    /// MCSession can't reliably re-add a peer after a disconnect, so we rebuild the session and role.
+    /// MCSession can't reliably re-add a peer after a disconnect, so we rebuild the session and, to be
+    /// robust to either side reconnecting first, advertise and browse at once.
     func reconnect() {
         guard didConnect, session.connectedPeers.isEmpty else { return }
         phase = .reconnecting
@@ -91,7 +123,7 @@ final class MultipeerSession: NSObject, GameTransport {
         session.disconnect()
         session = MCSession(peer: myPeerID, securityIdentity: nil, encryptionPreference: .required)
         session.delegate = self
-        startRole()
+        startBoth()
     }
 
     func stop() {
@@ -222,7 +254,11 @@ extension MultipeerSession: MCNearbyServiceBrowserDelegate {
         let peer = peerID
         Task { @MainActor in
             self.addPeer(peer)
-            if self.phase == .reconnecting { self.invite(peer) }   // auto-rejoin after a drop
+            // Auto-pair during a reconnect or a rendezvous resume (both sides browse). The single
+            // inviter rule stops the two phones racing two half-open connections.
+            if self.phase == .reconnecting || self.phase == .connecting {
+                if self.shouldInvite(peer) { self.invite(peer) }
+            }
         }
     }
 
