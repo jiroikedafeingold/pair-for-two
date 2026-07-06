@@ -266,7 +266,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = "Pair for two/Pair for two.entitlements";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 3;
+				CURRENT_PROJECT_VERSION = 4;
 				DEVELOPMENT_TEAM = TJ8LYQ4D36;
 				ENABLE_APP_SANDBOX = YES;
 				ENABLE_PREVIEWS = YES;
@@ -275,6 +275,7 @@
 				INFOPLIST_FILE = "Pair-for-two-Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = "Pair for two";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.card-games";
+				INFOPLIST_KEY_NSGKFriendListUsageDescription = "Pair for Two shows your Game Center friends so you can invite one to a game.";
 				INFOPLIST_KEY_NSLocalNetworkUsageDescription = "Pair for Two uses the local network to find and connect to a nearby phone for two-player cribbage. No internet or account is needed.";
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]" = YES;
@@ -313,7 +314,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = "Pair for two/Pair for two.entitlements";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 3;
+				CURRENT_PROJECT_VERSION = 4;
 				DEVELOPMENT_TEAM = TJ8LYQ4D36;
 				ENABLE_APP_SANDBOX = YES;
 				ENABLE_PREVIEWS = YES;
@@ -322,6 +323,7 @@
 				INFOPLIST_FILE = "Pair-for-two-Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = "Pair for two";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.card-games";
+				INFOPLIST_KEY_NSGKFriendListUsageDescription = "Pair for Two shows your Game Center friends so you can invite one to a game.";
 				INFOPLIST_KEY_NSLocalNetworkUsageDescription = "Pair for Two uses the local network to find and connect to a nearby phone for two-player cribbage. No internet or account is needed.";
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]" = YES;

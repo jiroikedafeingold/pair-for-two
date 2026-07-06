@@ -18,10 +18,19 @@ final class GameCenterManager: NSObject {
     /// Why online play is unavailable (not signed in, restricted, …), or nil when it's available.
     private(set) var unavailableReason: String?
 
-    /// An invitation the local player accepted from Game Center (via Messages/notification).
-    /// `inviteTick` bumps whenever one arrives so the UI can react and present the matchmaker for it.
-    private(set) var pendingInvite: GKInvite?
-    private(set) var inviteTick = 0
+    /// Progress of a direct friend invite, for the custom invite UI.
+    enum InviteState: Equatable {
+        case idle
+        case loadingFriends
+        case inviting(String)   // friend's display name
+        case failed(String)
+    }
+    private(set) var inviteState: InviteState = .idle
+
+    /// A match that became ready via a direct invite (either the inviter's `findMatch` completing or
+    /// this device accepting an invitation). `matchTick` bumps so `RootView` starts the game.
+    private(set) var pendingMatch: GKMatch?
+    private(set) var matchTick = 0
     private var didRegisterListener = false
 
     /// The signed-in player's Game Center name (empty until authenticated).
@@ -29,20 +38,76 @@ final class GameCenterManager: NSObject {
         GKLocalPlayer.local.isAuthenticated ? GKLocalPlayer.local.displayName : ""
     }
 
-    /// Build Game Center's matchmaking UI — a fresh 2-player match, or the accept flow for an
-    /// incoming `invite`. Returns nil if matchmaking isn't available (e.g. not signed in).
-    func makeMatchmakerViewController(invite: GKInvite? = nil) -> GKMatchmakerViewController? {
-        if let invite { return GKMatchmakerViewController(invite: invite) }
+    // MARK: Custom friend invite (avoids the flaky automatch path)
+
+    /// Friends + recent players, deduped and sorted by name, for the in-app invite list. Game Center
+    /// gates friend access, so this can be empty (friend hasn't run the game / authorized) — the UI
+    /// then offers Apple's own picker as a fallback.
+    func loadInvitablePlayers() async -> [GKPlayer] {
+        inviteState = .loadingFriends
+        let recents = await players { GKLocalPlayer.local.loadRecentPlayers(completionHandler: $0) }
+        let challengeable = await players { GKLocalPlayer.local.loadChallengableFriends(completionHandler: $0) }
+        if case .loadingFriends = inviteState { inviteState = .idle }
+        var byID: [String: GKPlayer] = [:]
+        for player in recents + challengeable { byID[player.gamePlayerID] = player }
+        return byID.values.sorted {
+            $0.displayName.localizedCaseInsensitiveCompare($1.displayName) == .orderedAscending
+        }
+    }
+
+    private func players(_ load: (@escaping @Sendable ([GKPlayer]?, (any Error)?) -> Void) -> Void) async -> [GKPlayer] {
+        await withCheckedContinuation { continuation in
+            load { fetched, _ in continuation.resume(returning: fetched ?? []) }
+        }
+    }
+
+    /// Invite a specific friend to a fresh 2-player match. With `recipients` set, GameKit invites that
+    /// player and skips automatch. `matchTick` bumps when they accept.
+    func invite(_ player: GKPlayer) {
+        let request = GKMatchRequest()
+        request.minPlayers = 2
+        request.maxPlayers = 2
+        request.recipients = [player]
+        request.inviteMessage = "Let's play Pair for Two!"
+        let name = player.displayName
+        inviteState = .inviting(name)
+        GKMatchmaker.shared().findMatch(for: request) { [weak self] match, error in
+            Task { @MainActor in
+                guard let self else { return }
+                if let match {
+                    self.deliver(match)
+                } else {
+                    self.inviteState = .failed(error?.localizedDescription ?? "Couldn't reach \(name).")
+                }
+            }
+        }
+    }
+
+    /// Cancel a pending outgoing invite / matchmaking.
+    func cancelInvite() {
+        GKMatchmaker.shared().cancel()
+        inviteState = .idle
+    }
+
+    /// Hand off (and clear) a ready match so it's only started once.
+    func takePendingMatch() -> GKMatch? {
+        defer { pendingMatch = nil }
+        return pendingMatch
+    }
+
+    private func deliver(_ match: GKMatch) {
+        pendingMatch = match
+        matchTick += 1
+        inviteState = .idle
+    }
+
+    /// Build Apple's own matchmaking UI, used as a fallback when the friend list is empty. Returns nil
+    /// if matchmaking isn't available (e.g. not signed in).
+    func makeMatchmakerViewController() -> GKMatchmakerViewController? {
         let request = GKMatchRequest()
         request.minPlayers = 2
         request.maxPlayers = 2
         return GKMatchmakerViewController(matchRequest: request)
-    }
-
-    /// Hand off (and clear) a pending accepted invitation so it's only acted on once.
-    func takePendingInvite() -> GKInvite? {
-        defer { pendingInvite = nil }
-        return pendingInvite
     }
 
     /// Begin Game Center sign-in. GameKit may call the handler several times — once handing back a
@@ -89,12 +154,14 @@ final class GameCenterManager: NSObject {
 // MARK: - Invitations
 
 extension GameCenterManager: GKLocalPlayerListener {
-    /// The local player accepted an invitation (from Messages / a Game Center notification). Surface it
-    /// so `RootView` can present the matchmaker in its accept state and start the match.
+    /// The local player accepted an invitation (from a Game Center notification / their friend's
+    /// invite). Resolve it to a match programmatically and start the game — no matchmaker UI needed.
     nonisolated func player(_ player: GKPlayer, didAccept invite: GKInvite) {
-        Task { @MainActor in
-            self.pendingInvite = invite
-            self.inviteTick += 1
+        GKMatchmaker.shared().match(for: invite) { [weak self] match, _ in
+            Task { @MainActor in
+                guard let self, let match else { return }
+                self.deliver(match)
+            }
         }
     }
 }

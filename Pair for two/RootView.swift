@@ -12,7 +12,9 @@ struct RootView: View {
     @State private var resumeMarker: GamePersistence.ResumeMarker? = GamePersistence.loadMarker()
     @State private var resumeRole: ResumeRole? = nil
     @State private var gameCenter = GameCenterManager()
-    @State private var activeMatchmaker: MatchmakerContext?   // presents Game Center's matchmaking UI
+    @State private var showingInvite = false                  // custom "invite a friend" sheet
+    @State private var pendingFallbackPicker = false          // present Apple's picker after the sheet closes
+    @State private var activeMatchmaker: MatchmakerContext?   // Apple's matchmaking UI (fallback)
     @Environment(\.scenePhase) private var scenePhase
 
     @AppStorage("localName") private var name = "Player"
@@ -35,8 +37,19 @@ struct RootView: View {
                 @unknown default:             break
                 }
             }
-            // An accepted Game Center invitation arrived — present the matchmaker to complete it.
-            .onChange(of: gameCenter.inviteTick) { _, _ in presentAcceptedInvite() }
+            // A match became ready (a friend accepted our invite, or we accepted theirs) — start it.
+            .onChange(of: gameCenter.matchTick) { _, _ in
+                if let match = gameCenter.takePendingMatch() { startOnlineGame(match) }
+            }
+            // Custom "invite a friend" list. If it can't help, it asks for Apple's picker, which we
+            // present only after this sheet has fully dismissed (SwiftUI can't present while dismissing).
+            .sheet(isPresented: $showingInvite, onDismiss: {
+                if pendingFallbackPicker { pendingFallbackPicker = false; presentApplePicker() }
+            }) {
+                InvitePlayersView(gameCenter: gameCenter,
+                                  onUseGameCenterPicker: { pendingFallbackPicker = true; showingInvite = false },
+                                  onCancel: { showingInvite = false })
+            }
             .fullScreenCover(item: $activeMatchmaker) { context in
                 MatchmakerView(controller: context.controller,
                                onMatch: { startOnlineGame($0) },
@@ -48,20 +61,15 @@ struct RootView: View {
 
     // MARK: Online (Game Center) matchmaking
 
-    private func presentOnline() {
+    private func presentApplePicker() {
         guard let controller = gameCenter.makeMatchmakerViewController() else { return }
-        activeMatchmaker = MatchmakerContext(controller: controller)
-    }
-
-    private func presentAcceptedInvite() {
-        guard let invite = gameCenter.takePendingInvite(),
-              let controller = gameCenter.makeMatchmakerViewController(invite: invite) else { return }
         activeMatchmaker = MatchmakerContext(controller: controller)
     }
 
     /// Build the online transport from a ready match and start a networked game. The host is chosen
     /// deterministically by player id so both devices agree on exactly one host.
     private func startOnlineGame(_ match: GKMatch) {
+        showingInvite = false
         activeMatchmaker = nil
         let localID = GKLocalPlayer.local.gamePlayerID
         let isHost = match.players.first.map { localID < $0.gamePlayerID } ?? true
@@ -183,7 +191,7 @@ struct RootView: View {
                 // Online play over Game Center. Enabled once signed in.
                 VStack(spacing: 6) {
                     Button {
-                        presentOnline()
+                        showingInvite = true
                     } label: {
                         HStack(spacing: 8) {
                             Image(systemName: "globe")
