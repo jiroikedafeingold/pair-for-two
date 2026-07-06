@@ -10,6 +10,7 @@ struct RootView: View {
     @State private var showingSettings = false
     @State private var resumeMarker: GamePersistence.ResumeMarker? = GamePersistence.loadMarker()
     @State private var resumeRole: ResumeRole? = nil
+    @State private var gameCenter = GameCenterManager()
     @Environment(\.scenePhase) private var scenePhase
 
     @AppStorage("localName") private var name = "Player"
@@ -24,6 +25,7 @@ struct RootView: View {
 
     var body: some View {
         content
+            .task { gameCenter.authenticate() }   // Game Center sign-in for online play (Phase 1)
             .onChange(of: scenePhase) { _, phase in
                 switch phase {
                 case .active:                 vm?.reconnect()   // re-pair after returning from background
@@ -130,7 +132,7 @@ struct RootView: View {
                 } label: {
                     HStack(spacing: 8) {
                         Image(systemName: "dot.radiowaves.left.and.right")
-                        Text(resumeMarker == nil ? "Play" : "New game").fontWeight(.bold)
+                        Text(resumeMarker == nil ? "Play nearby" : "New nearby game").fontWeight(.bold)
                     }
                     .font(.title3)
                     .padding(.horizontal, 30).padding(.vertical, 14)
@@ -138,6 +140,30 @@ struct RootView: View {
                 .buttonStyle(.borderedProminent)
                 .tint(resumeMarker == nil ? .cribGold : Color.white.opacity(0.22))
                 .foregroundStyle(resumeMarker == nil ? .black : .white)
+
+                // Online play over Game Center. Enabled once signed in; matchmaking arrives in Phase 2.
+                VStack(spacing: 6) {
+                    Button {
+                        // TODO(Phase 2): present GKMatchmakerViewController to invite / join a match.
+                    } label: {
+                        HStack(spacing: 8) {
+                            Image(systemName: "globe")
+                            Text("Play online").fontWeight(.bold)
+                        }
+                        .font(.title3)
+                        .padding(.horizontal, 30).padding(.vertical, 14)
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .tint(Color.white.opacity(0.22))
+                    .foregroundStyle(.white)
+                    .disabled(!gameCenter.isAuthenticated)
+
+                    if !gameCenter.isAuthenticated {
+                        Text(gameCenter.unavailableReason ?? "Sign in to Game Center to play online.")
+                            .font(.caption).foregroundStyle(.white.opacity(0.55))
+                            .multilineTextAlignment(.center)
+                    }
+                }
             }
             .padding(28)
         }
