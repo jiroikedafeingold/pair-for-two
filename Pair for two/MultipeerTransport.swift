@@ -199,10 +199,17 @@ final class MultipeerSession: NSObject, GameTransport {
     }
 
     private func addPeer(_ peer: MCPeerID) {
-        if !discoveredPeers.contains(peer) { discoveredPeers.append(peer) }
+        // Each app launch mints a fresh MCPeerID even for the same display name, and MC's `lostPeer`
+        // is slow/unreliable — so a relaunched or killed host leaves ghost entries. Collapse by name,
+        // keeping the most recently found instance (the live one), so the join list shows one row
+        // per host rather than a pile of stale duplicates.
+        discoveredPeers.removeAll { $0.displayName == peer.displayName }
+        discoveredPeers.append(peer)
     }
 
     private func removePeer(_ peer: MCPeerID) {
+        // Only remove if this exact instance is still the one we're showing (a stale-instance lostPeer
+        // shouldn't drop a fresher instance of the same host we've since discovered).
         discoveredPeers.removeAll { $0 == peer }
     }
 }
