@@ -132,7 +132,9 @@ struct GameTableView: View {
                 .frame(maxWidth: .infinity)
                 .padding(.horizontal, 44)   // keep clear of the settings gear / screen edges
 
-            ScoreFlagsView(flags: s.flags)
+            ScoreFlagsView(flags: s.flags,
+                           accent: vm.scoringPlayer.map { vm.theme(for: $0).primary } ?? .cribGold,
+                           playerName: vm.scoringPlayer.map { vm.name(of: $0) })
                 .padding(.horizontal, 16)
 
             if s.scoringMode == .auto {
@@ -207,7 +209,7 @@ struct GameTableView: View {
             opponentScore: oppScore,
             primary: theme.primary,
             deep: theme.deep,
-            disabled: s.phase == .gameOver,
+            disabled: s.phase == .gameOver || vm.scoringDisabled(for: player),
             canUndo: vm.canUndo(for: player),
             requireConfirm: isLocal ? confirmRelease : false,
             opponentColor: vm.theme(for: player.opponent).primary,
@@ -419,19 +421,20 @@ struct GameTableView: View {
 private struct GameTablePreview: View {
     @State private var vm: GameViewModel = {
         let vm = GameViewModel.loopback(names: [.one: "Ann", .two: "Ben"],
-                                        colorIDs: [.one: 1, .two: 7], seed: 42, scoringMode: .auto)
+                                        colorIDs: [.one: 1, .two: 7], seed: 42, scoringMode: .feedback)
         vm.cut(); vm.cut(); vm.advance()          // both cut, then deal
         for _ in 0..<2 where vm.snapshot.phase == .discardToCrib {   // both discard 2 → pegging
             let hand = vm.snapshot.yourHand
             if hand.count >= 2 { vm.toggleDiscard(hand[0]); vm.toggleDiscard(hand[1]); vm.confirmDiscard() }
         }
-        var guardCount = 0                        // play a few cards, then stay in pegging
-        while vm.snapshot.phase == .pegging && !vm.peggingComplete && guardCount < 3 {
-            guardCount += 1
+        var guardCount = 0                        // play out pegging → the show
+        while vm.snapshot.phase == .pegging && !vm.peggingComplete {
+            guardCount += 1; if guardCount > 60 { break }
             let s = vm.snapshot
             let legal = CribbageScorer.legalPlays(hand: s.yourHand, count: s.runningCount)
             if let c = legal.min(by: { $0.countingValue < $1.countingValue }) { vm.play(c) } else { vm.sayGo() }
         }
+        if vm.peggingComplete { vm.advance() }    // → showPone (count the pone's hand)
         return vm
     }()
     var body: some View { GameTableView(vm: vm) }

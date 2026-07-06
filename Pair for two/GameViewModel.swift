@@ -347,6 +347,26 @@ final class GameViewModel {
     /// This device is the one counting right now.
     var youAreCounting: Bool { showCountingPlayer == snapshot.you }
 
+    /// The player the current scoring feedback belongs to (pegging → whoever just played; the show →
+    /// the counter). Drives the flag colour + the leading name.
+    var scoringPlayer: PlayerID? {
+        switch snapshot.phase {
+        case .pegging:               return snapshot.lastToPlay ?? snapshot.dealer
+        case .showPone:              return snapshot.pone
+        case .showDealer, .showCrib: return snapshot.dealer
+        default:                     return nil
+        }
+    }
+
+    /// During the show only the counting player may score; the other player's panel is inert to avoid
+    /// confusion.
+    func scoringDisabled(for player: PlayerID) -> Bool {
+        switch snapshot.phase {
+        case .showPone, .showDealer, .showCrib: return player != showCountingPlayer
+        default:                                return false
+        }
+    }
+
     /// The cards currently being counted, resolved from this device's snapshot (both devices see the
     /// same hand — the counter's own, the watcher's via the revealed opponent hand).
     var showCards: [Card] {

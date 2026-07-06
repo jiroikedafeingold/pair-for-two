@@ -1,14 +1,23 @@
 import SwiftUI
 
 /// Horizontal row of coach "flag chips" — every scoring opportunity the engine detected for the
-/// current context. Flag-only: they inform, they never auto-apply. Tap a chip to read its detail;
-/// the player still enters the points manually on their `ScorePanel` slider.
+/// current context. Flag-only: they inform, they never auto-apply. The chips are tinted in the
+/// scoring player's colour and led by their name, so it's clear whose points these are.
 struct ScoreFlagsView: View {
     let flags: [ScoreFlag]
+    var accent: Color = .cribGold
+    var playerName: String? = nil
 
     var body: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 8) {
+                if let playerName, !flags.isEmpty {
+                    Text(playerName.uppercased())
+                        .font(.caption.weight(.heavy))
+                        .foregroundStyle(accent)
+                        .padding(.trailing, 2)
+                }
+
                 ForEach(flags) { flag in
                     HStack(spacing: 4) {
                         Text(flag.detail)
@@ -19,8 +28,8 @@ struct ScoreFlagsView: View {
                     .font(.caption.weight(.semibold))
                     .padding(.horizontal, 10)
                     .padding(.vertical, 5)
-                    .background(Capsule().fill(Color.cribGold))
-                    .foregroundStyle(Color.black.opacity(0.82))
+                    .background(Capsule().fill(accent))
+                    .foregroundStyle(.black.opacity(0.85))
                 }
 
                 // Running total of the detected points.
