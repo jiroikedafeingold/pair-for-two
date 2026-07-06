@@ -368,25 +368,28 @@ struct GameTableView: View {
                 }
             }
 
-            if vm.youAreCounting {
-                Text(s.scoringMode == .auto ? "Scored automatically" : "Count it on your slider, then Continue")
-                    .font(.caption).foregroundStyle(.white.opacity(0.7))
-                // With a pending slider value (confirm-after-release), the button adds it, then advances.
-                Button(uncommittedLocal > 0 ? "Add \(uncommittedLocal) & continue" : "Continue") {
-                    if uncommittedLocal > 0 {
-                        vm.claim(uncommittedLocal, for: vm.snapshot.you)
-                        clearScoreSignal += 1; uncommittedLocal = 0
+            // A little space under the cards, then the prompt + button. The whole group is centered
+            // vertically (below), so the button sits just under the cards — never pinned to the bottom.
+            VStack(spacing: 10) {
+                if vm.youAreCounting {
+                    Text(s.scoringMode == .auto ? "Scored automatically" : "Count it on your slider, then Continue")
+                        .font(.caption).foregroundStyle(.white.opacity(0.7))
+                    // With a pending slider value (confirm-after-release), the button adds it, then advances.
+                    Button(uncommittedLocal > 0 ? "Add \(uncommittedLocal) & continue" : "Continue") {
+                        if uncommittedLocal > 0 {
+                            vm.claim(uncommittedLocal, for: vm.snapshot.you)
+                            clearScoreSignal += 1; uncommittedLocal = 0
+                        }
+                        vm.advance()
                     }
-                    vm.advance()
+                    .buttonStyle(.borderedProminent).tint(.cribGold).foregroundStyle(.black)
+                } else {
+                    waitingLabel("Waiting for \(vm.name(of: vm.showCountingPlayer ?? s.you)) to count…")
                 }
-                .buttonStyle(.borderedProminent).tint(.cribGold).foregroundStyle(.black)
-            } else {
-                waitingLabel("Waiting for \(vm.name(of: vm.showCountingPlayer ?? s.you)) to count…")
             }
-
-            Spacer(minLength: 0)   // keep the cards + button grouped near the top (esp. on iPad)
+            .padding(.top, 18)
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)   // centers the cards + button group
     }
 
     // MARK: Hand complete
