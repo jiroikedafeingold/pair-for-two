@@ -29,6 +29,9 @@ final class GameViewModel {
     private let transport: any GameTransport
     let isHost: Bool
     let isLoopback: Bool
+    /// Whether this game may be saved for relaunch "Rejoin". True for nearby (Multipeer) games; false
+    /// for Game Center online games (a real-time match can't be rejoined after a hard exit — Phase 6).
+    private let resumable: Bool
 
     /// Host-only authoritative state (nil on a guest, and on a networked host until the guest joins).
     private var state: GameState?
@@ -58,10 +61,12 @@ final class GameViewModel {
                  scoringMode: ScoringMode,
                  state: GameState?,
                  snapshot: PlayerSnapshot,
-                 connection: ConnectionState) {
+                 connection: ConnectionState,
+                 resumable: Bool = true) {
         self.transport = transport
         self.isHost = transport.isHost
         self.isLoopback = isLoopback
+        self.resumable = resumable
         self.localName = localName
         self.localColorID = localColorID
         self.seed = seed
@@ -97,13 +102,15 @@ final class GameViewModel {
                           localName: String,
                           localColorID: Int,
                           scoringMode: ScoringMode = .feedback,
+                          resumable: Bool = true,
                           seed: UInt64 = UInt64.random(in: 0...UInt64.max)) -> GameViewModel {
         let you: PlayerID = transport.isHost ? .one : .two
         let placeholder = GameViewModel.placeholderSnapshot(you: you, name: localName, colorID: localColorID)
         return GameViewModel(transport: transport, isLoopback: false,
                              localName: localName, localColorID: localColorID,
                              seed: seed, scoringMode: scoringMode,
-                             state: nil, snapshot: placeholder, connection: .connecting)
+                             state: nil, snapshot: placeholder, connection: .connecting,
+                             resumable: resumable)
     }
 
     /// Resume a saved game as the host (the authoritative state was persisted on the host device).
@@ -120,6 +127,7 @@ final class GameViewModel {
     /// Save the game as the app is backgrounded/closed. The host writes its full state; the guest just
     /// records a marker so it can offer to rejoin.
     func persist() {
+        guard resumable else { return }   // online (Game Center) games aren't offered for Rejoin
         if isHost {
             if let state, state.phase != .gameOver { GamePersistence.save(state) }
         } else if snapshot.phase != .connecting, snapshot.phase != .gameOver {
@@ -204,9 +212,9 @@ final class GameViewModel {
                 snapshot = snap
                 fixedPlayer = snap.you
                 if snap.phase != previousPhase { selectedForDiscard.removeAll() }
-                // Guest marker so this device can also offer "Rejoin game".
+                // Guest marker so this device can also offer "Rejoin game" (nearby games only).
                 if snap.phase == .gameOver { GamePersistence.clear() }
-                else if snap.phase != .connecting { GamePersistence.saveMarker(isHost: false, summary: snapshotSummary(snap)) }
+                else if resumable, snap.phase != .connecting { GamePersistence.saveMarker(isHost: false, summary: snapshotSummary(snap)) }
             case .assignSeat(let player):
                 fixedPlayer = player
             default:
@@ -279,7 +287,8 @@ final class GameViewModel {
             Task { await transport.send(.snapshot(guestSnapshot)) }
         }
         // Persist for resume-after-relaunch (host is the single source of truth). Clear on game over.
-        if isHost {
+        // Online (Game Center) games are non-resumable, so they never write a marker.
+        if isHost, resumable {
             if state.phase == .gameOver { GamePersistence.clear() } else { GamePersistence.save(state) }
         }
     }

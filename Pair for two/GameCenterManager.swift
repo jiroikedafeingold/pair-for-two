@@ -2,8 +2,9 @@ import GameKit
 import Observation
 import UIKit
 
-/// Owns the device's Game Center sign-in, used by online (remote) play. It deliberately does no
-/// matchmaking — that's Phase 2. SwiftUI reads `isAuthenticated` to enable the online entry point.
+/// Owns the device's Game Center sign-in and matchmaking entry points for online (remote) play.
+/// SwiftUI reads `isAuthenticated` to enable the online entry point and builds a matchmaker UI via
+/// `makeMatchmakerViewController`.
 ///
 /// Game Center identity is device-global, so `RootView` creates one instance and calls
 /// `authenticate()` once at launch. Nearby (Multipeer) play does not depend on this.
@@ -17,9 +18,31 @@ final class GameCenterManager: NSObject {
     /// Why online play is unavailable (not signed in, restricted, …), or nil when it's available.
     private(set) var unavailableReason: String?
 
+    /// An invitation the local player accepted from Game Center (via Messages/notification).
+    /// `inviteTick` bumps whenever one arrives so the UI can react and present the matchmaker for it.
+    private(set) var pendingInvite: GKInvite?
+    private(set) var inviteTick = 0
+    private var didRegisterListener = false
+
     /// The signed-in player's Game Center name (empty until authenticated).
     var localDisplayName: String {
         GKLocalPlayer.local.isAuthenticated ? GKLocalPlayer.local.displayName : ""
+    }
+
+    /// Build Game Center's matchmaking UI — a fresh 2-player match, or the accept flow for an
+    /// incoming `invite`. Returns nil if matchmaking isn't available (e.g. not signed in).
+    func makeMatchmakerViewController(invite: GKInvite? = nil) -> GKMatchmakerViewController? {
+        if let invite { return GKMatchmakerViewController(invite: invite) }
+        let request = GKMatchRequest()
+        request.minPlayers = 2
+        request.maxPlayers = 2
+        return GKMatchmakerViewController(matchRequest: request)
+    }
+
+    /// Hand off (and clear) a pending accepted invitation so it's only acted on once.
+    func takePendingInvite() -> GKInvite? {
+        defer { pendingInvite = nil }
+        return pendingInvite
     }
 
     /// Begin Game Center sign-in. GameKit may call the handler several times — once handing back a
@@ -41,7 +64,10 @@ final class GameCenterManager: NSObject {
         isAuthenticated = GKLocalPlayer.local.isAuthenticated
         if isAuthenticated {
             unavailableReason = nil
-            // Phase 2 will `GKLocalPlayer.local.register(self)` here to receive game invitations.
+            if !didRegisterListener {
+                GKLocalPlayer.local.register(self)   // receive game invitations from friends
+                didRegisterListener = true
+            }
         } else {
             unavailableReason = error?.localizedDescription ?? "Sign in to Game Center to play online."
         }
@@ -57,5 +83,18 @@ final class GameCenterManager: NSObject {
         var top = root
         while let presented = top.presentedViewController { top = presented }
         top.present(viewController, animated: true)
+    }
+}
+
+// MARK: - Invitations
+
+extension GameCenterManager: GKLocalPlayerListener {
+    /// The local player accepted an invitation (from Messages / a Game Center notification). Surface it
+    /// so `RootView` can present the matchmaker in its accept state and start the match.
+    nonisolated func player(_ player: GKPlayer, didAccept invite: GKInvite) {
+        Task { @MainActor in
+            self.pendingInvite = invite
+            self.inviteTick += 1
+        }
     }
 }

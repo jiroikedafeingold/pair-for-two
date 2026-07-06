@@ -1,7 +1,8 @@
 import SwiftUI
+import GameKit
 
-/// App entry. Two-phone play over Multipeer: set up your own name/colour, then Play → find or host a
-/// nearby game. (Single-device pass-and-play was removed — this is a two-phone game.)
+/// App entry. Two-phone play: set up your own name/colour, then Play nearby (Multipeer) or Play
+/// online (Game Center). Single-device pass-and-play was removed — this is a two-phone game.
 struct RootView: View {
     private enum Screen { case menu, connect, game }
 
@@ -11,6 +12,7 @@ struct RootView: View {
     @State private var resumeMarker: GamePersistence.ResumeMarker? = GamePersistence.loadMarker()
     @State private var resumeRole: ResumeRole? = nil
     @State private var gameCenter = GameCenterManager()
+    @State private var activeMatchmaker: MatchmakerContext?   // presents Game Center's matchmaking UI
     @Environment(\.scenePhase) private var scenePhase
 
     @AppStorage("localName") private var name = "Player"
@@ -25,7 +27,7 @@ struct RootView: View {
 
     var body: some View {
         content
-            .task { gameCenter.authenticate() }   // Game Center sign-in for online play (Phase 1)
+            .task { gameCenter.authenticate() }   // Game Center sign-in for online play
             .onChange(of: scenePhase) { _, phase in
                 switch phase {
                 case .active:                 vm?.reconnect()   // re-pair after returning from background
@@ -33,6 +35,43 @@ struct RootView: View {
                 @unknown default:             break
                 }
             }
+            // An accepted Game Center invitation arrived — present the matchmaker to complete it.
+            .onChange(of: gameCenter.inviteTick) { _, _ in presentAcceptedInvite() }
+            .fullScreenCover(item: $activeMatchmaker) { context in
+                MatchmakerView(controller: context.controller,
+                               onMatch: { startOnlineGame($0) },
+                               onCancel: { activeMatchmaker = nil },
+                               onError: { _ in activeMatchmaker = nil })
+                    .ignoresSafeArea()
+            }
+    }
+
+    // MARK: Online (Game Center) matchmaking
+
+    private func presentOnline() {
+        guard let controller = gameCenter.makeMatchmakerViewController() else { return }
+        activeMatchmaker = MatchmakerContext(controller: controller)
+    }
+
+    private func presentAcceptedInvite() {
+        guard let invite = gameCenter.takePendingInvite(),
+              let controller = gameCenter.makeMatchmakerViewController(invite: invite) else { return }
+        activeMatchmaker = MatchmakerContext(controller: controller)
+    }
+
+    /// Build the online transport from a ready match and start a networked game. The host is chosen
+    /// deterministically by player id so both devices agree on exactly one host.
+    private func startOnlineGame(_ match: GKMatch) {
+        activeMatchmaker = nil
+        let localID = GKLocalPlayer.local.gamePlayerID
+        let isHost = match.players.first.map { localID < $0.gamePlayerID } ?? true
+        let transport = GameCenterTransport(match: match, isHost: isHost)
+        resumeRole = nil
+        vm = GameViewModel.networked(transport: transport,
+                                     localName: playerName, localColorID: colorID,
+                                     scoringMode: ScoringMode(rawValue: scoringModeRaw) ?? .feedback,
+                                     resumable: false)
+        screen = .game
     }
 
     @ViewBuilder private var content: some View {
@@ -141,10 +180,10 @@ struct RootView: View {
                 .tint(resumeMarker == nil ? .cribGold : Color.white.opacity(0.22))
                 .foregroundStyle(resumeMarker == nil ? .black : .white)
 
-                // Online play over Game Center. Enabled once signed in; matchmaking arrives in Phase 2.
+                // Online play over Game Center. Enabled once signed in.
                 VStack(spacing: 6) {
                     Button {
-                        // TODO(Phase 2): present GKMatchmakerViewController to invite / join a match.
+                        presentOnline()
                     } label: {
                         HStack(spacing: 8) {
                             Image(systemName: "globe")
