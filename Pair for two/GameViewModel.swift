@@ -150,7 +150,7 @@ final class GameViewModel {
     static func placeholderSnapshot(you: PlayerID, name: String, colorID: Int) -> PlayerSnapshot {
         PlayerSnapshot(matchID: UUID(), you: you, phase: .connecting, yourSeat: .pone, dealer: .one,
                        yourHand: [], opponentHandCount: 0, opponentHand: nil, crib: nil, cribCount: 0,
-                       starter: nil, playSequence: [], runningCount: 0, whoseTurn: nil, lastToPlay: nil,
+                       starter: nil, playSequence: [], runningCount: 0, lapCardCount: 0, whoseTurn: nil, lastToPlay: nil,
                        yourScore: 0, opponentScore: 0, flags: [], scoringMode: .feedback,
                        cutForDeal: [:], winner: nil,
                        yourName: name, opponentName: "Opponent",

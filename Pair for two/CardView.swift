@@ -28,8 +28,9 @@ struct CardView: View {
                 back
             }
 
+            // A defined edge so adjacent / overlapping cards (crib, play pile) don't blend together.
             RoundedRectangle(cornerRadius: corner, style: .continuous)
-                .strokeBorder(Color.black.opacity(faceUp ? 0.12 : 0.0), lineWidth: 0.75)
+                .strokeBorder(Color.black.opacity(faceUp ? 0.28 : 0.12), lineWidth: 1)
         }
         .frame(width: width, height: height)
         .overlay(

@@ -149,6 +149,7 @@ extension GameState {
             starter: starter,
             playSequence: playSequence,
             runningCount: runningCount,
+            lapCardCount: lapCards.count,
             whoseTurn: whoseTurn,
             lastToPlay: lastToPlay,
             yourScore: scores[you] ?? 0,
@@ -190,6 +191,9 @@ nonisolated struct PlayerSnapshot: Codable, Hashable, Sendable {
 
     let playSequence: [PlayedCard]
     let runningCount: Int
+    /// How many trailing `playSequence` cards belong to the current count (lap). Earlier cards were
+    /// played in a prior lap (count already reset via a go or 31) and are shown greyed/out of play.
+    let lapCardCount: Int
     let whoseTurn: PlayerID?
     let lastToPlay: PlayerID?
 

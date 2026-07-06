@@ -51,9 +51,14 @@ struct PlayPileView: View {
                     .frame(width: cardWidth * 2.2, height: cardWidth * 1.45)
                     .overlay(Text("Play area").font(.caption2).foregroundStyle(.white.opacity(0.4)))
             } else {
+                // Cards from a finished lap (count already reset via a go or 31) stay on the table but
+                // are dimmed, so it's clear only the current lap's cards are still in play.
+                let firstActive = snapshot.playSequence.count - snapshot.lapCardCount
                 HStack(spacing: -cardWidth * 0.55) {
-                    ForEach(snapshot.playSequence) { pc in
+                    ForEach(Array(snapshot.playSequence.enumerated()), id: \.element) { index, pc in
+                        let outOfPlay = index < firstActive
                         CardView(card: pc.card,
+                                 isDimmed: outOfPlay,
                                  isHighlighted: pc == snapshot.playSequence.last,
                                  width: cardWidth)
                             // Thin colour bar along the card's bottom edge shows who played it.
@@ -63,6 +68,7 @@ struct PlayPileView: View {
                                     .frame(height: max(3, cardWidth * 0.07))
                                     .padding(.horizontal, cardWidth * 0.12)
                                     .padding(.bottom, cardWidth * 0.05)
+                                    .opacity(outOfPlay ? 0.4 : 1)
                             }
                     }
                 }
