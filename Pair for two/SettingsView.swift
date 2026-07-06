@@ -85,15 +85,16 @@ struct SettingsView: View {
             ForEach(CardBack.allCases) { back in
                 let selected = cardBackID == back.rawValue
                 VStack(spacing: 6) {
-                    Image(back.assetName)
-                        .resizable()
-                        .scaledToFill()
-                        .frame(width: 62, height: 90)
-                        .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 9, style: .continuous)
-                                .strokeBorder(Color.accentColor, lineWidth: selected ? 3 : 0)
-                        )
+                    ZStack {
+                        Image(back.assetName).resizable().scaledToFill().blur(radius: 4)
+                        Image(back.assetName).resizable().scaledToFit()
+                    }
+                    .frame(width: 62, height: 90)
+                    .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 9, style: .continuous)
+                            .strokeBorder(Color.accentColor, lineWidth: selected ? 3 : 0)
+                    )
                     Text(back.displayName)
                         .font(.caption)
                         .fontWeight(selected ? .semibold : .regular)

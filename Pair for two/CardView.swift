@@ -84,12 +84,21 @@ struct CardView: View {
 
     // MARK: Back
 
+    /// Shows the whole back design (`scaledToFit`) so none of the art is cropped, over a soft blurred
+    /// copy that fills the side margins (the designs are taller than the card, so a fit leaves gaps).
     private var back: some View {
-        Image(CardBack.from(cardBackID).assetName)
-            .resizable()
-            .scaledToFill()
-            .frame(width: width, height: height)
-            .clipShape(RoundedRectangle(cornerRadius: corner, style: .continuous))
+        let asset = CardBack.from(cardBackID).assetName
+        return ZStack {
+            Image(asset)
+                .resizable()
+                .scaledToFill()
+                .blur(radius: width * 0.06)
+            Image(asset)
+                .resizable()
+                .scaledToFit()
+        }
+        .frame(width: width, height: height)
+        .clipShape(RoundedRectangle(cornerRadius: corner, style: .continuous))
     }
 }
 
