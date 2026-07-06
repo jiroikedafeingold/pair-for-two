@@ -1,68 +1,91 @@
 # Pair for Two — Build Progress & Handoff
 
-_Last updated: 2026-07-05. Resume point for the next session._
+_Last updated: 2026-07-05 (end of day). Resume point for the next session._
 
-A brand-new standalone iOS app: two people play a full game of **cribbage** using their phones
-instead of a physical board and cards. Each player sees only their own hand; played cards are
-visible to both; hands and crib are revealed at the show. **Scoring is manual (flag-only) for v1** —
-the app is fully rule-aware and *flags* every scoring opportunity but never auto-applies points.
+A standalone iOS app: two people play a full game of **cribbage** on their phones instead of a
+physical board and cards. Each player sees only their own hand; played cards are visible to both;
+hands and crib are revealed at the show. **Three scoring modes** (Settings): **Automatic** (engine
+scores everything), **Feedback** (flags opportunities, you tally on the slider), **Player
+responsibility** (no hints). The engine is fully rule-aware.
 
-Full original design is in **`PLAN.md`** (repo root). This file tracks what's actually built.
+Full original design is in **`PLAN.md`**; the remote-play design is in **`REMOTE_PLAY_PLAN.md`**.
+This file tracks what's actually built.
 
 ---
 
 ## Status at a glance
 
+**All core steps (1–7) are done and the 2-device Multipeer game is user-confirmed working.**
+Current version **1.0.2 (build 3)**. Builds clean on iPhone 17 Pro / iPad Pro 13" (iOS 27 sims).
+Active run destination: iPhone 17 Pro.
+
 | Step | Feature | Status |
 |------|---------|--------|
-| 1 | Models + Scorer (+ verification) | ✅ Done |
-| 2 | Engine + LoopbackTransport | ✅ Done |
-| 3 | Card + table UI on Loopback | ✅ Done |
-| 4 | ScorePanel slider + WinnerOverlay + Haptics | ✅ Done |
-| 5 | MultipeerTransport + ConnectView (two-device) | ✅ Done + **2-device smoke test passed** |
-| 6 | Polish — **iPad** | ✅ Done |
+| 1–4 | Models, Scorer, Engine, table UI, ScorePanel, WinnerOverlay, Haptics | ✅ Done |
+| 5 | MultipeerTransport + ConnectView (two-device) | ✅ Done + 2-device smoke test passed |
+| 6 | Polish — iPad | ✅ Done |
 | 6 | Polish — accessibility/VoiceOver, localization | ⛔ Deferred (user's call) |
-| 7 | Reconnect / resume + persistence | ✅ Done (relaunch-resume verified; live Multipeer reconnect built) |
+| 7 | Reconnect / resume + persistence | ✅ Done |
+| — | **Online play over Game Center** (Phases 0–5) | ✅ Built, **not yet device-tested** |
+| — | Online play Phase 6 (disconnect/"opponent left" polish) | ⬜ Next |
 
-**The project builds clean** on iPhone 17 Pro and iPad Pro 13" (iOS 27 simulators). Active run
-destination is currently iPhone 17 Pro.
+### Long tail of refinements since the core build (all 2026-07-05, all committed & pushed)
 
-### Recent changes (2026-07-05)
+- **Three scoring modes** (`ScoringMode`: `.auto`/`.feedback`/`.off`) chosen in Settings, synced live
+  between devices via `.setScoringMode`. Auto mode hides the sliders and shows big names + scores.
+- **Quit game**: a leave button (top-left of the table) → confirm → sends `.quitGame`, which **ends
+  the game on both phones and clears the saved game on both** (so neither offers "Rejoin").
+- **Robust resume**: both phones "rejoin" via a **rendezvous** (advertise *and* browse at once), and
+  the host is chosen by which phone actually holds the saved state (`GamePersistence.hasSavedState`) —
+  fixes the "both spin forever" deadlock. Guests clear their stale state file.
+- **Join-list ghost peers fixed**: discovered peers are deduped by display name (each host relaunch
+  mints a new `MCPeerID`, and MC's `lostPeer` is unreliable) — so the join list shows one live row.
+- Scoring UX: opponent "+X" preview next to their score in their colour; feedback flags in the
+  counter's colour led by their name; the non-counter's panel is inert during the show; "Continue"
+  folds a pending slider value ("Add N & continue").
+- Icon (higher-contrast two-queens crop), iPad show-screen centering, and other layout polish.
 
-- **Game-start flow reworked**: cut-for-deal now holds the result (each taps to cut → both cards
-  shown → **lower card wins, deals & takes the first crib** → tap **Deal**). The separate manual
-  "cut the starter" step is **gone** — the starter is auto-cut after discards and pegging begins
-  immediately. **The starter card is not shown during pegging** (only at the show).
-- **Reconnect/resume**: host persists `GameState` to Application Support (`Persistence.swift`); the
-  menu offers **Resume game** after a relaunch (verified). `MultipeerSession` auto-rejoins after a
-  drop (`.reconnecting` → re-advertise/browse → resync).
-- **Settings** (gear, top-right of table): per-player **Confirm after release** / **Confirm after +1**
-  toggles → `ScorePanel`, persisted to UserDefaults.
-- **Bigger cards**: discard/show cards enlarged; pegging hand clamped so the pile+hand still fit the
-  short landscape band. All phases verified within a 402pt-tall screen.
-- Known minor: **his-heels** flag window is brief (overwritten by the first pegging play) — fine for
-  v1 manual scoring.
+### Online play (Game Center) — what's built (Phases 0–5)
+
+- **Entitlement**: `com.apple.developer.game-center` (via `AddEntitlement`).
+- **`GameCenterManager.swift`**: authenticates `GKLocalPlayer` at launch, presents the sign-in VC,
+  exposes `isAuthenticated`; builds the matchmaker VC; registers a `GKLocalPlayerListener` and
+  surfaces accepted invites (`pendingInvite`/`inviteTick`/`takePendingInvite()`).
+- **`MatchmakerView.swift`**: `UIViewControllerRepresentable` over `GKMatchmakerViewController`
+  (+ `MatchmakerContext` Identifiable box) → reports the ready `GKMatch` / cancel / error.
+- **`GameCenterTransport.swift`**: `GKMatch`-backed `GameTransport` (`@unchecked Sendable`) — JSON
+  `GameMessage`s over `match.sendData(...reliable)`; connect/disconnect from `GKMatchDelegate`.
+- **RootView**: an auth-gated **"Play online"** button presents the matchmaker (`fullScreenCover`);
+  accepted invites auto-present it; a ready match → build transport → `GameViewModel.networked(...,
+  resumable: false)` → game. Host elected deterministically by `gamePlayerID`.
+- **`resumable` flag** on `GameViewModel` (false for GC) gates all `GamePersistence` writes so online
+  games never write a Multipeer-only "Rejoin" marker.
 
 ---
 
 ## ▶️ Where to resume tomorrow
 
-The recommended next milestone is a **two-physical-device Multipeer smoke test** (see below), because
-the networking (step 5) and the future reconnect/resume (step 7) can't be meaningfully verified on a
-single simulator. After that, the open work is:
+Online play (Game Center) is **built but never run on real hardware**. Two tracks:
 
-1. **Two-device smoke test** of `MultipeerSession`: on two real phones, Play nearby → one Hosts, one
-   Joins → confirm connect, deal, discard, pegging, the show, and hidden-info (opponent's hand never
-   visible pre-show). Also try backgrounding one phone mid-hand to see what breaks (feeds step 7).
-2. **Reconnect / resume + persistence** (step 7, PLAN.md "Reconnect / resume" section) — not built.
-   Plan: a `Persistence.swift` that writes `GameState` (host) + each device's last `PlayerSnapshot` +
-   peer/match token to Application Support (JSON); a "Resume game" entry on the menu; transport-level
-   auto-rejoin in `MultipeerSession` (keep advertising/browsing after a drop, re-emit `.reconnecting`
-   / `.connected`, host replays the current snapshot). The "Reconnecting…" **banner already exists**
-   in `GameTableView`; the auto-rejoin + persistence do not.
-3. **Accessibility/VoiceOver + localization** (deferred half of step 6). `CardView` already sets a
-   VoiceOver label per card (`Card.accessibleName`, e.g. "Seven of Hearts"). Localization would edit
-   an `.xcstrings` catalog directly (see the project's CLAUDE.md rules on bulk translation).
+1. **On-device smoke test of online play** (the blocker). Needs, outside the code:
+   - **App Store Connect**: enable **Game Center** for the app's bundle ID.
+   - **Two devices, two different Game Center accounts** (sandbox / TestFlight) that are **Game Center
+     friends** — the matchmaker's picker shows friends/recent players, *not* a username search.
+   - Then: both sign in → "Play online" on one → invite the friend → accept → confirm a full game
+     (cut, discard, pegging, show, win), the **quit** flow, and what a mid-game disconnect looks like.
+   - Note: in the **simulator** the "Play online" button stays disabled (its sign-in hint shows) —
+     that's expected; Game Center needs a real device + configured app.
+2. **Online play Phase 6** (polish, can do before/after the test): a real-time `GKMatch` can't be
+   rejoined after a hard exit, so make a drop graceful — surface **"Opponent left"** and return to the
+   menu instead of the nearby-style "Reconnecting…" spin. `GameCenterTransport.reconnect()` is a
+   deliberate no-op; the disconnect currently just sets `connection = .disconnected`.
+
+Deferred (unchanged): **accessibility/VoiceOver + localization** (`CardView` already sets a per-card
+VoiceOver label via `Card.accessibleName`; localization would edit an `.xcstrings` catalog directly).
+
+**Invite-UX caveat / fallback:** if the Game Center friend-invite flow proves annoying in practice,
+the documented fallback (see `REMOTE_PLAY_PLAN.md`) is a **room-code WebSocket relay** — nicer pairing
+(type a code) using only native `URLSessionWebSocketTask`, at the cost of running a small server.
 
 ---
 
@@ -73,9 +96,9 @@ Views (SwiftUI)  ─▶  GameViewModel (@MainActor @Observable, NO SwiftUI impor
                                     │                                                    │
                                     ▼                                                    ▼
                             GameTransport (protocol)                        CribbageScorer + Models
-                     ┌──────────────┼───────────────┐                       (pure, `nonisolated`)
-              Loopback        Multipeer        (Game Center, future)
-              (dev/test)      (in-person)
+              ┌──────────────┬─────┴────────┬───────────────┐               (pure, `nonisolated`)
+          Loopback       Multipeer      Game Center
+          (dev/test)     (nearby)       (online, built — untested on device)
 ```
 
 - **Pure types are `nonisolated`** (models, deck, scorer, engine, state) so they never hop onto the
@@ -96,9 +119,14 @@ Views (SwiftUI)  ─▶  GameViewModel (@MainActor @Observable, NO SwiftUI impor
 | `CribbageEngine.swift` | Host referee. Validates intents, advances phases, surfaces `activeFlags` — **never auto-scores** (scores change only via `claim`). Manages pegging go/31/lap/last-card. |
 | `GameState.swift` | Authoritative `GameState` + `snapshot(for:)` redaction + `PlayerSnapshot` (wire type). |
 | `GameTransport.swift` | `GameTransport` protocol, `GameMessage` enum, `TransportEvent`. |
-| `LoopbackTransport.swift` | Single-process transport for pass-and-play / dev. |
-| `MultipeerTransport.swift` | `MultipeerSession` (MCSession + advertiser/browser, `@Observable`, `GameTransport`). |
-| `GameViewModel.swift` | 3 roles behind `.loopback(...)` / `.networked(...)` factories. |
+| `LoopbackTransport.swift` | Single-process transport for previews / dev. |
+| `MultipeerTransport.swift` | `MultipeerSession` (MCSession + advertiser/browser, `@Observable`, `GameTransport`). Rendezvous + peer dedupe. |
+| `GameCenterManager.swift` | Game Center auth + matchmaker VC factory + invite listener (`@MainActor @Observable`). |
+| `GameCenterTransport.swift` | `GKMatch`-backed `GameTransport` (`@unchecked Sendable`). |
+| `MatchmakerView.swift` | `UIViewControllerRepresentable` over `GKMatchmakerViewController` + `MatchmakerContext`. |
+| `Persistence.swift` | `GamePersistence` — host state file + `ResumeMarker`; `hasSavedState`. |
+| `SettingsView.swift` | Name/colour + 3 scoring modes + "Confirm after release" (`@AppStorage`). |
+| `GameViewModel.swift` | 3 roles behind `.loopback(...)` / `.networked(..., resumable:)` / `.resumeHost(...)`; `quit()`/`ended`. |
 | `Themes.swift` | Felt palette + 12 `playerThemes` (from Criboard), `colorID`→theme. |
 | `Haptics.swift` | `WinHaptics` + `DragTickHaptics` (from Criboard, as-is). |
 | `CardView`,`HandView`,`PlayPileView`,`ScoreFlagsView`,`ScorePanel`,`WinnerOverlay`,`GameTableView`,`ConnectView`,`RootView` | SwiftUI. |
@@ -177,11 +205,15 @@ Views (SwiftUI)  ─▶  GameViewModel (@MainActor @Observable, NO SwiftUI impor
 
 - **Build**: `BuildProject` MCP tool (or `xcodebuild -scheme "Pair for two" -destination
   'platform=iOS Simulator,name=iPhone 16' build`). Scheme name = `Pair for two`.
-- **Play now**: run on a simulator → "Play on one phone" (pass-and-play, both players on one device).
-- **Two-device**: run on two phones → "Play nearby" → one Hosts, the other Joins.
+- **Nearby (two phones)**: run on two phones → "Play nearby" → one Hosts, the other Joins.
+- **Online (Game Center)**: needs a real device signed into Game Center + the app configured for Game
+  Center in App Store Connect → "Play online" → invite a Game Center friend. Disabled in the sim.
 - **Verify pure logic**: `RunCodeSnippet` against `CribbageScorer.swift` or `CribbageEngine.swift`.
+- **Preview**: `RenderPreview` (note: it has been throwing a transient "data couldn't be read" error
+  lately — unrelated to the code; fall back to `BuildProject` to confirm compilation).
 
 ## Git
 
-Nothing has been committed yet — all step 1–6 work is uncommitted in the working tree (the repo has a
-single "Initial Commit"). Consider committing before starting tomorrow.
+All work is **committed and pushed to `main`** (remote up to date). Latest: `a66be8e` "Online play
+Phase 2-5". Versioning: bump build number + patch version (agvtool) after each push — currently
+**1.0.2 (3)**. Never hand-edit `.pbxproj`.
