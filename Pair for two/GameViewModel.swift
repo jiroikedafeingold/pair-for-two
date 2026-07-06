@@ -26,6 +26,10 @@ final class GameViewModel {
     /// this to return to the menu.
     private(set) var ended = false
 
+    /// Flips to true when an online (Game Center) opponent drops — a real-time match can't be rejoined,
+    /// so the view shows an "opponent left" state and returns to the menu.
+    private(set) var opponentLeft = false
+
     private let transport: any GameTransport
     let isHost: Bool
     let isLoopback: Bool
@@ -178,6 +182,12 @@ final class GameViewModel {
             connection = .reconnecting
         case .disconnected:
             connection = .disconnected
+            // Nearby (Multipeer) games auto-rejoin after a drop; an online real-time match can't, so a
+            // drop there is terminal — surface it and stop the heartbeat.
+            if isOnline {
+                opponentLeft = true
+                heartbeatTask?.cancel()
+            }
         case .received(let message):
             receive(message)
         }
@@ -304,6 +314,10 @@ final class GameViewModel {
 
     var runningCount: Int { snapshot.runningCount }
     var isGameOver: Bool { snapshot.phase == .gameOver }
+
+    /// An online (Game Center) game — a real-time match that can't be rejoined after a drop.
+    /// (Nearby Multipeer games are resumable; loopback never disconnects.)
+    var isOnline: Bool { !isLoopback && !resumable }
 
     /// Both players have cut for deal and the dealer is decided — show the result + "Deal".
     var cutForDealDecided: Bool {

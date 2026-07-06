@@ -54,6 +54,7 @@ struct GameTableView: View {
             .overlay(alignment: .topLeading) { quitButton }
             .overlay(alignment: .topTrailing) { settingsButton }
             .overlay { if s.phase == .gameOver { winnerOverlay(s) } }
+            .overlay { if vm.opponentLeft { opponentLeftOverlay } }
         }
         .sheet(isPresented: $showingSettings) {
             SettingsView(onDone: { showingSettings = false })
@@ -97,7 +98,7 @@ struct GameTableView: View {
     // MARK: Connection banner (non-blocking)
 
     @ViewBuilder private var connectionBanner: some View {
-        if vm.connection == .reconnecting || vm.connection == .disconnected {
+        if !vm.opponentLeft, vm.connection == .reconnecting || vm.connection == .disconnected {
             HStack(spacing: 8) {
                 ProgressView().tint(.white)
                 Text(vm.connection == .reconnecting ? "Reconnecting…" : "Disconnected")
@@ -428,6 +429,26 @@ struct GameTableView: View {
                 .buttonStyle(.borderedProminent).tint(.cribGold).foregroundStyle(.black)
             Spacer()
         }
+    }
+
+    // MARK: Opponent-left overlay (online games can't be rejoined)
+
+    @ViewBuilder private var opponentLeftOverlay: some View {
+        ZStack {
+            Color.black.opacity(0.65).ignoresSafeArea()
+            VStack(spacing: 16) {
+                Image(systemName: "wifi.slash").font(.system(size: 44)).foregroundStyle(.white)
+                Text("Opponent left").font(.title2.weight(.bold)).foregroundStyle(.white)
+                Text("The connection to your opponent was lost. Online games can't be resumed.")
+                    .font(.callout).foregroundStyle(.white.opacity(0.8))
+                    .multilineTextAlignment(.center).frame(maxWidth: 360)
+                Button("Back to menu") { onExit() }
+                    .buttonStyle(.borderedProminent).tint(.cribGold).foregroundStyle(.black)
+                    .controlSize(.large)
+            }
+            .padding(28)
+        }
+        .transition(.opacity)
     }
 
     // MARK: Winner overlay (Criboard's confetti + skunk celebration)
