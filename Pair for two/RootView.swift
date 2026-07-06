@@ -13,8 +13,9 @@ struct RootView: View {
     @State private var resumeRole: ResumeRole? = nil
     @State private var gameCenter = GameCenterManager()
     @State private var showingInvite = false                  // custom "invite a friend" sheet
-    @State private var pendingFallbackPicker = false          // present Apple's picker after the sheet closes
-    @State private var activeMatchmaker: MatchmakerContext?   // Apple's matchmaking UI (fallback)
+    @State private var pendingFallbackPicker = false          // present Apple's generic picker after the sheet closes
+    @State private var pendingInviteRecipient: GKPlayer?      // present Apple's picker targeted at this friend
+    @State private var activeMatchmaker: MatchmakerContext?   // Apple's matchmaking UI
     @Environment(\.scenePhase) private var scenePhase
 
     @AppStorage("localName") private var name = "Player"
@@ -41,12 +42,20 @@ struct RootView: View {
             .onChange(of: gameCenter.matchTick) { _, _ in
                 if let match = gameCenter.takePendingMatch() { startOnlineGame(match) }
             }
-            // Custom "invite a friend" list. If it can't help, it asks for Apple's picker, which we
-            // present only after this sheet has fully dismissed (SwiftUI can't present while dismissing).
+            // Custom "invite a friend" list. Tapping a friend (or the generic-picker button) closes this
+            // sheet, then presents Apple's matchmaker — presented only after dismissal completes, since
+            // SwiftUI can't present while dismissing.
             .sheet(isPresented: $showingInvite, onDismiss: {
-                if pendingFallbackPicker { pendingFallbackPicker = false; presentApplePicker() }
+                if let recipient = pendingInviteRecipient {
+                    pendingInviteRecipient = nil
+                    presentApplePicker(recipient: recipient)
+                } else if pendingFallbackPicker {
+                    pendingFallbackPicker = false
+                    presentApplePicker(recipient: nil)
+                }
             }) {
                 InvitePlayersView(gameCenter: gameCenter,
+                                  onInvite: { player in pendingInviteRecipient = player; showingInvite = false },
                                   onUseGameCenterPicker: { pendingFallbackPicker = true; showingInvite = false },
                                   onCancel: { showingInvite = false })
             }
@@ -68,25 +77,38 @@ struct RootView: View {
 
     // MARK: Online (Game Center) matchmaking
 
-    private func presentApplePicker() {
-        guard let controller = gameCenter.makeMatchmakerViewController() else { return }
+    private func presentApplePicker(recipient: GKPlayer?) {
+        guard let controller = gameCenter.makeMatchmakerViewController(recipient: recipient) else { return }
         activeMatchmaker = MatchmakerContext(controller: controller)
     }
 
-    /// Build the online transport from a ready match and start a networked game. The host is chosen
-    /// deterministically by player id so both devices agree on exactly one host.
+    /// Build the online transport from a ready match and start a networked game. Host selection uses
+    /// GameKit's `chooseBestHostingPlayer`, which returns the *same* player on both devices — so they
+    /// always agree on exactly one host (a plain player-id compare can double-host if `match.players`
+    /// isn't populated yet when the game starts).
     private func startOnlineGame(_ match: GKMatch) {
         showingInvite = false
         activeMatchmaker = nil
-        let localID = GKLocalPlayer.local.gamePlayerID
-        let isHost = match.players.first.map { localID < $0.gamePlayerID } ?? true
-        let transport = GameCenterTransport(match: match, isHost: isHost)
-        resumeRole = nil
-        vm = GameViewModel.networked(transport: transport,
-                                     localName: playerName, localColorID: colorID,
-                                     scoringMode: ScoringMode(rawValue: scoringModeRaw) ?? .feedback,
-                                     resumable: false)
-        screen = .game
+        match.chooseBestHostingPlayer { best in
+            Task { @MainActor in
+                let localID = GKLocalPlayer.local.gamePlayerID
+                let isHost: Bool
+                if let best {
+                    isHost = best.gamePlayerID == localID
+                } else if let opponent = match.players.first {
+                    isHost = localID < opponent.gamePlayerID   // fallback if GameKit can't decide
+                } else {
+                    isHost = true
+                }
+                let transport = GameCenterTransport(match: match, isHost: isHost)
+                resumeRole = nil
+                vm = GameViewModel.networked(transport: transport,
+                                             localName: playerName, localColorID: colorID,
+                                             scoringMode: ScoringMode(rawValue: scoringModeRaw) ?? .feedback,
+                                             resumable: false)
+                screen = .game
+            }
+        }
     }
 
     @ViewBuilder private var content: some View {

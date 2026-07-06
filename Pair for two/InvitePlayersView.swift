@@ -1,11 +1,13 @@
 import SwiftUI
 import GameKit
 
-/// Custom "invite a friend" screen for online play. Lists Game Center friends / recent players and
-/// invites the tapped one directly (no automatch — that path is flaky in the sandbox). Because Game
-/// Center gates friend access, the list can be empty; a fallback presents Apple's own picker.
+/// Custom "invite a friend" screen for online play. Lists Game Center friends / recent players; tapping
+/// one hands back through `onInvite`, which presents Apple's matchmaker targeted at that friend (Apple's
+/// UI reliably delivers the invite). Because Game Center gates friend access the list can be empty; the
+/// fallback presents Apple's own picker.
 struct InvitePlayersView: View {
     let gameCenter: GameCenterManager
+    var onInvite: (GKPlayer) -> Void
     var onUseGameCenterPicker: () -> Void
     var onCancel: () -> Void
 
@@ -29,10 +31,7 @@ struct InvitePlayersView: View {
 
             VStack {
                 HStack {
-                    Button {
-                        gameCenter.cancelInvite()
-                        onCancel()
-                    } label: {
+                    Button { onCancel() } label: {
                         Label("Back", systemImage: "chevron.left")
                             .font(.callout.weight(.semibold)).foregroundStyle(.white)
                     }
@@ -49,32 +48,6 @@ struct InvitePlayersView: View {
     }
 
     @ViewBuilder private var content: some View {
-        switch gameCenter.inviteState {
-        case .inviting(let name):
-            VStack(spacing: 14) {
-                ProgressView().tint(.white).controlSize(.large)
-                Text("Inviting \(name)…").foregroundStyle(.white)
-                Text("They'll get a Game Center notification — keep this screen open until they join.")
-                    .font(.caption).foregroundStyle(.white.opacity(0.6)).multilineTextAlignment(.center)
-                Button("Cancel invite") { gameCenter.cancelInvite() }
-                    .buttonStyle(.bordered).tint(.white)
-            }
-
-        case .failed(let message):
-            VStack(spacing: 14) {
-                Image(systemName: "exclamationmark.triangle.fill")
-                    .font(.system(size: 34)).foregroundStyle(Color.cribGold)
-                Text(message).foregroundStyle(.white).multilineTextAlignment(.center)
-                Button("Back to friends") { gameCenter.cancelInvite() }
-                    .buttonStyle(.borderedProminent).tint(.cribGold).foregroundStyle(.black)
-            }
-
-        default:
-            friendList
-        }
-    }
-
-    @ViewBuilder private var friendList: some View {
         if !loaded {
             VStack(spacing: 12) {
                 ProgressView().tint(.white).controlSize(.large)
@@ -97,7 +70,7 @@ struct InvitePlayersView: View {
                 ScrollView {
                     VStack(spacing: 8) {
                         ForEach(friends, id: \.gamePlayerID) { player in
-                            Button { gameCenter.invite(player) } label: {
+                            Button { onInvite(player) } label: {
                                 HStack(spacing: 12) {
                                     Image(systemName: "person.crop.circle.fill")
                                     Text(player.displayName).fontWeight(.semibold)
