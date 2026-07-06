@@ -33,6 +33,9 @@ final class GameCenterManager: NSObject {
     private(set) var matchTick = 0
     private var didRegisterListener = false
 
+    /// A match returned by `findMatch` that we're still waiting on the invited friend to join.
+    private var connectingMatch: GKMatch?
+
     /// A friendly error to surface in an alert (e.g. Game Center not set up, or a network failure).
     var presentedError: String?
 
@@ -98,11 +101,34 @@ final class GameCenterManager: NSObject {
         request.inviteMessage = "Let's play Pair for Two!"
         let name = player.displayName
         inviteState = .inviting(name)
+        // How the invited player responded — so we don't wait forever if they miss or decline it.
+        request.recipientResponseHandler = { [weak self] responder, response in
+            Task { @MainActor in
+                guard let self, case .inviting = self.inviteState else { return }
+                switch response {
+                case .accepted:
+                    break   // they'll connect next; we start the game then
+                case .declined:
+                    self.cancelInvite()
+                    self.inviteState = .failed("\(responder.displayName) declined the invite.")
+                default:
+                    self.cancelInvite()
+                    self.inviteState = .failed("No response from \(responder.displayName). They may not have received the invite — make sure they're signed into Game Center, then try again.")
+                }
+            }
+        }
         GKMatchmaker.shared().findMatch(for: request) { [weak self] match, error in
             Task { @MainActor in
                 guard let self else { return }
                 if let match {
-                    self.deliver(match)
+                    // findMatch can return before the invitee has actually joined — wait for them so
+                    // we don't drop the host onto the board while nobody's there.
+                    if match.expectedPlayerCount == 0 {
+                        self.deliver(match)
+                    } else {
+                        self.connectingMatch = match
+                        match.delegate = self
+                    }
                 } else if let error, let message = Self.friendlyMessage(for: error) {
                     self.inviteState = .failed(message)
                 } else {
@@ -115,6 +141,7 @@ final class GameCenterManager: NSObject {
     /// Cancel a pending outgoing invite / matchmaking.
     func cancelInvite() {
         GKMatchmaker.shared().cancel()
+        connectingMatch = nil
         inviteState = .idle
     }
 
@@ -179,6 +206,28 @@ final class GameCenterManager: NSObject {
         var top = root
         while let presented = top.presentedViewController { top = presented }
         top.present(viewController, animated: true)
+    }
+}
+
+// MARK: - Awaiting the invited player
+
+extension GameCenterManager: GKMatchDelegate {
+    /// While we wait for an invited friend to join, watch the match and start the game only once they
+    /// are actually connected. The transport takes over as the match's delegate once the game starts.
+    nonisolated func match(_ match: GKMatch, player: GKPlayer, didChange state: GKPlayerConnectionState) {
+        Task { @MainActor in
+            guard self.connectingMatch === match else { return }
+            switch state {
+            case .connected where match.expectedPlayerCount == 0:
+                self.connectingMatch = nil
+                self.deliver(match)
+            case .disconnected:
+                self.connectingMatch = nil
+                self.inviteState = .failed("The other player left before the game started.")
+            default:
+                break
+            }
+        }
     }
 }
 
