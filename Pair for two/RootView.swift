@@ -54,8 +54,15 @@ struct RootView: View {
                 MatchmakerView(controller: context.controller,
                                onMatch: { startOnlineGame($0) },
                                onCancel: { activeMatchmaker = nil },
-                               onError: { _ in activeMatchmaker = nil })
+                               onError: { error in activeMatchmaker = nil; gameCenter.report(error) })
                     .ignoresSafeArea()
+            }
+            .alert("Online play unavailable",
+                   isPresented: Binding(get: { gameCenter.presentedError != nil },
+                                        set: { if !$0 { gameCenter.presentedError = nil } })) {
+                Button("OK", role: .cancel) { gameCenter.presentedError = nil }
+            } message: {
+                Text(gameCenter.presentedError ?? "")
             }
     }
 

@@ -33,6 +33,33 @@ final class GameCenterManager: NSObject {
     private(set) var matchTick = 0
     private var didRegisterListener = false
 
+    /// A friendly error to surface in an alert (e.g. Game Center not set up, or a network failure).
+    var presentedError: String?
+
+    /// Turn a raw Game Center error into a clear, human message — or nil if it was just a cancel
+    /// (nothing to show). Notably maps `.gameUnrecognized` (the "not recognized by Game Center" error
+    /// you hit before the app is registered for Game Center).
+    static func friendlyMessage(for error: Error) -> String? {
+        guard let gkError = error as? GKError else { return error.localizedDescription }
+        switch gkError.code {
+        case .cancelled:
+            return nil
+        case .gameUnrecognized:
+            return "Online play isn't set up for this app yet. Game Center doesn't recognize this build — this clears once the app is enabled for Game Center in App Store Connect (and can take a little while to take effect)."
+        case .notAuthenticated:
+            return "Sign in to Game Center in the Settings app to play online."
+        case .communicationsFailure, .unknown:
+            return "Couldn't reach Game Center. Check your internet connection and try again."
+        default:
+            return "Couldn't start the online game. Please try again. (Game Center error \(gkError.code.rawValue).)"
+        }
+    }
+
+    /// Surface an error in the alert, unless it was a cancel.
+    func report(_ error: Error) {
+        if let message = Self.friendlyMessage(for: error) { presentedError = message }
+    }
+
     /// The signed-in player's Game Center name (empty until authenticated).
     var localDisplayName: String {
         GKLocalPlayer.local.isAuthenticated ? GKLocalPlayer.local.displayName : ""
@@ -76,8 +103,10 @@ final class GameCenterManager: NSObject {
                 guard let self else { return }
                 if let match {
                     self.deliver(match)
+                } else if let error, let message = Self.friendlyMessage(for: error) {
+                    self.inviteState = .failed(message)
                 } else {
-                    self.inviteState = .failed(error?.localizedDescription ?? "Couldn't reach \(name).")
+                    self.inviteState = .idle   // cancelled, or no match with no error
                 }
             }
         }
@@ -133,8 +162,10 @@ final class GameCenterManager: NSObject {
                 GKLocalPlayer.local.register(self)   // receive game invitations from friends
                 didRegisterListener = true
             }
+        } else if let error {
+            unavailableReason = Self.friendlyMessage(for: error) ?? "Sign in to Game Center to play online."
         } else {
-            unavailableReason = error?.localizedDescription ?? "Sign in to Game Center to play online."
+            unavailableReason = "Sign in to Game Center to play online."
         }
     }
 
@@ -157,10 +188,11 @@ extension GameCenterManager: GKLocalPlayerListener {
     /// The local player accepted an invitation (from a Game Center notification / their friend's
     /// invite). Resolve it to a match programmatically and start the game — no matchmaker UI needed.
     nonisolated func player(_ player: GKPlayer, didAccept invite: GKInvite) {
-        GKMatchmaker.shared().match(for: invite) { [weak self] match, _ in
+        GKMatchmaker.shared().match(for: invite) { [weak self] match, error in
             Task { @MainActor in
-                guard let self, let match else { return }
-                self.deliver(match)
+                guard let self else { return }
+                if let match { self.deliver(match) }
+                else if let error { self.report(error) }
             }
         }
     }
