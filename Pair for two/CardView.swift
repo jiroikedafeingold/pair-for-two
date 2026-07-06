@@ -46,31 +46,37 @@ struct CardView: View {
     private func face(for card: Card) -> some View {
         let ink = card.suit.isRed ? Color.cardRed : Color.cardInk
         return ZStack {
-            VStack(alignment: .leading, spacing: -width * 0.04) {
-                Text(card.rank.label)
-                    .font(.system(size: width * 0.30, weight: .bold, design: .serif))
-                Text(card.suit.symbol)
-                    .font(.system(size: width * 0.24, weight: .semibold))
-            }
-            .foregroundStyle(ink)
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-            .padding(width * 0.10)
+            cornerIndex(for: card, ink: ink)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                .padding(width * 0.09)
 
+            // Centre pip. Sized to sit clearly inside the middle so it never collides with the corner
+            // indices — especially the wider two-character "10".
             Text(card.suit.symbol)
-                .font(.system(size: width * 0.52))
+                .font(.system(size: width * 0.44))
                 .foregroundStyle(ink.opacity(0.92))
 
-            VStack(alignment: .trailing, spacing: -width * 0.04) {
-                Text(card.rank.label)
-                    .font(.system(size: width * 0.30, weight: .bold, design: .serif))
-                Text(card.suit.symbol)
-                    .font(.system(size: width * 0.24, weight: .semibold))
-            }
-            .foregroundStyle(ink)
-            .rotationEffect(.degrees(180))
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing)
-            .padding(width * 0.10)
+            cornerIndex(for: card, ink: ink)
+                .rotationEffect(.degrees(180))
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing)
+                .padding(width * 0.09)
         }
+    }
+
+    /// The rank-over-suit corner index. `lineLimit`/`fixedSize` keep the two-character "10" on one
+    /// line at its natural width; a tight negative kerning keeps that "10" compact so it doesn't creep
+    /// toward the centre pip.
+    private func cornerIndex(for card: Card, ink: Color) -> some View {
+        VStack(alignment: .leading, spacing: -width * 0.03) {
+            Text(card.rank.label)
+                .font(.system(size: width * 0.28, weight: .bold, design: .serif))
+                .kerning(-width * 0.015)
+                .lineLimit(1)
+                .fixedSize()
+            Text(card.suit.symbol)
+                .font(.system(size: width * 0.22, weight: .semibold))
+        }
+        .foregroundStyle(ink)
     }
 
     // MARK: Back

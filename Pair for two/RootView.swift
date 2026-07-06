@@ -13,9 +13,8 @@ struct RootView: View {
     @State private var resumeRole: ResumeRole? = nil
     @State private var gameCenter = GameCenterManager()
     @State private var showingInvite = false                  // custom "invite a friend" sheet
-    @State private var pendingFallbackPicker = false          // present Apple's generic picker after the sheet closes
-    @State private var pendingInviteRecipient: GKPlayer?      // present Apple's picker targeted at this friend
-    @State private var activeMatchmaker: MatchmakerContext?   // Apple's matchmaking UI
+    @State private var pendingFallbackPicker = false          // present Apple's picker after the sheet closes
+    @State private var activeMatchmaker: MatchmakerContext?   // Apple's matchmaking UI (fallback)
     @Environment(\.scenePhase) private var scenePhase
 
     @AppStorage("localName") private var name = "Player"
@@ -45,22 +44,15 @@ struct RootView: View {
                     startOnlineGame(ready.match, isHost: ready.isHost)
                 }
             }
-            // Custom "invite a friend" list. Tapping a friend (or the generic-picker button) closes this
-            // sheet, then presents Apple's matchmaker — presented only after dismissal completes, since
-            // SwiftUI can't present while dismissing.
+            // Custom "invite a friend" list. Tapping a friend sends a one-tap invite in place; the
+            // "Invite with Game Center" button closes this sheet and opens Apple's picker (presented
+            // only after dismissal completes, since SwiftUI can't present while dismissing).
             .sheet(isPresented: $showingInvite, onDismiss: {
-                if let recipient = pendingInviteRecipient {
-                    pendingInviteRecipient = nil
-                    presentApplePicker(recipient: recipient)
-                } else if pendingFallbackPicker {
-                    pendingFallbackPicker = false
-                    presentApplePicker(recipient: nil)
-                }
+                if pendingFallbackPicker { pendingFallbackPicker = false; presentApplePicker() }
             }) {
                 InvitePlayersView(gameCenter: gameCenter,
-                                  onInvite: { player in pendingInviteRecipient = player; showingInvite = false },
                                   onUseGameCenterPicker: { pendingFallbackPicker = true; showingInvite = false },
-                                  onCancel: { showingInvite = false })
+                                  onCancel: { gameCenter.cancelInvite(); showingInvite = false })
             }
             .fullScreenCover(item: $activeMatchmaker) { context in
                 MatchmakerView(controller: context.controller,
@@ -80,8 +72,8 @@ struct RootView: View {
 
     // MARK: Online (Game Center) matchmaking
 
-    private func presentApplePicker(recipient: GKPlayer?) {
-        guard let controller = gameCenter.makeMatchmakerViewController(recipient: recipient) else { return }
+    private func presentApplePicker() {
+        guard let controller = gameCenter.makeMatchmakerViewController() else { return }
         activeMatchmaker = MatchmakerContext(controller: controller)
     }
 

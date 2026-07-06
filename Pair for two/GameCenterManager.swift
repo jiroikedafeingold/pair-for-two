@@ -28,6 +28,10 @@ final class GameCenterManager: NSObject {
     /// A match we're holding until its opponent actually connects (so host election is reliable).
     private var awaitingMatch: GKMatch?
 
+    /// Progress of a one-tap friend invite, for the invite UI.
+    enum InviteState: Equatable { case idle, inviting(String), failed(String) }
+    private(set) var inviteState: InviteState = .idle
+
     /// A friendly error to surface in an alert (e.g. Game Center not set up, or a network failure).
     var presentedError: String?
 
@@ -81,6 +85,53 @@ final class GameCenterManager: NSObject {
         }
     }
 
+    /// One-tap invite: ask Game Center to invite this specific friend to a new 2-player match. When
+    /// they accept and the match connects, `beginMatch` elects the host and starts the game. The UI
+    /// shows "Inviting…", and `recipientResponseHandler` surfaces a decline / no-answer so it never
+    /// hangs. Apple's own picker remains available as a fallback.
+    func invite(_ player: GKPlayer) {
+        let request = GKMatchRequest()
+        request.minPlayers = 2
+        request.maxPlayers = 2
+        request.recipients = [player]
+        request.inviteMessage = "Let's play Pair for Two!"
+        inviteState = .inviting(player.displayName)
+        request.recipientResponseHandler = { [weak self] responder, response in
+            Task { @MainActor in
+                guard let self, case .inviting = self.inviteState else { return }
+                switch response {
+                case .accepted:
+                    break   // they'll connect; beginMatch takes over
+                case .declined:
+                    self.cancelInvite()
+                    self.inviteState = .failed("\(responder.displayName) declined.")
+                default:
+                    self.cancelInvite()
+                    self.inviteState = .failed("No response from \(responder.displayName). Make sure they're signed into Game Center, or use the Game Center inviter below.")
+                }
+            }
+        }
+        GKMatchmaker.shared().findMatch(for: request) { [weak self] match, error in
+            Task { @MainActor in
+                guard let self, case .inviting = self.inviteState else { return }
+                if let match {
+                    self.beginMatch(match)
+                } else if let error, let message = Self.friendlyMessage(for: error) {
+                    self.inviteState = .failed(message)
+                } else {
+                    self.inviteState = .idle
+                }
+            }
+        }
+    }
+
+    /// Cancel a pending one-tap invite.
+    func cancelInvite() {
+        GKMatchmaker.shared().cancel()
+        awaitingMatch = nil
+        inviteState = .idle
+    }
+
     /// Take a ready match once, from either path (an accepted invite, or the matchmaker's `didFind`).
     /// Waits until the opponent has actually connected before electing a host, so the two devices can't
     /// both default to host when `match.players` is momentarily empty at start.
@@ -95,6 +146,7 @@ final class GameCenterManager: NSObject {
 
     private func finalize(_ match: GKMatch) {
         awaitingMatch = nil
+        inviteState = .idle
         // Deterministic host election: the lower Game Center id hosts. gamePlayerID is stable per
         // player for this game across both devices, so both compute the same single host.
         let localID = GKLocalPlayer.local.gamePlayerID

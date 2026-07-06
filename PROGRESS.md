@@ -15,19 +15,19 @@ This file tracks what's actually built.
 
 ## Status at a glance
 
-**All core steps (1–7) are done and the 2-device Multipeer game is user-confirmed working.**
-Current version **1.0.2 (build 3)**. Builds clean on iPhone 17 Pro / iPad Pro 13" (iOS 27 sims).
-Active run destination: iPhone 17 Pro.
+**All core steps (1–7) done. Both nearby (Multipeer) AND online (Game Center) two-device play are
+user-confirmed working on real devices.** Current version **1.0.8+** (Xcode Cloud owns the build
+number). Builds clean on iPhone 17 Pro / iPad Pro 13" (iOS 27 sims).
 
 | Step | Feature | Status |
 |------|---------|--------|
 | 1–4 | Models, Scorer, Engine, table UI, ScorePanel, WinnerOverlay, Haptics | ✅ Done |
-| 5 | MultipeerTransport + ConnectView (two-device) | ✅ Done + 2-device smoke test passed |
+| 5 | MultipeerTransport + ConnectView (two-device) | ✅ Done + 2-device test passed |
 | 6 | Polish — iPad | ✅ Done |
 | 6 | Polish — accessibility/VoiceOver, localization | ⛔ Deferred (user's call) |
 | 7 | Reconnect / resume + persistence | ✅ Done |
-| — | **Online play over Game Center** (Phases 0–5) | ✅ Built, **not yet device-tested** |
-| — | Online play Phase 6 (disconnect/"opponent left" polish) | ⬜ Next |
+| — | **Online play over Game Center** (Phases 0–6) | ✅ Done + **2-device test passed on TestFlight** |
+| — | Xcode Cloud → TestFlight CI | ✅ Set up (auto build numbers via `ci_scripts`) |
 
 ### Long tail of refinements since the core build (all 2026-07-05, all committed & pushed)
 
@@ -45,47 +45,46 @@ Active run destination: iPhone 17 Pro.
   folds a pending slider value ("Add N & continue").
 - Icon (higher-contrast two-queens crop), iPad show-screen centering, and other layout polish.
 
-### Online play (Game Center) — what's built (Phases 0–5)
+### Online play (Game Center) — DONE (Phases 0–6, 2-device confirmed on TestFlight)
 
-- **Entitlement**: `com.apple.developer.game-center` (via `AddEntitlement`).
-- **`GameCenterManager.swift`**: authenticates `GKLocalPlayer` at launch, presents the sign-in VC,
-  exposes `isAuthenticated`; builds the matchmaker VC; registers a `GKLocalPlayerListener` and
-  surfaces accepted invites (`pendingInvite`/`inviteTick`/`takePendingInvite()`).
-- **`MatchmakerView.swift`**: `UIViewControllerRepresentable` over `GKMatchmakerViewController`
-  (+ `MatchmakerContext` Identifiable box) → reports the ready `GKMatch` / cancel / error.
-- **`GameCenterTransport.swift`**: `GKMatch`-backed `GameTransport` (`@unchecked Sendable`) — JSON
-  `GameMessage`s over `match.sendData(...reliable)`; connect/disconnect from `GKMatchDelegate`.
-- **RootView**: an auth-gated **"Play online"** button presents the matchmaker (`fullScreenCover`);
-  accepted invites auto-present it; a ready match → build transport → `GameViewModel.networked(...,
-  resumable: false)` → game. Host elected deterministically by `gamePlayerID`.
-- **`resumable` flag** on `GameViewModel` (false for GC) gates all `GamePersistence` writes so online
-  games never write a Multipeer-only "Rejoin" marker.
+- **Entitlement** `com.apple.developer.game-center`; Info.plist `NSGKFriendListUsageDescription` +
+  `ITSAppUsesNonExemptEncryption=false`.
+- **`GameCenterManager.swift`**: authenticates `GKLocalPlayer`; loads friends/recents
+  (`loadInvitablePlayers`); **one-tap `invite(player)`** (`findMatch` with `recipients`, +
+  `recipientResponseHandler` for decline/no-answer, + `inviteState` for the UI); accepts invitations
+  (`GKLocalPlayerListener.didAccept` → `match(for:)`); **`beginMatch`** waits (as `GKMatchDelegate`)
+  until the opponent actually connects, THEN elects host by lower `gamePlayerID` (`finalize` →
+  `pendingMatch`/`pendingIsHost`/`matchTick`). `makeMatchmakerViewController` = Apple's picker fallback.
+- **`GameCenterTransport.swift`**: `GKMatch`-backed `GameTransport` (`@unchecked Sendable`).
+- **`InvitePlayersView.swift`**: friend list → one-tap invite; "Inviting…/failed" states; empty-state
+  + "Invite with Game Center" fallback (Apple's picker).
+- **RootView**: "Play online" → invite sheet; `matchTick` → `startOnlineGame(match, isHost:)`.
+- **Phase 6 opponent-left**: `GameViewModel.isOnline` (`!isLoopback && !resumable`); a `.disconnected`
+  there sets `opponentLeft` → GameTableView shows an "Opponent left" overlay → Back to menu (online
+  real-time matches can't be rejoined). Graceful `.quitGame` path unchanged.
+- **Guest re-sends `.hello`** until it gets a snapshot (covers a dropped first hello).
+
+**Hard-won lessons (documented so we don't relearn):**
+- **Sandbox (Xcode dev builds) Game Center is unreliable** — automatch "Failed to find players",
+  invites don't deliver. **Test online over TestFlight (production Game Center).**
+- **Host election must happen AFTER the opponent connects** — electing on an empty `match.players`
+  double-hosted (both "waiting for a player to join"). `chooseBestHostingPlayer` was also unreliable
+  that early; the fix is wait-then-compare `gamePlayerID`.
+- App Store Connect: Game Center is enabled **per app version** (no "Services" tab in the redesign);
+  needs an uploaded build first. `GKError` code 15 = app not yet recognized (config/propagation).
 
 ---
 
-## ▶️ Where to resume tomorrow
+## ▶️ Where things stand / what's left
 
-Online play (Game Center) is **built but never run on real hardware**. Two tracks:
+Online + nearby play both work on real devices. Remaining optional work:
 
-1. **On-device smoke test of online play** (the blocker). Needs, outside the code:
-   - **App Store Connect**: enable **Game Center** for the app's bundle ID.
-   - **Two devices, two different Game Center accounts** (sandbox / TestFlight) that are **Game Center
-     friends** — the matchmaker's picker shows friends/recent players, *not* a username search.
-   - Then: both sign in → "Play online" on one → invite the friend → accept → confirm a full game
-     (cut, discard, pegging, show, win), the **quit** flow, and what a mid-game disconnect looks like.
-   - Note: in the **simulator** the "Play online" button stays disabled (its sign-in hint shows) —
-     that's expected; Game Center needs a real device + configured app.
-2. **Online play Phase 6** (polish, can do before/after the test): a real-time `GKMatch` can't be
-   rejoined after a hard exit, so make a drop graceful — surface **"Opponent left"** and return to the
-   menu instead of the nearby-style "Reconnecting…" spin. `GameCenterTransport.reconnect()` is a
-   deliberate no-op; the disconnect currently just sets `connection = .disconnected`.
-
-Deferred (unchanged): **accessibility/VoiceOver + localization** (`CardView` already sets a per-card
-VoiceOver label via `Card.accessibleName`; localization would edit an `.xcstrings` catalog directly).
-
-**Invite-UX caveat / fallback:** if the Game Center friend-invite flow proves annoying in practice,
-the documented fallback (see `REMOTE_PLAY_PLAN.md`) is a **room-code WebSocket relay** — nicer pairing
-(type a code) using only native `URLSessionWebSocketTask`, at the cost of running a small server.
+1. **Deferred:** accessibility/VoiceOver + localization (`.xcstrings`). `CardView` already has per-card
+   VoiceOver labels (`Card.accessibleName`).
+2. **Nice-to-have:** the `REMOTE_PLAY_PLAN.md` room-code relay is no longer needed (Game Center invites
+   work), but remains the documented fallback if Game Center ever becomes a pain.
+3. Continue toward App Store submission (screenshots, privacy, review notes — Local Network + Game
+   Center answers are in `XCODE_CLOUD.md`).
 
 ---
 
