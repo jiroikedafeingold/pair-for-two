@@ -367,7 +367,6 @@ struct GameTableView: View {
                     }
                 }
             }
-            .frame(maxHeight: .infinity)
 
             if vm.youAreCounting {
                 Text(s.scoringMode == .auto ? "Scored automatically" : "Count it on your slider, then Continue")
@@ -384,7 +383,10 @@ struct GameTableView: View {
             } else {
                 waitingLabel("Waiting for \(vm.name(of: vm.showCountingPlayer ?? s.you)) to count…")
             }
+
+            Spacer(minLength: 0)   // keep the cards + button grouped near the top (esp. on iPad)
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
     // MARK: Hand complete
