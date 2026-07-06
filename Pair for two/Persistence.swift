@@ -1,14 +1,19 @@
 import Foundation
 
-/// Persists the host's authoritative `GameState` to Application Support so a single-device
-/// (pass-and-play) game can be resumed after the app is killed. The host is the single source of
-/// truth, so recovery is just reloading that one object.
+/// Persists an interrupted game so it can be rejoined after the app is closed.
 ///
-/// Scope: relaunch-resume covers the single-device / host game. Networked *live* drop-and-return is
-/// handled at the transport layer (`MultipeerSession` keeps trying to rejoin); cross-launch re-pairing
-/// of two devices is out of scope for v1.
+/// - The **host** writes its full authoritative `GameState` (to Application Support) — resuming means
+///   reloading that one object and re-hosting.
+/// - Both devices also write a small **marker** (in `UserDefaults`) recording that a game is in
+///   progress, this device's role, and a score summary — so *either* phone can show "Rejoin game".
+///   The guest holds no state; it just reconnects and the host resyncs it.
 enum GamePersistence {
     private static let filename = "pairfortwo-game.json"
+    private static let kActive = "resume.active"
+    private static let kIsHost = "resume.isHost"
+    private static let kSummary = "resume.summary"
+
+    struct ResumeMarker { let isHost: Bool; let summary: String }
 
     private static var url: URL? {
         let fm = FileManager.default
@@ -17,13 +22,15 @@ enum GamePersistence {
         return dir.appendingPathComponent(filename)
     }
 
+    // MARK: Host — full state
+
     static func save(_ state: GameState) {
         guard let url else { return }
         do {
-            let data = try JSONEncoder().encode(state)
-            try data.write(to: url, options: .atomic)
+            try JSONEncoder().encode(state).write(to: url, options: .atomic)
+            saveMarker(isHost: true, summary: summary(of: state))
         } catch {
-            // Best-effort; a failed write just means no resume is offered.
+            // Best-effort; a failed write just means no rejoin is offered.
         }
     }
 
@@ -32,14 +39,32 @@ enum GamePersistence {
         return try? JSONDecoder().decode(GameState.self, from: data)
     }
 
-    static func clear() {
-        guard let url else { return }
-        try? FileManager.default.removeItem(at: url)
+    // MARK: Marker — both roles
+
+    static func saveMarker(isHost: Bool, summary: String) {
+        let d = UserDefaults.standard
+        d.set(true, forKey: kActive)
+        d.set(isHost, forKey: kIsHost)
+        d.set(summary, forKey: kSummary)
     }
 
-    /// A short description for the resume button, e.g. "Ann 42 · Ben 51".
-    static func savedGameSummary() -> String? {
-        guard let s = loadState(), s.phase != .gameOver else { return nil }
+    static func loadMarker() -> ResumeMarker? {
+        let d = UserDefaults.standard
+        guard d.bool(forKey: kActive) else { return nil }
+        return ResumeMarker(isHost: d.bool(forKey: kIsHost), summary: d.string(forKey: kSummary) ?? "")
+    }
+
+    // MARK: Clear
+
+    static func clear() {
+        if let url { try? FileManager.default.removeItem(at: url) }
+        let d = UserDefaults.standard
+        d.removeObject(forKey: kActive)
+        d.removeObject(forKey: kIsHost)
+        d.removeObject(forKey: kSummary)
+    }
+
+    private static func summary(of s: GameState) -> String {
         let one = s.names[.one] ?? "Player 1"
         let two = s.names[.two] ?? "Player 2"
         return "\(one) \(s.scores[.one] ?? 0) · \(two) \(s.scores[.two] ?? 0)"

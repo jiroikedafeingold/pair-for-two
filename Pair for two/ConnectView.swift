@@ -1,23 +1,28 @@
 import SwiftUI
 import MultipeerConnectivity
 
+/// Which side is rejoining a saved game (host re-hosts its state, guest reconnects to the host).
+enum ResumeRole { case host, guest }
+
 /// Host or join a nearby game over MultipeerConnectivity. No internet, no accounts. On success it
 /// hands the live `MultipeerSession` (a `GameTransport`) up to `RootView`, which builds the game.
 struct ConnectView: View {
     let localName: String
     let localColorID: Int
-    var resuming: Bool = false      // resuming a saved game as host → auto-host, wait for rejoin
+    var resumeRole: ResumeRole? = nil    // set → auto-(re)connect in that role for a saved game
     var onConnected: (MultipeerSession) -> Void
     var onCancel: () -> Void
 
     @State private var session: MultipeerSession
 
-    init(localName: String, localColorID: Int, resuming: Bool = false,
+    private var resuming: Bool { resumeRole != nil }
+
+    init(localName: String, localColorID: Int, resumeRole: ResumeRole? = nil,
          onConnected: @escaping (MultipeerSession) -> Void,
          onCancel: @escaping () -> Void) {
         self.localName = localName
         self.localColorID = localColorID
-        self.resuming = resuming
+        self.resumeRole = resumeRole
         self.onConnected = onConnected
         self.onCancel = onCancel
         _session = State(initialValue: MultipeerSession(displayName: localName))
@@ -60,7 +65,17 @@ struct ConnectView: View {
             if phase == .connected { onConnected(session) }
         }
         .onAppear {
-            if resuming && session.phase == .idle { session.startHosting() }   // auto-host to resume
+            switch resumeRole {
+            case .host:  if session.phase == .idle { session.startHosting() }   // re-host the saved game
+            case .guest: if session.phase == .idle { session.startBrowsing() }  // find & rejoin the host
+            case .none:  break
+            }
+        }
+        // Guest rejoin: auto-invite the host as soon as it's found (no manual peer tap).
+        .onChange(of: session.discoveredPeers) { _, peers in
+            if resumeRole == .guest, session.phase == .browsing, let host = peers.first {
+                session.invite(host)
+            }
         }
     }
 
@@ -81,7 +96,15 @@ struct ConnectView: View {
                 ProgressView().tint(.white).controlSize(.large)
                 Text(resuming ? "Waiting for the other player to rejoin…" : "Waiting for a player to join…")
                     .foregroundStyle(.white)
-                Text("Have the other player tap **\(resuming ? "Play" : "Join a game")** on their phone.")
+                Text("Have the other player tap **\(resuming ? "Rejoin game" : "Join a game")** on their phone.")
+                    .font(.caption).foregroundStyle(.white.opacity(0.6)).multilineTextAlignment(.center)
+            }
+
+        case .browsing where resumeRole == .guest:
+            VStack(spacing: 12) {
+                ProgressView().tint(.white).controlSize(.large)
+                Text("Rejoining your game…").foregroundStyle(.white)
+                Text("Make sure the other phone tapped **Rejoin game**.")
                     .font(.caption).foregroundStyle(.white.opacity(0.6)).multilineTextAlignment(.center)
             }
 

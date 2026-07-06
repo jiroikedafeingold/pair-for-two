@@ -114,10 +114,22 @@ final class GameViewModel {
                       snapshot: savedState.snapshot(for: .one), connection: .connecting)
     }
 
-    /// Save the current authoritative state (host only) — called when the app is backgrounded/closed.
+    /// Save the game as the app is backgrounded/closed. The host writes its full state; the guest just
+    /// records a marker so it can offer to rejoin.
     func persist() {
-        guard isHost, let state, state.phase != .gameOver else { return }
-        GamePersistence.save(state)
+        if isHost {
+            if let state, state.phase != .gameOver { GamePersistence.save(state) }
+        } else if snapshot.phase != .connecting, snapshot.phase != .gameOver {
+            GamePersistence.saveMarker(isHost: false, summary: snapshotSummary(snapshot))
+        }
+    }
+
+    private func snapshotSummary(_ s: PlayerSnapshot) -> String {
+        let oneName = s.you == .one ? s.yourName : s.opponentName
+        let oneScore = s.you == .one ? s.yourScore : s.opponentScore
+        let twoName = s.you == .one ? s.opponentName : s.yourName
+        let twoScore = s.you == .one ? s.opponentScore : s.yourScore
+        return "\(oneName) \(oneScore) · \(twoName) \(twoScore)"
     }
 
     static func placeholderSnapshot(you: PlayerID, name: String, colorID: Int) -> PlayerSnapshot {
@@ -188,6 +200,9 @@ final class GameViewModel {
                 snapshot = snap
                 fixedPlayer = snap.you
                 if snap.phase != previousPhase { selectedForDiscard.removeAll() }
+                // Guest marker so this device can also offer "Rejoin game".
+                if snap.phase == .gameOver { GamePersistence.clear() }
+                else if snap.phase != .connecting { GamePersistence.saveMarker(isHost: false, summary: snapshotSummary(snap)) }
             case .assignSeat(let player):
                 fixedPlayer = player
             default:

@@ -8,8 +8,8 @@ struct RootView: View {
     @State private var screen: Screen = .menu
     @State private var vm: GameViewModel?
     @State private var showingSettings = false
-    @State private var resumeSummary: String? = GamePersistence.savedGameSummary()
-    @State private var resuming = false
+    @State private var resumeMarker: GamePersistence.ResumeMarker? = GamePersistence.loadMarker()
+    @State private var resumeRole: ResumeRole? = nil
     @Environment(\.scenePhase) private var scenePhase
 
     @AppStorage("localName") private var name = "Player"
@@ -39,11 +39,12 @@ struct RootView: View {
             menu
 
         case .connect:
-            ConnectView(localName: playerName, localColorID: colorID, resuming: resuming,
+            ConnectView(localName: playerName, localColorID: colorID, resumeRole: resumeRole,
                         onConnected: { session in
-                            if resuming, let saved = GamePersistence.loadState() {
+                            if resumeRole == .host, let saved = GamePersistence.loadState() {
                                 vm = GameViewModel.resumeHost(transport: session, savedState: saved)
                             } else {
+                                // Fresh game, or guest rejoining (the host resyncs it on reconnect).
                                 vm = GameViewModel.networked(transport: session,
                                                              localName: playerName,
                                                              localColorID: colorID,
@@ -88,17 +89,17 @@ struct RootView: View {
                 }
                 .buttonStyle(.plain)
 
-                if let resumeSummary {
+                if let resumeMarker {
                     Button {
-                        resuming = true
+                        resumeRole = resumeMarker.isHost ? .host : .guest
                         screen = .connect
                     } label: {
                         VStack(spacing: 2) {
                             HStack(spacing: 8) {
                                 Image(systemName: "arrow.clockwise.circle.fill")
-                                Text("Continue game").fontWeight(.bold)
+                                Text("Rejoin game").fontWeight(.bold)
                             }
-                            Text(resumeSummary).font(.caption).foregroundStyle(.black.opacity(0.6))
+                            Text(resumeMarker.summary).font(.caption).foregroundStyle(.black.opacity(0.6))
                         }
                         .font(.title3)
                         .padding(.horizontal, 26).padding(.vertical, 12)
@@ -107,28 +108,25 @@ struct RootView: View {
                 }
 
                 Button {
-                    resuming = false
+                    resumeRole = nil
                     GamePersistence.clear()   // fresh game supersedes any saved one
-                    resumeSummary = nil
+                    resumeMarker = nil
                     screen = .connect
                 } label: {
                     HStack(spacing: 8) {
                         Image(systemName: "dot.radiowaves.left.and.right")
-                        Text(resumeSummary == nil ? "Play" : "New game").fontWeight(.bold)
+                        Text(resumeMarker == nil ? "Play" : "New game").fontWeight(.bold)
                     }
                     .font(.title3)
                     .padding(.horizontal, 30).padding(.vertical, 14)
                 }
                 .buttonStyle(.borderedProminent)
-                .tint(resumeSummary == nil ? .cribGold : Color.white.opacity(0.22))
-                .foregroundStyle(resumeSummary == nil ? .black : .white)
-
-                Button("Settings") { showingSettings = true }
-                    .buttonStyle(.bordered).tint(.white)
+                .tint(resumeMarker == nil ? .cribGold : Color.white.opacity(0.22))
+                .foregroundStyle(resumeMarker == nil ? .black : .white)
             }
             .padding(28)
         }
-        .onAppear { resumeSummary = GamePersistence.savedGameSummary() }
+        .onAppear { resumeMarker = GamePersistence.loadMarker() }
         .sheet(isPresented: $showingSettings) {
             SettingsView(onDone: { showingSettings = false })
         }
