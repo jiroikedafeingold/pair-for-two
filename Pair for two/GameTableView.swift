@@ -5,7 +5,9 @@ import SwiftUI
 /// the geometry, so the same layout simply grows on iPad — no device checks.
 struct GameTableView: View {
     @State var vm: GameViewModel
+    var onExit: () -> Void = {}
     @State private var showingSettings = false
+    @State private var showingQuitConfirm = false
     @AppStorage("confirmRelease") private var confirmRelease = true
     @AppStorage("localName") private var localName = "Player"
     @AppStorage("localColorID") private var localColorID = 1
@@ -49,12 +51,21 @@ struct GameTableView: View {
             }
             .background(felt)
             .overlay(alignment: .top) { connectionBanner }
+            .overlay(alignment: .topLeading) { quitButton }
             .overlay(alignment: .topTrailing) { settingsButton }
             .overlay { if s.phase == .gameOver { winnerOverlay(s) } }
         }
         .sheet(isPresented: $showingSettings) {
             SettingsView(onDone: { showingSettings = false })
         }
+        .confirmationDialog("Quit this game?", isPresented: $showingQuitConfirm, titleVisibility: .visible) {
+            Button("Quit game", role: .destructive) { vm.quit() }
+            Button("Keep playing", role: .cancel) {}
+        } message: {
+            Text("This ends the game for both players.")
+        }
+        // The game was quit (by you or the other player) — return to the menu.
+        .onChange(of: vm.ended) { _, ended in if ended { onExit() } }
         // Push name/colour changes into the running game when Settings closes, so the highlight,
         // slider and score colours update live (for this device and the opponent).
         .onChange(of: showingSettings) { _, isShowing in
@@ -109,6 +120,19 @@ struct GameTableView: View {
         }
         .padding(.top, 6)
         .padding(.trailing, 10)
+    }
+
+    /// Leave the current game (ends it for both players). Confirmed before it takes effect.
+    private var quitButton: some View {
+        Button { showingQuitConfirm = true } label: {
+            Image(systemName: "rectangle.portrait.and.arrow.right")
+                .font(.system(size: 15, weight: .semibold))
+                .foregroundStyle(.white.opacity(0.7))
+                .padding(8)
+                .background(Circle().fill(Color.black.opacity(0.3)))
+        }
+        .padding(.top, 6)
+        .padding(.leading, 10)
     }
 
     // MARK: Background

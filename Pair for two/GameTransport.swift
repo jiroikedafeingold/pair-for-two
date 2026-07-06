@@ -21,6 +21,7 @@ nonisolated enum GameMessage: Codable, Sendable {
     case playAgain
     case updateIdentity(name: String, colorID: Int)   // live name/colour change from Settings
     case setScoringMode(Int)                          // live scoring-mode change from Settings
+    case quitGame                                     // either side ends the game for both players
 }
 
 // MARK: - Transport events

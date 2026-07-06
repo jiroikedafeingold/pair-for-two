@@ -22,6 +22,9 @@ final class GameViewModel {
     private(set) var snapshot: PlayerSnapshot
     var selectedForDiscard: Set<Card> = []
     private(set) var connection: ConnectionState
+    /// Flips to true when the game has been quit (locally or by the other player). The view observes
+    /// this to return to the menu.
+    private(set) var ended = false
 
     private let transport: any GameTransport
     let isHost: Bool
@@ -181,6 +184,7 @@ final class GameViewModel {
     }
 
     private func receive(_ message: GameMessage) {
+        if case .quitGame = message { endGame(); return }   // the other player left — end for us too
         if isHost {
             switch message {
             case .hello(let name, let colorID, _):
@@ -539,10 +543,32 @@ final class GameViewModel {
             s.colorIDs[player] = colorID
         case .setScoringMode(let raw):
             s.scoringMode = ScoringMode(rawValue: raw) ?? s.scoringMode
-        case .hello, .assignSeat, .snapshot:
+        case .hello, .assignSeat, .snapshot, .quitGame:
             break
         }
         state = s
+    }
+
+    // MARK: Quit
+
+    /// Leave the game for good. Tells the other player so their app ends too, then clears the saved
+    /// game on this device and marks the VM finished (the view returns to the menu).
+    func quit() {
+        guard !ended else { return }
+        if isLoopback { endGame(); return }
+        Task { @MainActor in
+            await transport.send(.quitGame)
+            try? await Task.sleep(for: .milliseconds(400))   // let the reliable message flush before teardown
+            endGame()
+        }
+    }
+
+    /// Clear any saved game and mark this VM finished. Called on a local quit and when the peer quits.
+    private func endGame() {
+        guard !ended else { return }
+        heartbeatTask?.cancel()
+        GamePersistence.clear()
+        ended = true
     }
 
     deinit {

@@ -66,7 +66,12 @@ struct RootView: View {
 
         case .game:
             if let vm {
-                GameTableView(vm: vm)
+                GameTableView(vm: vm, onExit: {
+                    self.vm = nil
+                    resumeRole = nil
+                    resumeMarker = nil    // the game was cleared on quit — no "Rejoin" to offer
+                    screen = .menu
+                })
             } else {
                 Color.feltDark.ignoresSafeArea()
             }
