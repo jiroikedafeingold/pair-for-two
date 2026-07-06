@@ -16,10 +16,9 @@ struct GameTableView: View {
     @State private var oppPending: Int = 0
     @State private var oppPendingTask: Task<Void, Never>? = nil
 
-    // Uncommitted slider/​+1 amount on the local panel, so Continue can prompt to add it.
+    // Uncommitted slider amount on the local panel, so Continue can fold it in ("Add N & continue").
     @State private var uncommittedLocal = 0
     @State private var clearScoreSignal = 0
-    @State private var showPendingAlert = false
 
     var body: some View {
         GeometryReader { geo in
@@ -55,18 +54,6 @@ struct GameTableView: View {
         }
         .sheet(isPresented: $showingSettings) {
             SettingsView(onDone: { showingSettings = false })
-        }
-        .alert("Add your pending \(uncommittedLocal) points?", isPresented: $showPendingAlert) {
-            Button("Add & continue") {
-                vm.claim(uncommittedLocal, for: vm.snapshot.you)
-                clearScoreSignal += 1; uncommittedLocal = 0
-                vm.advance()
-            }
-            Button("Continue without adding", role: .destructive) {
-                clearScoreSignal += 1; uncommittedLocal = 0
-                vm.advance()
-            }
-            Button("Cancel", role: .cancel) {}
         }
         // Push name/colour changes into the running game when Settings closes, so the highlight,
         // slider and score colours update live (for this device and the opponent).
@@ -383,8 +370,13 @@ struct GameTableView: View {
             if vm.youAreCounting {
                 Text(s.scoringMode == .auto ? "Scored automatically" : "Count it on your slider, then Continue")
                     .font(.caption).foregroundStyle(.white.opacity(0.7))
-                Button("Continue") {
-                    if uncommittedLocal > 0 { showPendingAlert = true } else { vm.advance() }
+                // With a pending slider value (confirm-after-release), the button adds it, then advances.
+                Button(uncommittedLocal > 0 ? "Add \(uncommittedLocal) & continue" : "Continue") {
+                    if uncommittedLocal > 0 {
+                        vm.claim(uncommittedLocal, for: vm.snapshot.you)
+                        clearScoreSignal += 1; uncommittedLocal = 0
+                    }
+                    vm.advance()
                 }
                 .buttonStyle(.borderedProminent).tint(.cribGold).foregroundStyle(.black)
             } else {
