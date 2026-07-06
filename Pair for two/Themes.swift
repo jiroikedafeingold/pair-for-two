@@ -70,3 +70,32 @@ func playerTheme(colorID: Int) -> PlayerTheme {
     let count = playerThemes.count
     return playerThemes[((colorID % count) + count) % count]
 }
+
+// MARK: - Card backs
+
+/// The available face-down card-back designs. Stored as an Int in `@AppStorage("cardBackID")`.
+enum CardBack: Int, CaseIterable, Identifiable {
+    case royal = 0, celestial = 1, midnight = 2
+
+    var id: Int { rawValue }
+
+    /// Image-set name in the asset catalog.
+    var assetName: String {
+        switch self {
+        case .royal:     return "CardBackRoyal"
+        case .celestial: return "CardBackCelestial"
+        case .midnight:  return "CardBackMidnight"
+        }
+    }
+
+    var displayName: String {
+        switch self {
+        case .royal:     return "Royal"
+        case .celestial: return "Celestial"
+        case .midnight:  return "Midnight"
+        }
+    }
+
+    /// Resolve a stored id to a back, defaulting to Royal for anything unexpected.
+    static func from(_ id: Int) -> CardBack { CardBack(rawValue: id) ?? .royal }
+}

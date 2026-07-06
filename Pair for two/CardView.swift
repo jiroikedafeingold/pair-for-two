@@ -11,6 +11,9 @@ struct CardView: View {
     var isHighlighted: Bool = false
     var width: CGFloat = 72
 
+    /// The user's chosen face-down back design (shared setting).
+    @AppStorage("cardBackID") private var cardBackID = 0
+
     private var height: CGFloat { width * 1.45 }
     private var corner: CGFloat { width * 0.13 }
 
@@ -82,18 +85,11 @@ struct CardView: View {
     // MARK: Back
 
     private var back: some View {
-        RoundedRectangle(cornerRadius: corner * 0.7, style: .continuous)
-            .strokeBorder(Color.white.opacity(0.35), lineWidth: 1.5)
-            .background(
-                RoundedRectangle(cornerRadius: corner * 0.7, style: .continuous)
-                    .fill(Color.white.opacity(0.06))
-            )
-            .padding(width * 0.12)
-            .overlay(
-                Image(systemName: "suit.spade.fill")
-                    .font(.system(size: width * 0.34))
-                    .foregroundStyle(Color.white.opacity(0.22))
-            )
+        Image(CardBack.from(cardBackID).assetName)
+            .resizable()
+            .scaledToFill()
+            .frame(width: width, height: height)
+            .clipShape(RoundedRectangle(cornerRadius: corner, style: .continuous))
     }
 }
 

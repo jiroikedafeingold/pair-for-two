@@ -11,6 +11,7 @@ struct SettingsView: View {
     @AppStorage("localColorID") private var colorID = 1
     @AppStorage("confirmRelease") private var confirmRelease = true
     @AppStorage("scoringMode") private var scoringModeRaw = ScoringMode.feedback.rawValue
+    @AppStorage("cardBackID") private var cardBackID = 0
 
     private var scoringMode: ScoringMode { ScoringMode(rawValue: scoringModeRaw) ?? .feedback }
 
@@ -25,6 +26,14 @@ struct SettingsView: View {
                             .submitLabel(.done)
                     }
                     colorRow
+                }
+
+                Section {
+                    cardBackRow
+                } header: {
+                    Text("Card back")
+                } footer: {
+                    Text("How the backs of the cards look on your device.")
                 }
 
                 Section {
@@ -69,6 +78,33 @@ struct SettingsView: View {
                 }
             }
         }
+    }
+
+    private var cardBackRow: some View {
+        HStack(spacing: 16) {
+            ForEach(CardBack.allCases) { back in
+                let selected = cardBackID == back.rawValue
+                VStack(spacing: 6) {
+                    Image(back.assetName)
+                        .resizable()
+                        .scaledToFill()
+                        .frame(width: 62, height: 90)
+                        .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 9, style: .continuous)
+                                .strokeBorder(Color.accentColor, lineWidth: selected ? 3 : 0)
+                        )
+                    Text(back.displayName)
+                        .font(.caption)
+                        .fontWeight(selected ? .semibold : .regular)
+                        .foregroundStyle(selected ? .primary : .secondary)
+                }
+                .contentShape(Rectangle())
+                .onTapGesture { cardBackID = back.rawValue }
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(.vertical, 4)
     }
 
     private var colorRow: some View {
