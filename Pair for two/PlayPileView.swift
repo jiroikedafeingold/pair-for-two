@@ -9,11 +9,8 @@ struct PlayPileView: View {
     var cardWidth: CGFloat = 60
 
     var body: some View {
-        HStack(alignment: .top, spacing: cardWidth * 0.4) {
-            cutStack
-            Rectangle()                       // divider making clear the cut isn't part of the play
-                .fill(Color.white.opacity(0.15))
-                .frame(width: 1, height: cardWidth * 1.35)
+        HStack(alignment: .top, spacing: cardWidth * 0.5) {
+            cutStack      // labelled "The Cut" + the extra spacing keeps it clearly apart from the play
             playedStack
             cribStack
         }

@@ -28,14 +28,17 @@ struct CardView: View {
                 back
             }
 
-            // A defined edge so adjacent / overlapping cards (crib, play pile) don't blend together.
+            // Thin dark inner edge so the gold rim reads cleanly against the cream face.
             RoundedRectangle(cornerRadius: corner, style: .continuous)
-                .strokeBorder(Color.black.opacity(faceUp ? 0.28 : 0.12), lineWidth: 1)
+                .strokeBorder(Color.black.opacity(0.15), lineWidth: 0.75)
         }
         .frame(width: width, height: height)
+        // Gold rim on every card so it stands out from the felt (and adjacent cards); brighter/thicker
+        // when highlighted (the most-recent play, the winning cut, etc.).
         .overlay(
             RoundedRectangle(cornerRadius: corner, style: .continuous)
-                .strokeBorder(Color.cribGold, lineWidth: isHighlighted ? 3 : 0)
+                .strokeBorder(Color.cribGold.opacity(isHighlighted ? 1 : 0.85),
+                              lineWidth: isHighlighted ? 3 : 1.5)
         )
         .shadow(color: .black.opacity(0.35), radius: width * 0.06, x: 0, y: width * 0.04)
         .opacity(isDimmed ? 0.4 : 1)

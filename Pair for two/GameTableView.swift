@@ -187,12 +187,11 @@ struct GameTableView: View {
     @ViewBuilder private func autoScoreboard(_ s: PlayerSnapshot) -> some View {
         HStack(spacing: 0) {
             scoreColumn(for: s.you, s: s)
-            Rectangle().fill(.white.opacity(0.15)).frame(width: 1, height: 64)
+            Rectangle().fill(.white.opacity(0.15)).frame(width: 1, height: 48)
             scoreColumn(for: s.you.opponent, s: s)
         }
         .frame(maxWidth: 700)
         .padding(.horizontal, 12)
-        .padding(.bottom, 14)   // breathing room under the scores
     }
 
     @ViewBuilder private func scoreColumn(for player: PlayerID, s: PlayerSnapshot) -> some View {
@@ -201,14 +200,15 @@ struct GameTableView: View {
         let value = isOpponent ? (displayedOppScore ?? vm.score(of: player)) : vm.score(of: player)
         VStack(spacing: 2) {
             Text(vm.name(of: player).uppercased())
-                .font(.title2.weight(.heavy))
+                .font(.title3.weight(.heavy))
                 .foregroundStyle(theme.primary)
                 .lineLimit(1).minimumScaleFactor(0.6)
             HStack(alignment: .center, spacing: 6) {   // "+X" centered vertically against the score
                 Text("\(value)")
-                    .font(.system(size: 64, weight: .heavy, design: .rounded))
+                    .font(.system(size: 50, weight: .heavy, design: .rounded))
                     .foregroundStyle(.white)
                     .monospacedDigit()
+                    .minimumScaleFactor(0.7)
                 if isOpponent && oppPending > 0 {
                     Text("+\(oppPending)")
                         .font(.system(size: 22, weight: .heavy, design: .rounded))
