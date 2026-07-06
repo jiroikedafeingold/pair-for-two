@@ -18,11 +18,15 @@ final class GameCenterManager: NSObject {
     /// Why online play is unavailable (not signed in, restricted, …), or nil when it's available.
     private(set) var unavailableReason: String?
 
-    /// A match that became ready when this device accepted an invitation. `matchTick` bumps so
+    /// A fully-connected match ready to play, with the elected host role. `matchTick` bumps so
     /// `RootView` starts the game.
     private(set) var pendingMatch: GKMatch?
+    private(set) var pendingIsHost = false
     private(set) var matchTick = 0
     private var didRegisterListener = false
+
+    /// A match we're holding until its opponent actually connects (so host election is reliable).
+    private var awaitingMatch: GKMatch?
 
     /// A friendly error to surface in an alert (e.g. Game Center not set up, or a network failure).
     var presentedError: String?
@@ -77,15 +81,33 @@ final class GameCenterManager: NSObject {
         }
     }
 
-    /// Hand off (and clear) a ready match so it's only started once.
-    func takePendingMatch() -> GKMatch? {
-        defer { pendingMatch = nil }
-        return pendingMatch
+    /// Take a ready match once, from either path (an accepted invite, or the matchmaker's `didFind`).
+    /// Waits until the opponent has actually connected before electing a host, so the two devices can't
+    /// both default to host when `match.players` is momentarily empty at start.
+    func beginMatch(_ match: GKMatch) {
+        if match.players.isEmpty {
+            awaitingMatch = match
+            match.delegate = self          // wait for the opponent's .connected
+        } else {
+            finalize(match)
+        }
     }
 
-    private func deliver(_ match: GKMatch) {
+    private func finalize(_ match: GKMatch) {
+        awaitingMatch = nil
+        // Deterministic host election: the lower Game Center id hosts. gamePlayerID is stable per
+        // player for this game across both devices, so both compute the same single host.
+        let localID = GKLocalPlayer.local.gamePlayerID
+        pendingIsHost = match.players.first.map { localID < $0.gamePlayerID } ?? true
         pendingMatch = match
         matchTick += 1
+    }
+
+    /// Hand off (and clear) the ready match + its elected host role so it's only started once.
+    func takePendingMatch() -> (match: GKMatch, isHost: Bool)? {
+        guard let match = pendingMatch else { return nil }
+        pendingMatch = nil
+        return (match, pendingIsHost)
     }
 
     /// Build Apple's own matchmaking UI. Pass a `recipient` to target a specific friend directly
@@ -145,16 +167,29 @@ final class GameCenterManager: NSObject {
     }
 }
 
+// MARK: - Awaiting the opponent's connection
+
+extension GameCenterManager: GKMatchDelegate {
+    /// While holding a match in `beginMatch`, start it once the opponent connects. The transport takes
+    /// over as the match's delegate when the game starts.
+    nonisolated func match(_ match: GKMatch, player: GKPlayer, didChange state: GKPlayerConnectionState) {
+        Task { @MainActor in
+            guard self.awaitingMatch === match else { return }
+            if state == .connected, !match.players.isEmpty { self.finalize(match) }
+        }
+    }
+}
+
 // MARK: - Invitations
 
 extension GameCenterManager: GKLocalPlayerListener {
     /// The local player accepted an invitation (from a Game Center notification / their friend's
-    /// invite). Resolve it to a match programmatically and start the game — no matchmaker UI needed.
+    /// invite). Resolve it to a match and start once connected — no matchmaker UI needed.
     nonisolated func player(_ player: GKPlayer, didAccept invite: GKInvite) {
         GKMatchmaker.shared().match(for: invite) { [weak self] match, error in
             Task { @MainActor in
                 guard let self else { return }
-                if let match { self.deliver(match) }
+                if let match { self.beginMatch(match) }
                 else if let error { self.report(error) }
             }
         }

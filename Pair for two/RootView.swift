@@ -38,9 +38,12 @@ struct RootView: View {
                 @unknown default:             break
                 }
             }
-            // A match became ready (a friend accepted our invite, or we accepted theirs) — start it.
+            // A match connected (a friend accepted our invite, or we accepted theirs) — start it with
+            // the host role the manager elected once both players were actually connected.
             .onChange(of: gameCenter.matchTick) { _, _ in
-                if let match = gameCenter.takePendingMatch() { startOnlineGame(match) }
+                if let ready = gameCenter.takePendingMatch() {
+                    startOnlineGame(ready.match, isHost: ready.isHost)
+                }
             }
             // Custom "invite a friend" list. Tapping a friend (or the generic-picker button) closes this
             // sheet, then presents Apple's matchmaker — presented only after dismissal completes, since
@@ -61,7 +64,7 @@ struct RootView: View {
             }
             .fullScreenCover(item: $activeMatchmaker) { context in
                 MatchmakerView(controller: context.controller,
-                               onMatch: { startOnlineGame($0) },
+                               onMatch: { activeMatchmaker = nil; gameCenter.beginMatch($0) },
                                onCancel: { activeMatchmaker = nil },
                                onError: { error in activeMatchmaker = nil; gameCenter.report(error) })
                     .ignoresSafeArea()
@@ -82,33 +85,18 @@ struct RootView: View {
         activeMatchmaker = MatchmakerContext(controller: controller)
     }
 
-    /// Build the online transport from a ready match and start a networked game. Host selection uses
-    /// GameKit's `chooseBestHostingPlayer`, which returns the *same* player on both devices — so they
-    /// always agree on exactly one host (a plain player-id compare can double-host if `match.players`
-    /// isn't populated yet when the game starts).
-    private func startOnlineGame(_ match: GKMatch) {
+    /// Build the online transport from a connected match (with the host role the manager already
+    /// elected) and start a networked game.
+    private func startOnlineGame(_ match: GKMatch, isHost: Bool) {
         showingInvite = false
         activeMatchmaker = nil
-        match.chooseBestHostingPlayer { best in
-            Task { @MainActor in
-                let localID = GKLocalPlayer.local.gamePlayerID
-                let isHost: Bool
-                if let best {
-                    isHost = best.gamePlayerID == localID
-                } else if let opponent = match.players.first {
-                    isHost = localID < opponent.gamePlayerID   // fallback if GameKit can't decide
-                } else {
-                    isHost = true
-                }
-                let transport = GameCenterTransport(match: match, isHost: isHost)
-                resumeRole = nil
-                vm = GameViewModel.networked(transport: transport,
-                                             localName: playerName, localColorID: colorID,
-                                             scoringMode: ScoringMode(rawValue: scoringModeRaw) ?? .feedback,
-                                             resumable: false)
-                screen = .game
-            }
-        }
+        let transport = GameCenterTransport(match: match, isHost: isHost)
+        resumeRole = nil
+        vm = GameViewModel.networked(transport: transport,
+                                     localName: playerName, localColorID: colorID,
+                                     scoringMode: ScoringMode(rawValue: scoringModeRaw) ?? .feedback,
+                                     resumable: false)
+        screen = .game
     }
 
     @ViewBuilder private var content: some View {

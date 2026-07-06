@@ -185,9 +185,16 @@ final class GameViewModel {
 
     private func onConnected() {
         // A guest announces itself; the host waits for that hello before dealing. On reconnect the
-        // host treats a repeat hello as a resync (see `receive`), so re-sending is safe.
-        if !isHost {
-            Task { await transport.send(.hello(name: localName, colorID: localColorID, playerToken: UUID())) }
+        // host treats a repeat hello as a resync (see `receive`), so re-sending is safe. We re-send
+        // until the host answers with a snapshot, so a first hello dropped during connection setup
+        // can't leave the host stuck on "waiting for a player to join".
+        guard !isHost else { return }
+        Task { @MainActor [weak self] in
+            for attempt in 0..<6 {
+                guard let self, self.snapshot.phase == .connecting else { return }
+                await self.transport.send(.hello(name: self.localName, colorID: self.localColorID, playerToken: UUID()))
+                try? await Task.sleep(for: .seconds(attempt == 0 ? 1 : 2))
+            }
         }
     }
 
