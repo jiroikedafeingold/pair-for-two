@@ -86,14 +86,16 @@ struct SettingsView: View {
                 let selected = cardBackID == back.rawValue
                 VStack(spacing: 6) {
                     ZStack {
+                        Color.cardBack   // dark base so light card edges/corners don't blend into the Form
                         Image(back.assetName).resizable().scaledToFill().blur(radius: 4)
                         Image(back.assetName).resizable().scaledToFit()
                     }
                     .frame(width: 62, height: 90)
                     .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
-                    .overlay(
+                    .overlay(   // gold rim like the in-game card; accent ring when selected
                         RoundedRectangle(cornerRadius: 9, style: .continuous)
-                            .strokeBorder(Color.accentColor, lineWidth: selected ? 3 : 0)
+                            .strokeBorder(selected ? Color.accentColor : Color.cribGold.opacity(0.85),
+                                          lineWidth: selected ? 3 : 1.5)
                     )
                     Text(back.displayName)
                         .font(.caption)
