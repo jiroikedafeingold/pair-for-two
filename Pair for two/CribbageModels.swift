@@ -113,6 +113,7 @@ nonisolated enum GamePhase: String, Codable, Hashable, Sendable {
     case cutForDeal
     case dealing
     case discardToCrib
+    case cutStarter       // manual two-step cut: the pone lifts the deck, the dealer reveals the starter
     case pegging
     case showPone
     case showDealer

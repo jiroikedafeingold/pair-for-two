@@ -19,6 +19,18 @@ nonisolated struct Claim: Codable, Hashable, Sendable {
     let phase: GamePhase
 }
 
+// MARK: - Pegging event (go / 31 notification)
+
+/// A notable pegging moment the *other* device should be nudged about, so the player who earns the
+/// point knows to take it. Carried on the snapshot with a monotonically-increasing tick so a repeat
+/// (heartbeat) broadcast never re-fires the alert.
+nonisolated struct PegEvent: Codable, Hashable, Sendable {
+    enum Kind: String, Codable, Sendable { case go, thirtyOne }
+    let kind: Kind
+    let scorer: PlayerID   // who earns the point(s)
+    let points: Int
+}
+
 // MARK: - GameState (authoritative, host-only)
 
 /// The single source of truth for a match. Lives only on the host referee. Guests never see this;
@@ -44,6 +56,10 @@ nonisolated struct GameState: Codable, Sendable {
     var starter: Card?
     var discarded: Set<PlayerID> = []
 
+    // Starter cut (manual two-step: the pone lifts the deck, then the dealer reveals the starter)
+    var starterCutIndex: Int?          // set when the pone lifts; the reveal derives the starter from it
+    var starterCutLifted: Bool = false
+
     // Cut for deal
     var cutForDeal: [PlayerID: Card] = [:]
 
@@ -58,6 +74,10 @@ nonisolated struct GameState: Codable, Sendable {
     var activeFlags: [ScoreFlag] = []
     var claimHistory: [Claim] = []
     var claimTick: Int = 0            // increments on each claim, so devices can preview "+X"
+
+    // Pegging event alert (go / 31) — bumps on each event so the other device can prompt "take the score".
+    var pegEventTick: Int = 0
+    var lastPegEvent: PegEvent?
 
     var winner: PlayerID?
 
@@ -111,6 +131,7 @@ extension GamePhase {
         case .cutForDeal:    return 1
         case .dealing:       return 2
         case .discardToCrib: return 3
+        case .cutStarter:    return 4
         case .pegging:       return 5
         case .showPone:      return 6
         case .showDealer:    return 7
@@ -147,6 +168,7 @@ extension GameState {
             crib: phase.revealsCrib ? crib : nil,
             cribCount: crib.count,
             starter: starter,
+            starterCutLifted: starterCutLifted,
             playSequence: playSequence,
             runningCount: runningCount,
             lapCardCount: lapCards.count,
@@ -165,7 +187,9 @@ extension GameState {
             playersWithClaims: Set(claimHistory.map(\.player)),
             claimTick: claimTick,
             lastClaimPlayer: claimHistory.last?.player,
-            lastClaimAmount: claimHistory.last?.amount ?? 0
+            lastClaimAmount: claimHistory.last?.amount ?? 0,
+            pegEventTick: pegEventTick,
+            lastPegEvent: lastPegEvent
         )
     }
 }
@@ -188,6 +212,9 @@ nonisolated struct PlayerSnapshot: Codable, Hashable, Sendable {
     let crib: [Card]?              // non-nil only once counting reaches the crib
     let cribCount: Int
     let starter: Card?
+    /// During the manual starter cut, true once the pone has lifted the deck (so both devices can show
+    /// the lifted portion set aside, awaiting the dealer's reveal).
+    let starterCutLifted: Bool
 
     let playSequence: [PlayedCard]
     let runningCount: Int
@@ -219,6 +246,10 @@ nonisolated struct PlayerSnapshot: Codable, Hashable, Sendable {
     let claimTick: Int
     let lastClaimPlayer: PlayerID?
     let lastClaimAmount: Int
+
+    /// A go/31 alert for the other device (see `PegEvent`). `pegEventTick` de-dupes heartbeat repeats.
+    let pegEventTick: Int
+    let lastPegEvent: PegEvent?
 
     /// True when it is this device's turn to act during pegging.
     var isYourTurn: Bool { whoseTurn == you }

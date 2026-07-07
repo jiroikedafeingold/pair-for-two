@@ -15,6 +15,8 @@ nonisolated enum GameMessage: Codable, Sendable {
     case intentDiscard([Card])
     case intentPlay(Card)
     case intentGo
+    case intentLiftCut(index: Int)          // pone lifts the deck for the starter cut
+    case intentRevealStarter                // dealer turns up the starter
     case claimPoints(player: PlayerID, amount: Int)
     case undo(player: PlayerID)
     case advance                            // "continue" through cut-for-deal recut / show steps / next deal

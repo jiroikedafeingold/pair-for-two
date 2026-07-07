@@ -68,6 +68,8 @@ nonisolated enum CribbageEngine {
         s.crib = []
         s.discarded = []
         s.starter = nil
+        s.starterCutIndex = nil
+        s.starterCutLifted = false
         s.playSequence = []
         s.lapCards = []
         s.goPlayers = []
@@ -79,8 +81,8 @@ nonisolated enum CribbageEngine {
 
     // MARK: Discard to crib
 
-    /// A player lays 2 cards into the crib. When both have discarded, the starter is cut automatically
-    /// and pegging begins (there is no separate manual starter-cut step).
+    /// A player lays 2 cards into the crib. When both have discarded, the game moves to the manual
+    /// starter cut (the pone lifts the deck, the dealer reveals the starter).
     @discardableResult
     static func discard(_ s: inout GameState, player: PlayerID, cards: [Card]) -> Bool {
         guard s.phase == .discardToCrib, !s.discarded.contains(player), cards.count == 2 else { return false }
@@ -91,16 +93,33 @@ nonisolated enum CribbageEngine {
         s.discarded.insert(player)
 
         if s.discarded.count == 2 {
-            beginPegging(&s)
+            s.phase = .cutStarter
+            s.starterCutIndex = nil
+            s.starterCutLifted = false
+            s.starter = nil
+            s.activeFlags = []
         }
         return true
     }
 
-    /// Auto-cuts the starter and begins pegging (pone leads). A Jack starter flags "His Heels" (2 for
-    /// the dealer). The starter is not shown during the play — only at the show — but the his-heels
-    /// flag is surfaced now so the dealer can peg it.
-    private static func beginPegging(_ s: inout GameState) {
-        let index = Int(s.seed % 47) &+ s.handNumber &* 13 &+ 7
+    // MARK: Starter cut (manual, two-step — mirrors an in-person cut)
+
+    /// Step 1: the pone (non-dealer) lifts a portion of the deck to the side, choosing the cut depth.
+    /// Records the cut index; the card stays hidden until the dealer reveals it.
+    @discardableResult
+    static func liftStarterCut(_ s: inout GameState, player: PlayerID, index: Int) -> Bool {
+        guard s.phase == .cutStarter, !s.starterCutLifted, player == s.pone else { return false }
+        s.starterCutIndex = index
+        s.starterCutLifted = true
+        return true
+    }
+
+    /// Step 2: the dealer turns up the card at the cut depth as the starter, then pegging begins. A
+    /// Jack starter flags "His Heels" (2 for the dealer), surfaced so the dealer can peg it.
+    @discardableResult
+    static func revealStarter(_ s: inout GameState, player: PlayerID) -> Bool {
+        guard s.phase == .cutStarter, s.starterCutLifted, player == s.dealer else { return false }
+        let index = s.starterCutIndex ?? (Int(s.seed % 47) &+ s.handNumber &* 13 &+ 7)
         let starter = s.deck.card(atCut: index)
         s.starter = starter
         s.activeFlags = CribbageScorer.isHisHeels(starter: starter)
@@ -114,6 +133,7 @@ nonisolated enum CribbageEngine {
         s.lastToPlay = nil
         s.whoseTurn = s.pone       // pone leads the play
         autoScore(&s, to: s.dealer)   // his heels, if any
+        return true
     }
 
     // MARK: Pegging — play a card
@@ -134,6 +154,7 @@ nonisolated enum CribbageEngine {
 
         if count == 31 {
             s.activeFlags = flags                      // "31 for 2" already included
+            notePegEvent(&s, .init(kind: .thirtyOne, scorer: player, points: flags.totalPoints))
             if done { finishPegging(&s) } else { resetLap(&s, nextLeadPreferring: player.opponent) }
             autoScore(&s, to: player)
             return true
@@ -155,6 +176,12 @@ nonisolated enum CribbageEngine {
         s.whoseTurn = oppInPlay ? opp : player
         autoScore(&s, to: player)
         return true
+    }
+
+    /// Record a go/31 alert so the other device can nudge the scorer to take the point(s).
+    private static func notePegEvent(_ s: inout GameState, _ event: PegEvent) {
+        s.pegEventTick += 1
+        s.lastPegEvent = event
     }
 
     /// In automatic mode, immediately claim the just-surfaced flags for `player`.
@@ -185,6 +212,7 @@ nonisolated enum CribbageEngine {
         // Neither can add — the lap ends. Last player to lay a card pegs 1 for the go.
         s.activeFlags = [ScoreFlag(.go, points: 1, detail: "Go")]
         let goScorer = s.lastToPlay ?? player
+        notePegEvent(&s, .init(kind: .go, scorer: goScorer, points: 1))
         if s.allCardsPlayed {
             finishPegging(&s)
         } else {

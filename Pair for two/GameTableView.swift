@@ -22,6 +22,10 @@ struct GameTableView: View {
     @State private var uncommittedLocal = 0
     @State private var clearScoreSignal = 0
 
+    // Transient "Go / 31 — take the score" alert, shown for a couple of seconds when the event fires.
+    @State private var pegAlert: String? = nil
+    @State private var pegAlertTask: Task<Void, Never>? = nil
+
     var body: some View {
         GeometryReader { geo in
             let s = vm.snapshot
@@ -51,6 +55,7 @@ struct GameTableView: View {
             }
             .background(felt)
             .overlay(alignment: .top) { connectionBanner }
+            .overlay(alignment: .top) { pegAlertBanner.padding(.top, topBandHeight + 12) }
             .overlay(alignment: .topLeading) { quitButton }
             .overlay(alignment: .topTrailing) { settingsButton }
             .overlay { if s.phase == .gameOver { winnerOverlay(s) } }
@@ -77,7 +82,52 @@ struct GameTableView: View {
         }
         // Preview the opponent's "+X" for 3s before their score updates on this device.
         .onChange(of: vm.snapshot.claimTick) { _, _ in previewOpponentClaim() }
+        // Tactile + audio feedback, driven by the state so BOTH devices feel each moment of play.
+        .onAppear { GameFeedback.shared.prepare() }
+        .onChange(of: vm.snapshot.playSequence.count) { old, new in
+            if new > old { GameFeedback.shared.play(.cardPlay) }
+        }
+        .onChange(of: vm.snapshot.cutForDeal.count) { old, new in
+            if new > old { GameFeedback.shared.play(.cutTap) }
+        }
+        .onChange(of: vm.snapshot.starterCutLifted) { old, new in
+            if new && !old { GameFeedback.shared.play(.deckLift) }
+        }
+        .onChange(of: vm.snapshot.phase) { old, new in
+            if new == .discardToCrib { GameFeedback.shared.play(.deal) }
+            else if old == .cutStarter && new == .pegging { GameFeedback.shared.play(.starterReveal) }
+        }
+        .onChange(of: vm.pegEventTick) { old, new in
+            if new > old { handlePegEvent() }
+        }
         .ignoresSafeArea(.container, edges: .bottom)
+    }
+
+    // MARK: Go / 31 alert
+
+    /// Fires the notification (haptic + sound + banner) when a go or 31 occurs, so the player who earns
+    /// the point knows to take it.
+    private func handlePegEvent() {
+        guard let event = vm.lastPegEvent else { return }
+        let auto = vm.snapshot.scoringMode == .auto
+        let mine = event.scorer == vm.snapshot.you || vm.isLoopback
+        let who = vm.name(of: event.scorer)
+        switch event.kind {
+        case .go:
+            GameFeedback.shared.play(.go)
+            pegAlert = auto ? "Go — \(who) pegs 1"
+                            : (mine ? "Go — take 1" : "\(who) takes 1 for the go")
+        case .thirtyOne:
+            GameFeedback.shared.play(.thirtyOne)
+            pegAlert = auto ? "31 for \(event.points)!"
+                            : (mine ? "31 — take \(event.points)" : "\(who) hits 31 for \(event.points)")
+        }
+        pegAlertTask?.cancel()
+        pegAlertTask = Task { @MainActor in
+            try? await Task.sleep(for: .seconds(2.6))
+            guard !Task.isCancelled else { return }
+            withAnimation { pegAlert = nil }
+        }
     }
 
     private func previewOpponentClaim() {
@@ -108,6 +158,19 @@ struct GameTableView: View {
             .background(Capsule().fill(Color.black.opacity(0.7)))
             .padding(.top, 6)
             .transition(.move(edge: .top).combined(with: .opacity))
+        }
+    }
+
+    /// The go/31 "take the score" toast — bold and briefly shown so a player never misses their point.
+    @ViewBuilder private var pegAlertBanner: some View {
+        if let text = pegAlert {
+            Text(text)
+                .font(.title3.weight(.heavy))
+                .foregroundStyle(.black)
+                .padding(.horizontal, 20).padding(.vertical, 10)
+                .background(Capsule().fill(Color.cribGold))
+                .shadow(color: .black.opacity(0.35), radius: 8, y: 3)
+                .transition(.scale.combined(with: .opacity))
         }
     }
 
@@ -241,8 +304,8 @@ struct GameTableView: View {
             opponentPending: isLocal ? oppPending : 0,
             uncommitted: isLocal ? $uncommittedLocal : nil,
             clearSignal: isLocal ? clearScoreSignal : 0,
-            onAdd: { vm.claim($0, for: player) },
-            onPlusOne: { vm.claim(1, for: player) },
+            onAdd: { GameFeedback.shared.play(.score); vm.claim($0, for: player) },
+            onPlusOne: { GameFeedback.shared.play(.score); vm.claim(1, for: player) },
             onUndo: { vm.undo(for: player) }
         )
     }
@@ -256,6 +319,8 @@ struct GameTableView: View {
                 cutForDealArea(s, width: cutWidth)
             case .discardToCrib:
                 discardArea(s, width: handWidth)
+            case .cutStarter:
+                starterCutArea(s, width: cutWidth)
             case .pegging:
                 peggingArea(s, handWidth: peggingHandWidth, pileWidth: pileWidth)
             case .showPone, .showDealer, .showCrib:
@@ -335,9 +400,10 @@ struct GameTableView: View {
             Spacer(minLength: 0)
             HandView(cards: s.yourHand,
                      selected: vm.selectedForDiscard,
-                     onTap: { vm.toggleDiscard($0) },
+                     onTap: { GameFeedback.shared.play(.discardSelect); vm.toggleDiscard($0) },
                      cardWidth: width)
             Button("Send 2 to \(s.yourSeat == .dealer ? "your crib" : "\(vm.name(of: s.dealer))'s crib")") {
+                GameFeedback.shared.play(.discardConfirm)
                 vm.confirmDiscard()
             }
             .buttonStyle(.borderedProminent)
@@ -345,6 +411,58 @@ struct GameTableView: View {
             .disabled(!vm.canConfirmDiscard)
             Spacer(minLength: 0)
         }
+    }
+
+    // MARK: Starter cut (pone lifts the deck, dealer turns up the cut — like an in-person cut)
+
+    @ViewBuilder private func starterCutArea(_ s: PlayerSnapshot, width: CGFloat) -> some View {
+        let lifted = vm.starterCutLifted
+        VStack(spacing: 18) {
+            Spacer(minLength: 0)
+            HStack(alignment: .center, spacing: lifted ? 30 : 0) {
+                // The remaining ("bottom") deck. The dealer taps it to turn up the starter.
+                deckPile(width: width, highlighted: vm.youLiftCut || vm.youRevealStarter)
+                    .onTapGesture {
+                        if vm.youLiftCut { vm.liftCut() }
+                        else if vm.youRevealStarter { vm.revealStarter() }
+                    }
+                    .allowsHitTesting(vm.youLiftCut || vm.youRevealStarter)
+
+                // The portion the pone lifted off, set aside once the cut is made.
+                if lifted {
+                    deckPile(width: width, highlighted: false)
+                        .opacity(0.8)
+                        .transition(.move(edge: .trailing).combined(with: .opacity))
+                }
+            }
+            .animation(.spring(response: 0.45, dampingFraction: 0.72), value: lifted)
+
+            // Instruction sits under the deck — the deck itself is the tap target.
+            if vm.youLiftCut {
+                Text("Tap the deck to cut").font(.callout.weight(.semibold)).foregroundStyle(.white)
+            } else if vm.youRevealStarter {
+                Text("Tap the deck to turn up the cut").font(.callout.weight(.semibold)).foregroundStyle(.white)
+            } else {
+                waitingLabel(lifted ? "Waiting for \(vm.name(of: s.dealer)) to turn up the cut…"
+                                    : "Waiting for \(vm.name(of: s.pone)) to cut the deck…")
+            }
+            Spacer(minLength: 0)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    /// A small stack of face-down cards drawn as a deck.
+    private func deckPile(width: CGFloat, highlighted: Bool) -> some View {
+        ZStack {
+            ForEach(0..<4, id: \.self) { i in
+                CardView(card: nil, faceUp: false,
+                         isHighlighted: highlighted && i == 3,
+                         width: width)
+                    .offset(x: CGFloat(i) * 2.5, y: CGFloat(i) * -2.5)
+            }
+        }
+        .scaleEffect(highlighted ? 1.04 : 1)
+        .animation(.easeInOut(duration: 0.8).repeatForever(autoreverses: true), value: highlighted)
     }
 
     // MARK: Pegging
@@ -356,7 +474,7 @@ struct GameTableView: View {
                 .frame(maxHeight: .infinity)
 
             if vm.peggingComplete {
-                Button("Count the hands") { vm.advance() }
+                Button("Count the hands") { GameFeedback.shared.play(.advance); vm.advance() }
                     .buttonStyle(.borderedProminent).tint(.cribGold).foregroundStyle(.black)
                     .controlSize(.large)
             } else {
@@ -366,7 +484,7 @@ struct GameTableView: View {
                              onTap: { vm.play($0) },
                              cardWidth: handWidth)
                     if vm.canSayGo {
-                        Button("Go") { vm.sayGo() }
+                        Button("Go") { GameFeedback.shared.play(.advance); vm.sayGo() }
                             .buttonStyle(.borderedProminent)
                             .tint(.orange)
                             .controlSize(.large)
@@ -402,8 +520,11 @@ struct GameTableView: View {
                     // With a pending slider value (confirm-after-release), the button adds it, then advances.
                     Button(uncommittedLocal > 0 ? "Add \(uncommittedLocal) & continue" : "Continue") {
                         if uncommittedLocal > 0 {
+                            GameFeedback.shared.play(.score)
                             vm.claim(uncommittedLocal, for: vm.snapshot.you)
                             clearScoreSignal += 1; uncommittedLocal = 0
+                        } else {
+                            GameFeedback.shared.play(.advance)
                         }
                         vm.advance()
                     }
@@ -425,8 +546,13 @@ struct GameTableView: View {
             Text("Hand complete").font(.title3.weight(.bold)).foregroundStyle(.white)
             Text("\(s.yourName) \(s.yourScore)  •  \(s.opponentName) \(s.opponentScore)")
                 .font(.headline).foregroundStyle(.white.opacity(0.85))
-            Button("Deal next hand") { vm.advance() }
-                .buttonStyle(.borderedProminent).tint(.cribGold).foregroundStyle(.black)
+            // Only the next dealer starts the deal (the deal passes to the former pone).
+            if vm.youStartNextDeal {
+                Button("Deal next hand") { vm.advance() }
+                    .buttonStyle(.borderedProminent).tint(.cribGold).foregroundStyle(.black)
+            } else {
+                waitingLabel("Waiting for \(vm.name(of: vm.nextDealer)) to deal…")
+            }
             Spacer()
         }
     }
@@ -473,10 +599,11 @@ private struct GameTablePreview: View {
         let vm = GameViewModel.loopback(names: [.one: "Ann", .two: "Ben"],
                                         colorIDs: [.one: 1, .two: 7], seed: 42, scoringMode: .feedback)
         vm.cut(); vm.cut(); vm.advance()          // both cut, then deal
-        for _ in 0..<2 where vm.snapshot.phase == .discardToCrib {   // both discard 2 → pegging
+        for _ in 0..<2 where vm.snapshot.phase == .discardToCrib {   // both discard 2 → starter cut
             let hand = vm.snapshot.yourHand
             if hand.count >= 2 { vm.toggleDiscard(hand[0]); vm.toggleDiscard(hand[1]); vm.confirmDiscard() }
         }
+        if vm.snapshot.phase == .cutStarter { vm.liftCut(); vm.revealStarter() }   // pone cuts, dealer reveals → pegging
         var guardCount = 0                        // play out pegging → the show
         while vm.snapshot.phase == .pegging && !vm.peggingComplete {
             guardCount += 1; if guardCount > 60 { break }
@@ -492,4 +619,43 @@ private struct GameTablePreview: View {
 
 #Preview(traits: .landscapeLeft) {
     GameTablePreview()
+}
+
+// The manual starter cut, stopped with the pone about to lift the deck.
+private struct StarterCutPreview: View {
+    @State private var vm: GameViewModel = {
+        let vm = GameViewModel.loopback(names: [.one: "Ann", .two: "Ben"],
+                                        colorIDs: [.one: 1, .two: 7], seed: 42, scoringMode: .feedback)
+        vm.cut(); vm.cut(); vm.advance()
+        for _ in 0..<2 where vm.snapshot.phase == .discardToCrib {
+            let hand = vm.snapshot.yourHand
+            if hand.count >= 2 { vm.toggleDiscard(hand[0]); vm.toggleDiscard(hand[1]); vm.confirmDiscard() }
+        }
+        return vm   // stops at .cutStarter, not yet lifted
+    }()
+    var body: some View { GameTableView(vm: vm) }
+}
+
+#Preview("Starter cut", traits: .landscapeLeft) {
+    StarterCutPreview()
+}
+
+// The starter cut after the pone has lifted — the dealer is about to turn up the cut.
+private struct StarterRevealPreview: View {
+    @State private var vm: GameViewModel = {
+        let vm = GameViewModel.loopback(names: [.one: "Ann", .two: "Ben"],
+                                        colorIDs: [.one: 1, .two: 7], seed: 42, scoringMode: .feedback)
+        vm.cut(); vm.cut(); vm.advance()
+        for _ in 0..<2 where vm.snapshot.phase == .discardToCrib {
+            let hand = vm.snapshot.yourHand
+            if hand.count >= 2 { vm.toggleDiscard(hand[0]); vm.toggleDiscard(hand[1]); vm.confirmDiscard() }
+        }
+        vm.liftCut()   // pone has lifted; dealer now reveals
+        return vm
+    }()
+    var body: some View { GameTableView(vm: vm) }
+}
+
+#Preview("Starter reveal", traits: .landscapeLeft) {
+    StarterRevealPreview()
 }

@@ -150,13 +150,15 @@ final class GameViewModel {
     static func placeholderSnapshot(you: PlayerID, name: String, colorID: Int) -> PlayerSnapshot {
         PlayerSnapshot(matchID: UUID(), you: you, phase: .connecting, yourSeat: .pone, dealer: .one,
                        yourHand: [], opponentHandCount: 0, opponentHand: nil, crib: nil, cribCount: 0,
-                       starter: nil, playSequence: [], runningCount: 0, lapCardCount: 0, whoseTurn: nil, lastToPlay: nil,
+                       starter: nil, starterCutLifted: false,
+                       playSequence: [], runningCount: 0, lapCardCount: 0, whoseTurn: nil, lastToPlay: nil,
                        yourScore: 0, opponentScore: 0, flags: [], scoringMode: .feedback,
                        cutForDeal: [:], winner: nil,
                        yourName: name, opponentName: "Opponent",
                        yourColorID: colorID, opponentColorID: you == .one ? 7 : 1,
                        playersWithClaims: [],
-                       claimTick: 0, lastClaimPlayer: nil, lastClaimAmount: 0)
+                       claimTick: 0, lastClaimPlayer: nil, lastClaimAmount: 0,
+                       pegEventTick: 0, lastPegEvent: nil)
     }
 
     // MARK: Transport event loop
@@ -284,6 +286,7 @@ final class GameViewModel {
             if state.cutForDeal.count == 2 { return state.dealer }   // result shown → dealer deals
             return state.cutForDeal[.one] == nil ? .one : .two
         case .discardToCrib: return state.discarded.contains(.one) ? .two : .one
+        case .cutStarter: return state.starterCutLifted ? state.dealer : state.pone   // pone lifts, then dealer reveals
         case .pegging: return state.whoseTurn ?? state.pone
         case .showPone: return state.pone
         case .showDealer, .showCrib: return state.dealer
@@ -339,6 +342,36 @@ final class GameViewModel {
     var youDeal: Bool {
         cutForDealDecided && (isLoopback || snapshot.you == snapshot.dealer)
     }
+
+    /// At hand-complete, only the player who will deal the next hand (the current pone — the deal
+    /// alternates) starts the deal. The other player just sees a "waiting" note.
+    var youStartNextDeal: Bool {
+        snapshot.phase == .handComplete && (isLoopback || snapshot.you == snapshot.dealer.opponent)
+    }
+
+    /// The player who deals the next hand (deal passes to the current pone).
+    var nextDealer: PlayerID { snapshot.dealer.opponent }
+
+    // MARK: Starter cut (pone lifts, dealer reveals)
+
+    /// This device should lift the deck now (it's the pone and nobody has lifted yet).
+    var youLiftCut: Bool {
+        snapshot.phase == .cutStarter && !snapshot.starterCutLifted
+            && (isLoopback || snapshot.you == snapshot.pone)
+    }
+
+    /// This device should reveal the starter now (it's the dealer and the pone has lifted).
+    var youRevealStarter: Bool {
+        snapshot.phase == .cutStarter && snapshot.starterCutLifted
+            && (isLoopback || snapshot.you == snapshot.dealer)
+    }
+
+    var starterCutLifted: Bool { snapshot.starterCutLifted }
+
+    // MARK: Pegging event alert (go / 31)
+
+    var pegEventTick: Int { snapshot.pegEventTick }
+    var lastPegEvent: PegEvent? { snapshot.lastPegEvent }
 
     /// Every card has been played; the hand is over and it's time to count.
     var peggingComplete: Bool {
@@ -440,6 +473,13 @@ final class GameViewModel {
         case .discardToCrib:
             let whose = s.yourSeat == .dealer ? "your crib" : "\(name(of: s.dealer))'s crib"
             return "\(s.yourName), discard 2 to \(whose)"
+        case .cutStarter:
+            if s.starterCutLifted {
+                return youRevealStarter ? "\(name(of: s.dealer)), turn up the cut"
+                                        : "Waiting for \(name(of: s.dealer)) to turn up the cut…"
+            }
+            return youLiftCut ? "\(name(of: s.pone)), cut the deck"
+                              : "Waiting for \(name(of: s.pone)) to cut the deck…"
         case .pegging:
             if peggingComplete { return "All cards played — count the hands" }
             if s.isYourTurn {
@@ -484,6 +524,15 @@ final class GameViewModel {
         cutCounter = (cutCounter &* 31 &+ 7) % 4999
         submit(.intentCut(index: cutCounter))
     }
+
+    /// The pone lifts a portion of the deck for the starter cut (step 1 of 2).
+    func liftCut() {
+        cutCounter = (cutCounter &* 31 &+ 7) % 4999
+        submit(.intentLiftCut(index: cutCounter))
+    }
+
+    /// The dealer turns up the starter after the pone has lifted (step 2 of 2).
+    func revealStarter() { submit(.intentRevealStarter) }
 
     func toggleDiscard(_ card: Card) {
         if selectedForDiscard.contains(card) {
@@ -557,6 +606,10 @@ final class GameViewModel {
             if s.whoseTurn == player { CribbageEngine.play(&s, player: player, card: card) }
         case .intentGo:
             if s.whoseTurn == player { CribbageEngine.go(&s, player: player) }
+        case .intentLiftCut(let index):
+            CribbageEngine.liftStarterCut(&s, player: player, index: index)
+        case .intentRevealStarter:
+            CribbageEngine.revealStarter(&s, player: player)
         case .claimPoints(let claimPlayer, let amount):
             // Networked: a device may only score its own peg. Loopback: either peg.
             let target = isLoopback ? claimPlayer : player
