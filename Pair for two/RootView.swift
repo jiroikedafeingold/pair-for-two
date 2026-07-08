@@ -241,6 +241,6 @@ struct RootView: View {
     }
 }
 
-#Preview {
+#Preview(traits: .landscapeLeft) {
     RootView()
 }

@@ -700,3 +700,25 @@ private struct PeggingLapPreview: View {
 #Preview("Pegging lap divider", traits: .landscapeLeft) {
     PeggingLapPreview()
 }
+
+// Game over — the winner celebration overlay.
+private struct WinnerPreview: View {
+    @State private var vm: GameViewModel = {
+        let vm = GameViewModel.loopback(names: [.one: "Ann", .two: "Ben"],
+                                        colorIDs: [.one: 1, .two: 7], seed: 42, scoringMode: .feedback)
+        vm.cut(); vm.cut(); vm.advance()
+        for _ in 0..<2 where vm.snapshot.phase == .discardToCrib {
+            let hand = vm.snapshot.yourHand
+            if hand.count >= 2 { vm.toggleDiscard(hand[0]); vm.toggleDiscard(hand[1]); vm.confirmDiscard() }
+        }
+        if vm.snapshot.phase == .cutStarter { vm.liftCut(); vm.revealStarter() }
+        vm.claim(24, for: .two)          // give Ben a respectable score
+        vm.claim(121, for: .one)         // Ann goes out — winner celebration
+        return vm
+    }()
+    var body: some View { GameTableView(vm: vm) }
+}
+
+#Preview("Winner", traits: .landscapeLeft) {
+    WinnerPreview()
+}
