@@ -48,29 +48,46 @@ struct PlayPileView: View {
                     .frame(width: cardWidth * 2.2, height: cardWidth * 1.45)
                     .overlay(Text("Play area").font(.caption2).foregroundStyle(.white.opacity(0.4)))
             } else {
-                // Cards from a finished lap (count already reset via a go or 31) stay on the table but
-                // are dimmed, so it's clear only the current lap's cards are still in play.
+                // Cards from finished laps (count reset via a go or 31) stay full-strength on the table;
+                // a vertical divider separates them from the current lap so it's clear what's still in
+                // play, without greying anything out.
                 let firstActive = snapshot.playSequence.count - snapshot.lapCardCount
-                HStack(spacing: -cardWidth * 0.55) {
-                    ForEach(Array(snapshot.playSequence.enumerated()), id: \.element) { index, pc in
-                        let outOfPlay = index < firstActive
-                        CardView(card: pc.card,
-                                 isDimmed: outOfPlay,
-                                 isHighlighted: pc == snapshot.playSequence.last,
-                                 width: cardWidth)
-                            // Thin colour bar along the card's bottom edge shows who played it.
-                            .overlay(alignment: .bottom) {
-                                RoundedRectangle(cornerRadius: 2, style: .continuous)
-                                    .fill(vm.theme(for: pc.player).primary)
-                                    .frame(height: max(3, cardWidth * 0.07))
-                                    .padding(.horizontal, cardWidth * 0.12)
-                                    .padding(.bottom, cardWidth * 0.05)
-                                    .opacity(outOfPlay ? 0.4 : 1)
-                            }
+                HStack(spacing: 8) {
+                    if firstActive > 0 && snapshot.lapCardCount > 0 {
+                        laneRow(Array(snapshot.playSequence.prefix(firstActive)))
+                        lapDivider
+                        laneRow(Array(snapshot.playSequence.suffix(snapshot.lapCardCount)))
+                    } else {
+                        laneRow(snapshot.playSequence)
                     }
                 }
             }
         }
+    }
+
+    /// A run of played cards (overlapping fan), each with a colour bar showing who played it.
+    private func laneRow(_ cards: [PlayedCard]) -> some View {
+        HStack(spacing: -cardWidth * 0.55) {
+            ForEach(cards) { pc in
+                CardView(card: pc.card,
+                         isHighlighted: pc == snapshot.playSequence.last,
+                         width: cardWidth)
+                    .overlay(alignment: .bottom) {
+                        RoundedRectangle(cornerRadius: 2, style: .continuous)
+                            .fill(vm.theme(for: pc.player).primary)
+                            .frame(height: max(3, cardWidth * 0.07))
+                            .padding(.horizontal, cardWidth * 0.12)
+                            .padding(.bottom, cardWidth * 0.05)
+                    }
+            }
+        }
+    }
+
+    /// The line delineating finished laps from the current one.
+    private var lapDivider: some View {
+        RoundedRectangle(cornerRadius: 1, style: .continuous)
+            .fill(Color.cribGold.opacity(0.55))
+            .frame(width: 2, height: cardWidth * 1.35)
     }
 
     // MARK: Crib

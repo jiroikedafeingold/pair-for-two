@@ -102,7 +102,8 @@ final class MultipeerSession: NSObject, GameTransport {
 
     func invite(_ peer: MCPeerID) {
         phase = .connecting
-        browser?.invitePeer(peer, to: session, withContext: nil, timeout: 20)
+        // Short timeout so a stale/ghost peer invite fails fast and we retry, rather than hanging.
+        browser?.invitePeer(peer, to: session, withContext: nil, timeout: 10)
     }
 
     /// When both sides browse (rendezvous/reconnect), only one may send the invitation or they race
@@ -115,8 +116,14 @@ final class MultipeerSession: NSObject, GameTransport {
     /// Attempt to re-establish the connection after a drop (e.g. resuming from the background).
     /// MCSession can't reliably re-add a peer after a disconnect, so we rebuild the session and, to be
     /// robust to either side reconnecting first, advertise and browse at once.
-    func reconnect() {
-        guard didConnect, session.connectedPeers.isEmpty else { return }
+    ///
+    /// After a background/foreground cycle the OS frequently still reports the peer in
+    /// `connectedPeers` even though the link is dead — trusting that would make us wait out MC's own
+    /// ~30s keep-alive timeout before recovering. `force` skips that check and rebuilds immediately,
+    /// so foregrounding re-pairs in a few seconds instead.
+    func reconnect(force: Bool) {
+        guard didConnect else { return }
+        if !force && !session.connectedPeers.isEmpty { return }   // still live and we're not forcing
         phase = .reconnecting
         continuation.yield(.reconnecting)
         session.delegate = nil
@@ -191,7 +198,7 @@ final class MultipeerSession: NSObject, GameTransport {
     /// trying to rejoin the peer (advertise/browse again, guest auto-invites on rediscovery).
     private func handleDrop() {
         if didConnect {
-            reconnect()   // rebuild the session + role and re-pair
+            reconnect(force: false)   // genuine drop (connectedPeers already empty) — rebuild and re-pair
         } else {
             phase = .disconnected
             continuation.yield(.disconnected)

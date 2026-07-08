@@ -52,9 +52,12 @@ protocol GameTransport: Sendable {
     func send(_ message: GameMessage) async
 
     /// Ask the transport to re-establish the connection (e.g. after returning from the background).
-    func reconnect()
+    /// `force` rebuilds the session even if it still *believes* it is connected — needed after a
+    /// background/foreground cycle, where the OS often hasn't yet detected that the link dropped.
+    func reconnect(force: Bool)
 }
 
 extension GameTransport {
-    func reconnect() {}   // no-op by default (e.g. loopback)
+    func reconnect(force: Bool) {}   // no-op by default (e.g. loopback)
+    func reconnect() { reconnect(force: false) }
 }

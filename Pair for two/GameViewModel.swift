@@ -378,6 +378,12 @@ final class GameViewModel {
         snapshot.phase == .pegging && snapshot.whoseTurn == nil
     }
 
+    /// Only the player who laid the last card moves the game on to the count — so they can peg their
+    /// last-card / go points first. The other player waits.
+    var youStartCount: Bool {
+        peggingComplete && (isLoopback || snapshot.lastToPlay == nil || snapshot.you == snapshot.lastToPlay)
+    }
+
     /// Which pegs this device may score. Loopback shows both (pass-and-play); networked shows only
     /// the local player's panel.
     var scorablePlayers: [PlayerID] { isLoopback ? [.one, .two] : [snapshot.you] }
@@ -555,7 +561,9 @@ final class GameViewModel {
     }
 
     /// Called when the app returns to the foreground — nudge the transport to re-pair if it dropped.
-    func reconnect() { transport.reconnect() }
+    /// `force` (set after a real background) rebuilds even if the transport still thinks it's connected,
+    /// so we don't wait out the OS's slow drop detection.
+    func reconnect(force: Bool = false) { transport.reconnect(force: force) }
 
     func sayGo() { submit(.intentGo) }
     func claim(_ amount: Int, for player: PlayerID) { submit(.claimPoints(player: player, amount: amount)) }

@@ -206,6 +206,9 @@ nonisolated enum CribbageEngine {
 
         if oppCanPlay {
             s.whoseTurn = opp                          // opponent keeps laying until they also can't
+            // Notify the opponent that a "go" was said and the play has passed to them (points: 0
+            // distinguishes this "your turn" nudge from the go point awarded when the lap ends).
+            notePegEvent(&s, .init(kind: .go, scorer: player, points: 0))
             return true
         }
 

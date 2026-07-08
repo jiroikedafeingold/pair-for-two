@@ -114,9 +114,16 @@ struct GameTableView: View {
         let who = vm.name(of: event.scorer)
         switch event.kind {
         case .go:
-            GameFeedback.shared.play(.go)
-            pegAlert = auto ? "Go — \(who) pegs 1"
-                            : (mine ? "Go — take 1" : "\(who) takes 1 for the go")
+            if event.points == 0 {
+                // "Go" was said and the play passed to the other player — notify only them.
+                guard !mine else { return }
+                GameFeedback.shared.play(.go)
+                pegAlert = "\(who) said Go — your play"
+            } else {
+                GameFeedback.shared.play(.go)
+                pegAlert = auto ? "Go — \(who) pegs 1"
+                                : (mine ? "Go — take 1" : "\(who) takes 1 for the go")
+            }
         case .thirtyOne:
             GameFeedback.shared.play(.thirtyOne)
             pegAlert = auto ? "31 for \(event.points)!"
@@ -474,9 +481,13 @@ struct GameTableView: View {
                 .frame(maxHeight: .infinity)
 
             if vm.peggingComplete {
-                Button("Count the hands") { GameFeedback.shared.play(.advance); vm.advance() }
-                    .buttonStyle(.borderedProminent).tint(.cribGold).foregroundStyle(.black)
-                    .controlSize(.large)
+                if vm.youStartCount {
+                    Button("Count the hands") { GameFeedback.shared.play(.advance); vm.advance() }
+                        .buttonStyle(.borderedProminent).tint(.cribGold).foregroundStyle(.black)
+                        .controlSize(.large)
+                } else {
+                    waitingLabel("Waiting for \(vm.name(of: vm.snapshot.lastToPlay ?? vm.snapshot.you))…")
+                }
             } else {
                 HStack(spacing: 16) {
                     HandView(cards: s.yourHand,
@@ -658,4 +669,34 @@ private struct StarterRevealPreview: View {
 
 #Preview("Starter reveal", traits: .landscapeLeft) {
     StarterRevealPreview()
+}
+
+// Mid-pegging, stopped just after a lap reset so the delineation line between the finished lap and the
+// current one is visible.
+private struct PeggingLapPreview: View {
+    @State private var vm: GameViewModel = {
+        let vm = GameViewModel.loopback(names: [.one: "Ann", .two: "Ben"],
+                                        colorIDs: [.one: 1, .two: 7], seed: 13, scoringMode: .feedback)
+        vm.cut(); vm.cut(); vm.advance()
+        for _ in 0..<2 where vm.snapshot.phase == .discardToCrib {
+            let hand = vm.snapshot.yourHand
+            if hand.count >= 2 { vm.toggleDiscard(hand[0]); vm.toggleDiscard(hand[1]); vm.confirmDiscard() }
+        }
+        if vm.snapshot.phase == .cutStarter { vm.liftCut(); vm.revealStarter() }
+        var guardCount = 0
+        while vm.snapshot.phase == .pegging && !vm.peggingComplete {
+            guardCount += 1; if guardCount > 40 { break }
+            let s = vm.snapshot
+            // Stop once a lap has finished (some cards out of play) and the new lap has begun.
+            if s.playSequence.count - s.lapCardCount > 0 && s.lapCardCount > 0 { break }
+            let legal = CribbageScorer.legalPlays(hand: s.yourHand, count: s.runningCount)
+            if let c = legal.min(by: { $0.countingValue < $1.countingValue }) { vm.play(c) } else { vm.sayGo() }
+        }
+        return vm
+    }()
+    var body: some View { GameTableView(vm: vm) }
+}
+
+#Preview("Pegging lap divider", traits: .landscapeLeft) {
+    PeggingLapPreview()
 }

@@ -15,6 +15,7 @@ struct RootView: View {
     @State private var showingInvite = false                  // custom "invite a friend" sheet
     @State private var pendingFallbackPicker = false          // present Apple's picker after the sheet closes
     @State private var activeMatchmaker: MatchmakerContext?   // Apple's matchmaking UI (fallback)
+    @State private var wasBackgrounded = false                // distinguish a real background from a transient inactive
     @Environment(\.scenePhase) private var scenePhase
 
     @AppStorage("localName") private var name = "Player"
@@ -32,9 +33,19 @@ struct RootView: View {
             .task { gameCenter.authenticate() }   // Game Center sign-in for online play
             .onChange(of: scenePhase) { _, phase in
                 switch phase {
-                case .active:                 vm?.reconnect()   // re-pair after returning from background
-                case .background, .inactive:  vm?.persist()      // save the game if we're being closed
-                @unknown default:             break
+                case .active:
+                    // After a real background the link is almost certainly dead but the OS may still
+                    // report it connected — force a rebuild so we re-pair in seconds, not ~30s. A mere
+                    // transient inactive (control centre, a banner) does a plain, non-destructive nudge.
+                    vm?.reconnect(force: wasBackgrounded)
+                    wasBackgrounded = false
+                case .background:
+                    wasBackgrounded = true
+                    vm?.persist()      // save the game if we're being closed
+                case .inactive:
+                    vm?.persist()
+                @unknown default:
+                    break
                 }
             }
             // A match connected (a friend accepted our invite, or we accepted theirs) — start it with
