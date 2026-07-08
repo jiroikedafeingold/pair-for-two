@@ -4,7 +4,7 @@ Everything for submitting **Pair for Two**.
 
 ## Contents
 - **`APP_STORE.md`** — copy/paste metadata: name, subtitle, promo text, description, keywords, what's‑new, category, age rating, privacy answers, export compliance, and **App Review notes** (important: it's a two‑device game).
-- **`privacy/index.html`** — single‑page website with the **privacy policy** and **contact/support** (apps@feingold5.com). Host it and use its URL for the Support URL, Marketing URL, and Privacy Policy URL fields. Options: your domain (e.g. `feingold5.com/pairfortwo/`) or GitHub Pages.
+- **Website** — the single‑page **privacy policy + contact/support** (apps@feingold5.com) lives at **`docs/index.html`** (repo root) and is published via **GitHub Pages** at **https://jiroikedafeingold.github.io/pair-for-two/**. Use that URL for the Support URL, Marketing URL, and Privacy Policy URL fields.
 - **`screenshots/iphone-6.9/`** — 4 screenshots, **2868 × 1320** (iPhone 6.9", landscape). One 6.9" set covers all iPhone sizes.
 - **`screenshots/ipad-13/`** — 4 screenshots, **2752 × 2064** (iPad 13", landscape).
 - **`screenshots/raw/`** — the source renders before upscaling (safe to delete).

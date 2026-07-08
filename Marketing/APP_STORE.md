@@ -79,11 +79,14 @@ The first release of Pair for Two. Thanks for playing! Questions or feedback? ap
 ### URLs
 | Field | Value |
 | --- | --- |
-| Support URL | https://feingold5.com/pairfortwo/ (host `Marketing/privacy/index.html`) |
-| Marketing URL (optional) | https://feingold5.com/pairfortwo/ |
-| Privacy Policy URL (required) | https://feingold5.com/pairfortwo/ |
+| Support URL | https://jiroikedafeingold.github.io/pair-for-two/ |
+| Marketing URL (optional) | https://jiroikedafeingold.github.io/pair-for-two/ |
+| Privacy Policy URL (required) | https://jiroikedafeingold.github.io/pair-for-two/ |
 
-> The single-page site in `Marketing/privacy/index.html` covers both privacy policy and support/contact, so one URL can serve all three fields. Host it anywhere (your domain, or GitHub Pages) and use that address.
+> The single-page site (source: `docs/index.html`) is published via **GitHub Pages** at
+> https://jiroikedafeingold.github.io/pair-for-two/ and covers privacy policy + support/contact, so
+> the one URL serves all three fields. To use a custom domain later (e.g. feingold5.com), add a
+> `CNAME` file to `docs/` and point DNS at GitHub Pages.
 
 ---
 
