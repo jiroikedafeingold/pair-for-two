@@ -16,7 +16,7 @@ Two-phone cribbage
 
 ## Promotional text (170) — editable any time, no review
 ```
-Real cribbage across two phones — each player holds their own hand. Cut, peg, and count with satisfying haptics and sound. Play nearby or online. No sign-in to play locally.
+Real cribbage across two phones—each player holds their own hand. Cut, peg, and count with rich haptics and sound. Play nearby or online; no sign-in to play locally.
 ```
 
 ## Keywords (100, comma-separated, no spaces to save room)
