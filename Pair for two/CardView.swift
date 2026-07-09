@@ -1,7 +1,7 @@
 import SwiftUI
 
 /// A classy, easy-to-read playing card: cream face, continuous rounded corners, hairline inner
-/// border, soft shadow; rounded-serif rank+suit in opposite corners and a large centre suit glyph.
+/// border, soft shadow; heavy rounded rank+suit in opposite corners and a large centre suit glyph.
 /// Pass `card == nil` (or `faceUp == false`) for an elegant face-down back.
 struct CardView: View {
     let card: Card?
@@ -70,18 +70,19 @@ struct CardView: View {
         }
     }
 
-    /// The rank-over-suit corner index. `lineLimit`/`fixedSize` keep the two-character "10" on one
-    /// line at its natural width; a tight negative kerning keeps that "10" compact so it doesn't creep
-    /// toward the centre pip.
+    /// The rank-over-suit corner index. A heavy rounded face keeps every rank — especially the
+    /// letters A/J/Q/K — crisp and unambiguous at small sizes (the serif "J" read poorly). `lineLimit`
+    /// / `fixedSize` keep the two-character "10" on one line; a slight negative kerning keeps it compact
+    /// so it doesn't creep toward the centre pip.
     private func cornerIndex(for card: Card, ink: Color) -> some View {
-        VStack(alignment: .leading, spacing: -width * 0.03) {
+        VStack(alignment: .leading, spacing: -width * 0.02) {
             Text(card.rank.label)
-                .font(.system(size: width * 0.28, weight: .bold, design: .serif))
-                .kerning(-width * 0.015)
+                .font(.system(size: width * 0.30, weight: .heavy, design: .rounded))
+                .kerning(-width * 0.012)
                 .lineLimit(1)
                 .fixedSize()
             Text(card.suit.symbol)
-                .font(.system(size: width * 0.22, weight: .semibold))
+                .font(.system(size: width * 0.22, weight: .bold))
         }
         .foregroundStyle(ink)
     }
@@ -107,9 +108,11 @@ struct CardView: View {
 }
 
 #Preview {
-    HStack(spacing: 12) {
-        CardView(card: Card(rank: .seven, suit: .hearts))
-        CardView(card: Card(rank: .king, suit: .spades), isSelected: true)
+    HStack(spacing: 10) {
+        CardView(card: Card(rank: .jack, suit: .spades))
+        CardView(card: Card(rank: .jack, suit: .hearts))
+        CardView(card: Card(rank: .queen, suit: .clubs), isSelected: true)
+        CardView(card: Card(rank: .king, suit: .spades))
         CardView(card: Card(rank: .ten, suit: .diamonds), isHighlighted: true)
         CardView(card: nil, faceUp: false)
     }
