@@ -19,3 +19,13 @@ Packages/
 # Fastlane / misc
 fastlane/report.xml
 fastlane/screenshots
+
+# App Store Connect API key + fastlane run artifacts (never commit secrets)
+*.p8
+fastlane/report.xml
+fastlane/Preview.html
+fastlane/.env
+.env
+
+# fastlane screenshots are copied from Marketing/screenshots at run time (avoid duplicate binaries)
+fastlane/screenshots/

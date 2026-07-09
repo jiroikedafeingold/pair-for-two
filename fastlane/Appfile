@@ -1,0 +1,3 @@
+app_identifier("com.jirofeingold5.pairfortwo")
+# Authentication is via an App Store Connect API key passed through the Fastfile
+# (ASC_KEY_ID / ASC_ISSUER_ID / ASC_KEY_PATH env vars) — no Apple ID needed here.

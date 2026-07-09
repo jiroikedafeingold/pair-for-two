@@ -1,0 +1,7 @@
+# Metadata + screenshots only (the binary comes from Xcode Cloud, not here).
+app_identifier("com.jirofeingold5.pairfortwo")
+skip_binary_upload(true)
+overwrite_screenshots(true)
+submit_for_review(false)      # upload only; you review + submit in App Store Connect
+force(true)                   # don't open the HTML preview / prompt
+run_precheck_before_submit(false)

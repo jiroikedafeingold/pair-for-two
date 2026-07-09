@@ -1,0 +1,20 @@
+Pair for Two is a two-device game — one phone per player, like sitting across a table.
+
+TO REVIEW WITH TWO DEVICES (recommended):
+1. On device A: tap "Play nearby," then Host.
+2. On device B: tap "Play nearby," then Join, and select the host.
+   (Both devices must be on the same Wi-Fi / have Bluetooth on. iOS will ask
+   for Local Network permission the first time — please Allow.)
+3. Each player cuts for deal, then play proceeds: discard to the crib, the
+   non-dealer cuts the deck, the dealer turns up the starter, then pegging
+   and counting to 121.
+
+ONLINE PLAY: "Play online" uses Game Center; sign in to Game Center on both
+devices and invite the other player.
+
+There is no single-device mode by design (each player needs a private hand),
+so a second device — or a second Game Center account on a second device — is
+required to see a full match. If a second device isn't available, the app's
+menu, settings, and connection screens are still reviewable on one device.
+
+No account or purchase is required for nearby play. The app collects no data.
