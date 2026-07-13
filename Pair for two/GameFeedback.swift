@@ -74,6 +74,7 @@ final class GameFeedback {
     }
 
     private func playHaptic(_ action: Action) {
+        guard HapticsSetting.enabled else { return }
         guard supportsHaptics, let engine else { fallbackHaptic(action); return }
         do {
             let pattern = try haptic(for: action)

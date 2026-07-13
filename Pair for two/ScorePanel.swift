@@ -48,11 +48,13 @@ struct ScorePanel: View {
     private var highlighted: Bool { showingElevatedValue || awaitingConfirm }
 
     private func firePlusHaptic() {
+        guard HapticsSetting.enabled else { return }
         plusHeavy.impactOccurred(intensity: 1.0)
         plusHeavy.prepare()
     }
 
     private func fireCommitHaptic() {
+        guard HapticsSetting.enabled else { return }
         plusHeavy.impactOccurred(intensity: 1.0)
         plusRigid.impactOccurred(intensity: 1.0)
         plusHeavy.prepare(); plusRigid.prepare()
@@ -161,8 +163,7 @@ struct ScorePanel: View {
                 PointsSlider(value: $pending, isDragging: $sliderIsDragging, primary: primary, deep: deep) { committed in
                     if !requireConfirm {
                         onAdd(committed)
-                        let gen = UIImpactFeedbackGenerator(style: .medium)
-                        gen.impactOccurred()
+                        if HapticsSetting.enabled { UIImpactFeedbackGenerator(style: .medium).impactOccurred() }
                         withAnimation(.spring(response: 0.45, dampingFraction: 0.8)) { pending = 0 }
                     }
                 }
@@ -176,8 +177,7 @@ struct ScorePanel: View {
                     } else {
                         onUndo()
                     }
-                    let gen = UIImpactFeedbackGenerator(style: .light)
-                    gen.impactOccurred()
+                    if HapticsSetting.enabled { UIImpactFeedbackGenerator(style: .light).impactOccurred() }
                 } label: {
                     Image(systemName: "arrow.uturn.backward")
                         .font(.system(size: 13, weight: .black))

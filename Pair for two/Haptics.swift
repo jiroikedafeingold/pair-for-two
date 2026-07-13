@@ -1,6 +1,14 @@
 import UIKit
 import CoreHaptics
 
+// MARK: - Global haptics toggle
+
+/// Whether haptics are enabled (Settings → "Haptics"). Read at each call site so turning it off
+/// silences every vibration — play, win, and slider ticks alike. Defaults to on.
+enum HapticsSetting {
+    static var enabled: Bool { (UserDefaults.standard.object(forKey: "hapticsEnabled") as? Bool) ?? true }
+}
+
 // MARK: - Win Haptics (reused from Criboard)
 
 /// Celebratory rumble for a win, scaled by skunk level.
@@ -23,62 +31,79 @@ final class WinHaptics {
     }
 
     func play(skunk: SkunkLevel) {
+        guard HapticsSetting.enabled else { return }
         guard let engine, CHHapticEngine.capabilitiesForHardware().supportsHaptics else {
-            let n = UINotificationFeedbackGenerator()
-            n.notificationOccurred(.success)
+            UINotificationFeedbackGenerator().notificationOccurred(.success)
+            UIImpactFeedbackGenerator(style: .heavy).impactOccurred(intensity: 1.0)
             return
         }
 
-        let (duration, ramps): (Double, [(Double, Float)])
+        // A long, escalating celebration: a swelling rumble + an accelerating fusillade of strong
+        // taps + a finale of big booms. Bigger skunk → longer and crazier.
+        let duration: Double
+        let burstCount: Int
         switch skunk {
-        case .none:
-            duration = 1.2
-            ramps = [(0.0, 0.55), (0.6, 0.85), (1.2, 0.0)]
-        case .single:
-            duration = 1.8
-            ramps = [(0.0, 0.7), (0.6, 0.95), (1.2, 1.0), (1.8, 0.0)]
-        case .double:
-            duration = 2.6
-            ramps = [(0.0, 0.7), (0.5, 0.9), (1.0, 1.0), (1.8, 1.0), (2.6, 0.0)]
+        case .none:   duration = 2.2; burstCount = 18
+        case .single: duration = 3.0; burstCount = 28
+        case .double: duration = 4.2; burstCount = 42
         }
 
         var events: [CHHapticEvent] = []
 
-        let continuous = CHHapticEvent(
+        // Base rumble across the whole celebration.
+        events.append(CHHapticEvent(
             eventType: .hapticContinuous,
             parameters: [
-                CHHapticEventParameter(parameterID: .hapticIntensity, value: 0.95),
-                CHHapticEventParameter(parameterID: .hapticSharpness, value: 0.45)
+                CHHapticEventParameter(parameterID: .hapticIntensity, value: 1.0),
+                CHHapticEventParameter(parameterID: .hapticSharpness, value: 0.35)
             ],
-            relativeTime: 0,
-            duration: duration
-        )
-        events.append(continuous)
+            relativeTime: 0, duration: duration))
 
-        let beats: [Double]
-        switch skunk {
-        case .none:   beats = [0.0, 0.4, 0.9]
-        case .single: beats = [0.0, 0.3, 0.6, 1.0, 1.4]
-        case .double: beats = [0.0, 0.25, 0.5, 0.8, 1.1, 1.5, 1.9, 2.3]
-        }
-        for t in beats {
-            events.append(
-                CHHapticEvent(
-                    eventType: .hapticTransient,
-                    parameters: [
-                        CHHapticEventParameter(parameterID: .hapticIntensity, value: 1.0),
-                        CHHapticEventParameter(parameterID: .hapticSharpness, value: 0.8)
-                    ],
-                    relativeTime: t
-                )
-            )
+        // Accelerating fusillade of transients (spacing shrinks toward the end).
+        var t = 0.0
+        for i in 0..<burstCount {
+            let frac = Double(i) / Double(burstCount)
+            t += max(0.05, 0.16 - 0.09 * frac)
+            if t > duration - 0.35 { break }
+            events.append(CHHapticEvent(
+                eventType: .hapticTransient,
+                parameters: [
+                    CHHapticEventParameter(parameterID: .hapticIntensity, value: Float(0.7 + 0.3 * frac)),
+                    CHHapticEventParameter(parameterID: .hapticSharpness, value: Float((i % 4 == 0) ? 0.95 : 0.4 + 0.5 * frac))
+                ],
+                relativeTime: t))
         }
 
+        // Finale: a cluster of huge booms + a final swell.
+        let finale = max(0, duration - 0.3)
+        for (k, dt) in [0.0, 0.08, 0.17].enumerated() {
+            events.append(CHHapticEvent(
+                eventType: .hapticTransient,
+                parameters: [
+                    CHHapticEventParameter(parameterID: .hapticIntensity, value: 1.0),
+                    CHHapticEventParameter(parameterID: .hapticSharpness, value: k == 2 ? 0.95 : 0.5)
+                ],
+                relativeTime: finale + dt))
+        }
+        events.append(CHHapticEvent(
+            eventType: .hapticContinuous,
+            parameters: [
+                CHHapticEventParameter(parameterID: .hapticIntensity, value: 1.0),
+                CHHapticEventParameter(parameterID: .hapticSharpness, value: 0.6)
+            ],
+            relativeTime: finale, duration: 0.4))
+
+        // Intensity curve: swell in, pulse, then peak at the finale.
         let intensityCurve = CHHapticParameterCurve(
             parameterID: .hapticIntensityControl,
-            controlPoints: ramps.map { CHHapticParameterCurve.ControlPoint(relativeTime: $0.0, value: $0.1) },
-            relativeTime: 0
-        )
+            controlPoints: [
+                .init(relativeTime: 0, value: 0.5),
+                .init(relativeTime: duration * 0.3, value: 0.95),
+                .init(relativeTime: duration * 0.6, value: 0.7),
+                .init(relativeTime: duration * 0.85, value: 1.0),
+                .init(relativeTime: duration, value: 0.0)
+            ],
+            relativeTime: 0)
 
         do {
             let pattern = try CHHapticPattern(events: events, parameterCurves: [intensityCurve])
@@ -86,8 +111,7 @@ final class WinHaptics {
             try engine.start()
             try player.start(atTime: CHHapticTimeImmediate)
         } catch {
-            let n = UINotificationFeedbackGenerator()
-            n.notificationOccurred(.success)
+            UINotificationFeedbackGenerator().notificationOccurred(.success)
         }
     }
 }
@@ -125,6 +149,7 @@ final class DragTickHaptics {
 
     /// - Parameter progress: 0...1 position of the value along the track.
     func tick(progress: Double) {
+        guard HapticsSetting.enabled else { return }
         let p = min(1, max(0, progress))
 
         guard supportsHaptics, let engine else {

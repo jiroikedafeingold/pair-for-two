@@ -50,8 +50,13 @@ struct WinnerOverlay: View {
     @State private var animateIn = false
     @State private var rotate = false
     @State private var pulse = false
+    @State private var flash = false
+
+    /// Settings → "Celebration effects": the extra fireworks + opening flash (the win card always shows).
+    @AppStorage("celebrationEffects") private var celebrationEffects = true
 
     private var winnerColor: Color { winnerTheme.primary }
+    private var effectColors: [Color] { skunk == .none ? [winnerColor, .cribGold, .white] : skunk.accentColors }
 
     var body: some View {
         ZStack {
@@ -89,7 +94,12 @@ struct WinnerOverlay: View {
                 .animation(.linear(duration: 8).repeatForever(autoreverses: false), value: rotate)
             }
 
-            ConfettiBurst(colors: skunk == .none ? [winnerColor, .cribGold, .white] : skunk.accentColors)
+            if celebrationEffects {
+                FireworksView(colors: effectColors)
+                    .opacity(animateIn ? 1 : 0)
+            }
+
+            ConfettiBurst(colors: effectColors)
                 .opacity(animateIn ? 1 : 0)
 
             VStack(spacing: 16) {
@@ -186,11 +196,22 @@ struct WinnerOverlay: View {
             )
             .scaleEffect(animateIn ? 1 : 0.8)
             .opacity(animateIn ? 1 : 0)
+
+            // A bright opening flash that quickly fades — the "pop" as the celebration lands.
+            if celebrationEffects {
+                Rectangle()
+                    .fill(.white)
+                    .ignoresSafeArea()
+                    .opacity(flash ? 0 : 0.65)
+                    .animation(.easeOut(duration: 0.65), value: flash)
+                    .allowsHitTesting(false)
+            }
         }
         .onAppear {
             withAnimation(.spring(response: 0.6, dampingFraction: 0.7)) { animateIn = true }
             rotate = true
             pulse = true
+            flash = true
             WinHaptics.shared.play(skunk: skunk)
         }
     }
@@ -233,6 +254,72 @@ struct WinnerOverlay: View {
     }
 }
 
+// MARK: - Fireworks (extra celebration; toggleable in Settings)
+
+/// Continuous bursts of particles that shoot outward from random points, arc down, and fade —
+/// layered behind the win card for a bigger celebration. Pure SwiftUI Canvas, no assets.
+struct FireworksView: View {
+    let colors: [Color]
+
+    @State private var start = Date()
+
+    private struct Burst {
+        let cx: CGFloat, cy: CGFloat   // 0…1 position
+        let t0: Double                 // start offset within the cycle
+        let color: Color
+        let count: Int
+        let phase: Double              // angle offset so bursts don't align
+    }
+    private let bursts: [Burst]
+    private let cycle: Double = 6.0
+    private let life: Double = 1.5
+
+    init(colors: [Color]) {
+        self.colors = colors
+        var arr: [Burst] = []
+        for _ in 0..<16 {
+            arr.append(Burst(
+                cx: CGFloat.random(in: 0.12...0.88),
+                cy: CGFloat.random(in: 0.10...0.60),
+                t0: Double.random(in: 0...(cycle - life)),
+                color: colors.randomElement() ?? .white,
+                count: Int.random(in: 16...26),
+                phase: Double.random(in: 0...(.pi * 2))
+            ))
+        }
+        bursts = arr
+    }
+
+    var body: some View {
+        TimelineView(.animation) { tl in
+            let elapsed = tl.date.timeIntervalSince(start).truncatingRemainder(dividingBy: cycle)
+            Canvas { ctx, size in
+                for b in bursts {
+                    let age = elapsed - b.t0
+                    guard age >= 0, age < life else { continue }
+                    let prog = age / life
+                    let alpha = 1.0 - prog
+                    let center = CGPoint(x: b.cx * size.width, y: b.cy * size.height)
+                    for k in 0..<b.count {
+                        let a = Double(k) / Double(b.count) * .pi * 2 + b.phase
+                        let speed = 120.0 + Double(k % 3) * 26.0
+                        let dist = speed * age
+                        let gravity = 150.0 * age * age
+                        let x = center.x + CGFloat(cos(a) * dist)
+                        let y = center.y + CGFloat(sin(a) * dist + gravity)
+                        let r = 3.5 * alpha + 0.8
+                        ctx.fill(Path(ellipseIn: CGRect(x: x - r, y: y - r, width: r * 2, height: r * 2)),
+                                 with: .color(b.color.opacity(alpha)))
+                    }
+                }
+            }
+        }
+        .allowsHitTesting(false)
+        .ignoresSafeArea()
+        .blendMode(.plusLighter)
+    }
+}
+
 // MARK: - Confetti (reused from Criboard)
 
 struct ConfettiPiece: Identifiable {
@@ -257,7 +344,7 @@ struct ConfettiBurst: View {
     init(colors: [Color]) {
         self.colors = colors
         var arr: [ConfettiPiece] = []
-        for _ in 0..<70 {
+        for _ in 0..<120 {
             arr.append(
                 ConfettiPiece(
                     color: colors.randomElement() ?? .white,

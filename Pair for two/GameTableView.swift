@@ -519,17 +519,36 @@ struct GameTableView: View {
     // MARK: Show
 
     @ViewBuilder private func showArea(_ s: PlayerSnapshot, pileWidth: CGFloat) -> some View {
+        let isCrib = s.phase == .showCrib
         VStack(spacing: 12) {
             HStack(alignment: .top, spacing: 24) {
                 VStack(spacing: 4) {
                     Text("The Cut").font(.caption2).foregroundStyle(.white.opacity(0.7))
                     if let starter = s.starter { CardView(card: starter, width: pileWidth) }
                 }
-                VStack(spacing: 4) {
-                    Text(vm.showLabel).font(.caption2).foregroundStyle(.white.opacity(0.7))
-                    HStack(spacing: 8) {
-                        ForEach(vm.showCards) { CardView(card: $0, width: pileWidth) }
+                VStack(spacing: 6) {
+                    // The crib gets a distinct gold badge + backing so it's obvious it's the crib
+                    // being counted (not another hand).
+                    if isCrib {
+                        Label("\(vm.name(of: s.dealer))'s crib".uppercased(), systemImage: "square.stack.3d.up.fill")
+                            .font(.caption.weight(.heavy))
+                            .foregroundStyle(.black)
+                            .padding(.horizontal, 12).padding(.vertical, 4)
+                            .background(Capsule().fill(Color.cribGold))
+                    } else {
+                        Text(vm.showLabel).font(.caption2).foregroundStyle(.white.opacity(0.7))
                     }
+                    // Cards deal out one-by-one as they're shown (re-triggers each show sub-phase).
+                    DealtCardsRow(cards: vm.showCards, cardWidth: pileWidth, dealSignal: s.phase)
+                        .padding(isCrib ? 8 : 0)
+                        .background {
+                            if isCrib {
+                                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                    .fill(Color.cribGold.opacity(0.12))
+                                    .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                        .stroke(Color.cribGold.opacity(0.55), lineWidth: 1))
+                            }
+                        }
                 }
             }
 
@@ -610,6 +629,42 @@ struct GameTableView: View {
                 winnerName: vm.name(of: info.winner),
                 onPlayAgain: { vm.playAgain() }
             )
+        }
+    }
+}
+
+// MARK: - Dealt cards row (show phase)
+
+/// Renders the counted cards dealing out one at a time — each drops in from above with a spring —
+/// so the hand (and the crib) is clearly presented as it's shown. Re-deals whenever `dealSignal`
+/// changes (pone hand → dealer hand → crib).
+private struct DealtCardsRow: View {
+    let cards: [Card]
+    let cardWidth: CGFloat
+    let dealSignal: GamePhase
+    @State private var revealed = 0
+
+    var body: some View {
+        HStack(spacing: 8) {
+            ForEach(Array(cards.enumerated()), id: \.element.id) { idx, card in
+                let shown = idx < revealed
+                CardView(card: card, width: cardWidth)
+                    .opacity(shown ? 1 : 0)
+                    .scaleEffect(shown ? 1 : 0.6, anchor: .top)
+                    .offset(y: shown ? 0 : -60)
+                    .rotationEffect(.degrees(shown ? 0 : (idx.isMultiple(of: 2) ? -10 : 10)))
+                    .animation(.spring(response: 0.45, dampingFraction: 0.68), value: revealed)
+            }
+        }
+        .task(id: dealSignal) {
+            revealed = 0
+            guard !cards.isEmpty else { return }
+            try? await Task.sleep(for: .milliseconds(180))
+            for i in 1...cards.count {
+                revealed = i
+                GameFeedback.shared.play(.cardPlay)   // a deal tick as each card lands
+                try? await Task.sleep(for: .milliseconds(150))
+            }
         }
     }
 }
@@ -732,4 +787,34 @@ private struct WinnerPreview: View {
 
 #Preview("Winner", traits: .landscapeLeft) {
     WinnerPreview()
+}
+
+// The crib being counted — distinct gold badge + backing, cards dealing out.
+private struct CribShowPreview: View {
+    @State private var vm: GameViewModel = {
+        let vm = GameViewModel.loopback(names: [.one: "Ann", .two: "Ben"],
+                                        colorIDs: [.one: 1, .two: 7], seed: 42, scoringMode: .feedback)
+        vm.cut(); vm.cut(); vm.advance()
+        for _ in 0..<2 where vm.snapshot.phase == .discardToCrib {
+            let hand = vm.snapshot.yourHand
+            if hand.count >= 2 { vm.toggleDiscard(hand[0]); vm.toggleDiscard(hand[1]); vm.confirmDiscard() }
+        }
+        if vm.snapshot.phase == .cutStarter { vm.liftCut(); vm.revealStarter() }
+        var g = 0
+        while vm.snapshot.phase == .pegging && !vm.peggingComplete {
+            g += 1; if g > 60 { break }
+            let s = vm.snapshot
+            let legal = CribbageScorer.legalPlays(hand: s.yourHand, count: s.runningCount)
+            if let c = legal.min(by: { $0.countingValue < $1.countingValue }) { vm.play(c) } else { vm.sayGo() }
+        }
+        if vm.peggingComplete { vm.advance() }   // → showPone
+        vm.advance()                             // → showDealer
+        vm.advance()                             // → showCrib
+        return vm
+    }()
+    var body: some View { GameTableView(vm: vm) }
+}
+
+#Preview("Crib show", traits: .landscapeLeft) {
+    CribShowPreview()
 }

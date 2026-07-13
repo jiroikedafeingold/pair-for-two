@@ -12,6 +12,8 @@ struct SettingsView: View {
     @AppStorage("confirmRelease") private var confirmRelease = true
     @AppStorage("scoringMode") private var scoringModeRaw = ScoringMode.feedback.rawValue
     @AppStorage("cardBackID") private var cardBackID = 0
+    @AppStorage("hapticsEnabled") private var hapticsEnabled = true
+    @AppStorage("celebrationEffects") private var celebrationEffects = true
 
     private var scoringMode: ScoringMode { ScoringMode(rawValue: scoringModeRaw) ?? .feedback }
 
@@ -68,6 +70,16 @@ struct SettingsView: View {
                         Text("Holds the slider value until you tap the +N button, instead of adding it "
                              + "the moment you let go.")
                     }
+                }
+
+                Section {
+                    Toggle("Haptics", isOn: $hapticsEnabled)
+                    Toggle("Celebration effects", isOn: $celebrationEffects)
+                } header: {
+                    Text("Feel & effects")
+                } footer: {
+                    Text("Haptics are the vibrations during play and on a win. Celebration effects are "
+                         + "the fireworks and flash on the win screen (the win screen itself still shows).")
                 }
             }
             .navigationTitle("Settings")
