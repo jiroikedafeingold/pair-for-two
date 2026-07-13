@@ -482,9 +482,20 @@ struct GameTableView: View {
 
             if vm.peggingComplete {
                 if vm.youStartCount {
-                    Button("Count the hands") { GameFeedback.shared.play(.advance); vm.advance() }
-                        .buttonStyle(.borderedProminent).tint(.cribGold).foregroundStyle(.black)
-                        .controlSize(.large)
+                    // Fold any pending slider points in before advancing (like the show's Continue),
+                    // so last-card / go / 31 points aren't stranded when moving to the count.
+                    Button(uncommittedLocal > 0 ? "Add \(uncommittedLocal) & count the hands" : "Count the hands") {
+                        if uncommittedLocal > 0 {
+                            GameFeedback.shared.play(.score)
+                            vm.claim(uncommittedLocal, for: vm.snapshot.you)
+                            clearScoreSignal += 1; uncommittedLocal = 0
+                        } else {
+                            GameFeedback.shared.play(.advance)
+                        }
+                        vm.advance()
+                    }
+                    .buttonStyle(.borderedProminent).tint(.cribGold).foregroundStyle(.black)
+                    .controlSize(.large)
                 } else {
                     waitingLabel("Waiting for \(vm.name(of: vm.snapshot.lastToPlay ?? vm.snapshot.you))…")
                 }
