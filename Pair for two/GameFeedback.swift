@@ -40,6 +40,10 @@ final class GameFeedback {
     private var players: [String: AVAudioPlayer] = [:]
     private var audioReady = false
 
+    // A small pool of firework players so celebration pops can overlap; driven by `playCelebration()`.
+    private var celebrationPool: [AVAudioPlayer] = []
+    private var celebrationTask: Task<Void, Never>?
+
     private init() {
         startEngine()
         buildSounds()
@@ -50,6 +54,24 @@ final class GameFeedback {
     func play(_ action: Action) {
         playHaptic(action)
         playSound(for: action)
+    }
+
+    /// Fire a volley of firework pops for the win celebration (sound only). Overlapping pops play
+    /// through a small pool, each with a little pitch/volume variation so they don't sound identical.
+    func playCelebration() {
+        guard audioReady, !celebrationPool.isEmpty else { return }
+        celebrationTask?.cancel()
+        celebrationTask = Task { @MainActor [weak self] in
+            for k in 0..<14 {
+                guard let self, !Task.isCancelled else { return }
+                let p = self.celebrationPool[k % self.celebrationPool.count]
+                p.currentTime = 0
+                p.rate = Float.random(in: 0.88...1.22)
+                p.volume = Float.random(in: 0.65...1.0)
+                p.play()
+                try? await Task.sleep(for: .seconds(Double.random(in: 0.26...0.6)))
+            }
+        }
     }
 
     /// Warm up the generators/engine ahead of a burst of actions (called when a game screen appears).
@@ -237,6 +259,16 @@ final class GameFeedback {
         register("ding", dingSamples(freq: 1046, secondFreq: 1568, duration: 0.32))
         register("chime", chimeSamples())
         register("go", goSamples())
+
+        // Firework pool (whistle → boom → crackle), reused for the win celebration volley.
+        let fireworkData = wav(fireworkSamples())
+        celebrationPool = (0..<4).compactMap { _ -> AVAudioPlayer? in
+            guard let p = try? AVAudioPlayer(data: fireworkData) else { return nil }
+            p.enableRate = true
+            p.prepareToPlay()
+            return p
+        }
+
         audioReady = ok
     }
 
@@ -353,6 +385,37 @@ final class GameFeedback {
                 let env = expf(-t * 16)
                 out[s0 + j] += sinf(2 * .pi * f * t) * env * 0.5
             }
+        }
+        return out
+    }
+
+    /// A single firework: a short rising whistle, a low boom, then a tail of crackling sparks.
+    private func fireworkSamples() -> [Float] {
+        let n = Int(Double(sampleRate) * 0.75)
+        var noise = Noise()
+        var out = [Float](repeating: 0, count: n)
+        for i in 0..<n {
+            let t = Float(i) / Float(sampleRate)
+            var s: Float = 0
+            // Rising whistle (launch).
+            if t < 0.24 {
+                let f = 700 + 2600 * (t / 0.24)
+                let env = (t < 0.02 ? t / 0.02 : 1) * (1 - t / 0.24) * 0.16
+                s += sinf(2 * .pi * f * t) * env
+            }
+            // Low boom (the burst).
+            if t >= 0.22 && t < 0.5 {
+                let bt = t - 0.22
+                let env = expf(-bt * 15) * 0.9
+                s += (sinf(2 * .pi * 85 * t) * 0.7 + noise.next() * 0.5) * env
+            }
+            // Crackling sparks tapering off.
+            if t >= 0.28 {
+                let ct = t - 0.28
+                let pop = expf(-ct.truncatingRemainder(dividingBy: 0.05) * 90)
+                s += noise.next() * pop * 0.28 * expf(-ct * 3.5)
+            }
+            out[i] = max(-1, min(1, s))
         }
         return out
     }

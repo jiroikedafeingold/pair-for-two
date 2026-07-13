@@ -20,12 +20,16 @@ final class MultipeerSession: NSObject, GameTransport {
     private(set) var discoveredPeers: [MCPeerID] = []
     private(set) var connectedPeerName: String?
     private var didConnect = false   // once true, a drop triggers auto-rejoin rather than a plain disconnect
+    private var rendezvousActive = false   // a "Rejoin" is in progress: keep retrying discovery+invite until connected
+    private var rendezvousTask: Task<Void, Never>?
 
     nonisolated let events: AsyncStream<TransportEvent>
     nonisolated private let continuation: AsyncStream<TransportEvent>.Continuation
 
     private let serviceType = "pairfortwo"     // Bonjour: _pairfortwo._tcp
-    nonisolated(unsafe) private var session: MCSession
+    // Confined to the main actor: it's reassigned on reconnect/rebuild, so any off-actor read while
+    // it's being swapped is a data race (crashes in objc_retain). All access hops to the main actor.
+    private var session: MCSession
     nonisolated(unsafe) private let myPeerID: MCPeerID
     private var advertiser: MCNearbyServiceAdvertiser?
     private var browser: MCNearbyServiceBrowser?
@@ -61,8 +65,29 @@ final class MultipeerSession: NSObject, GameTransport {
     /// saved state becomes the host (decided by the caller). This avoids the deadlock where both
     /// markers say "host", so both would only advertise and never find each other.
     func startRendezvous() {
+        rendezvousActive = true
         phase = .connecting
         startBoth()
+        startRendezvousRetry()
+    }
+
+    /// Keep trying to pair while a "Rejoin" is in progress. The first invite can mistime (the other
+    /// phone's advertiser may not be up yet); rather than giving up, the smaller-named peer re-invites
+    /// every few seconds, and if nothing's been discovered we refresh discovery. Runs until connected
+    /// (or the screen is dismissed).
+    private func startRendezvousRetry() {
+        rendezvousTask?.cancel()
+        rendezvousTask = Task { @MainActor [weak self] in
+            while true {
+                try? await Task.sleep(for: .seconds(4))
+                guard let self, self.rendezvousActive, self.session.connectedPeers.isEmpty else { return }
+                if let peer = self.discoveredPeers.last(where: { self.shouldInvite($0) }) {
+                    self.browser?.invitePeer(peer, to: self.session, withContext: nil, timeout: 10)
+                } else if self.discoveredPeers.isEmpty {
+                    self.startBoth()   // no one found yet — restart advertiser + browser
+                }
+            }
+        }
     }
 
     /// (Re)create and start the advertiser (host) or browser (guest). Fresh instances are used so a
@@ -126,14 +151,22 @@ final class MultipeerSession: NSObject, GameTransport {
         if !force && !session.connectedPeers.isEmpty { return }   // still live and we're not forcing
         phase = .reconnecting
         continuation.yield(.reconnecting)
+        rebuildSession()
+        startBoth()
+    }
+
+    /// Tear down the current MCSession and stand up a fresh one (MCSession can't reliably re-add a peer
+    /// after a disconnect, and a failed invite leaves it in a bad state).
+    private func rebuildSession() {
         session.delegate = nil
         session.disconnect()
         session = MCSession(peer: myPeerID, securityIdentity: nil, encryptionPreference: .required)
         session.delegate = self
-        startBoth()
     }
 
     func stop() {
+        rendezvousActive = false
+        rendezvousTask?.cancel(); rendezvousTask = nil
         advertiser?.stopAdvertisingPeer()
         browser?.stopBrowsingForPeers()
         session.disconnect()
@@ -149,11 +182,11 @@ final class MultipeerSession: NSObject, GameTransport {
     // MARK: GameTransport
 
     // Messages that couldn't be delivered (no peer connected at the moment) are held here and flushed
-    // on the next connect, so a tap during a brief connectivity gap is never silently lost.
-    nonisolated(unsafe) private var outbox: [GameMessage] = []
-    private let outboxLock = NSLock()
+    // on the next connect, so a tap during a brief connectivity gap is never silently lost. Main-actor
+    // confined alongside `session`.
+    private var outbox: [GameMessage] = []
 
-    nonisolated func send(_ message: GameMessage) async {
+    func send(_ message: GameMessage) async {
         let peers = session.connectedPeers
         guard !peers.isEmpty else { buffer(message); return }
         do {
@@ -164,16 +197,15 @@ final class MultipeerSession: NSObject, GameTransport {
         }
     }
 
-    private nonisolated func buffer(_ message: GameMessage) {
-        outboxLock.lock(); defer { outboxLock.unlock() }
+    private func buffer(_ message: GameMessage) {
         outbox.append(message)
         if outbox.count > 200 { outbox.removeFirst(outbox.count - 200) }   // safety cap
     }
 
-    private nonisolated func flushOutbox() {
+    private func flushOutbox() {
         let peers = session.connectedPeers
         guard !peers.isEmpty else { return }
-        outboxLock.lock(); let pending = outbox; outbox.removeAll(); outboxLock.unlock()
+        let pending = outbox; outbox.removeAll()
         for message in pending {
             if let data = try? JSONEncoder().encode(message) {
                 try? session.send(data, toPeers: peers, with: .reliable)
@@ -187,6 +219,8 @@ final class MultipeerSession: NSObject, GameTransport {
         phase = .connected
         connectedPeerName = peerName
         didConnect = true
+        rendezvousActive = false
+        rendezvousTask?.cancel(); rendezvousTask = nil
         stopDiscovery()
         flushOutbox()               // deliver anything queued during the gap
         continuation.yield(.connected)
@@ -199,6 +233,12 @@ final class MultipeerSession: NSObject, GameTransport {
     private func handleDrop() {
         if didConnect {
             reconnect(force: false)   // genuine drop (connectedPeers already empty) — rebuild and re-pair
+        } else if rendezvousActive {
+            // A rejoin invite timed out before ever connecting — don't go terminal. Rebuild and keep
+            // advertising/browsing; the retry loop will invite again once the other phone is ready.
+            rebuildSession()
+            startBoth()
+            phase = .connecting
         } else {
             phase = .disconnected
             continuation.yield(.disconnected)
@@ -256,8 +296,9 @@ extension MultipeerSession: MCNearbyServiceAdvertiserDelegate {
                                 didReceiveInvitationFromPeer peerID: MCPeerID,
                                 withContext context: Data?,
                                 invitationHandler: @escaping (Bool, MCSession?) -> Void) {
-        // Auto-accept: this is a two-player game, first invitation wins.
-        invitationHandler(true, session)
+        // Auto-accept: this is a two-player game, first invitation wins. Read `session` on the main
+        // actor (it may be mid-rebuild); the handler can be invoked from any thread.
+        Task { @MainActor in invitationHandler(true, self.session) }
     }
 }
 

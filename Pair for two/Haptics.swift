@@ -38,50 +38,67 @@ final class WinHaptics {
             return
         }
 
-        // A long, escalating celebration: a swelling rumble + an accelerating fusillade of strong
-        // taps + a finale of big booms. Bigger skunk → longer and crazier.
+        // A long, relentless celebration: two overlapping continuous rumbles (deep + sharp buzz),
+        // a dense accelerating fusillade of full-strength taps with crackle, and a big finale barrage.
+        // Bigger skunk → longer and crazier.
         let duration: Double
         let burstCount: Int
         switch skunk {
-        case .none:   duration = 2.2; burstCount = 18
-        case .single: duration = 3.0; burstCount = 28
-        case .double: duration = 4.2; burstCount = 42
+        case .none:   duration = 4.0; burstCount = 46
+        case .single: duration = 5.5; burstCount = 72
+        case .double: duration = 7.0; burstCount = 100
         }
 
         var events: [CHHapticEvent] = []
 
-        // Base rumble across the whole celebration.
+        // Two continuous layers across the whole celebration: a deep body rumble + a sharp buzz on top.
         events.append(CHHapticEvent(
             eventType: .hapticContinuous,
             parameters: [
                 CHHapticEventParameter(parameterID: .hapticIntensity, value: 1.0),
-                CHHapticEventParameter(parameterID: .hapticSharpness, value: 0.35)
+                CHHapticEventParameter(parameterID: .hapticSharpness, value: 0.25)
+            ],
+            relativeTime: 0, duration: duration))
+        events.append(CHHapticEvent(
+            eventType: .hapticContinuous,
+            parameters: [
+                CHHapticEventParameter(parameterID: .hapticIntensity, value: 0.8),
+                CHHapticEventParameter(parameterID: .hapticSharpness, value: 0.85)
             ],
             relativeTime: 0, duration: duration))
 
-        // Accelerating fusillade of transients (spacing shrinks toward the end).
+        // Dense accelerating fusillade of near-max taps; every few adds a crackle double-tap.
         var t = 0.0
         for i in 0..<burstCount {
             let frac = Double(i) / Double(burstCount)
-            t += max(0.05, 0.16 - 0.09 * frac)
-            if t > duration - 0.35 { break }
+            t += max(0.035, 0.13 - 0.09 * frac)
+            if t > duration - 0.4 { break }
             events.append(CHHapticEvent(
                 eventType: .hapticTransient,
                 parameters: [
-                    CHHapticEventParameter(parameterID: .hapticIntensity, value: Float(0.7 + 0.3 * frac)),
-                    CHHapticEventParameter(parameterID: .hapticSharpness, value: Float((i % 4 == 0) ? 0.95 : 0.4 + 0.5 * frac))
+                    CHHapticEventParameter(parameterID: .hapticIntensity, value: Float(min(1.0, 0.85 + 0.2 * frac))),
+                    CHHapticEventParameter(parameterID: .hapticSharpness, value: Float((i % 3 == 0) ? 0.95 : 0.45 + 0.45 * frac))
                 ],
                 relativeTime: t))
+            if i % 5 == 0 {   // crackle
+                events.append(CHHapticEvent(
+                    eventType: .hapticTransient,
+                    parameters: [
+                        CHHapticEventParameter(parameterID: .hapticIntensity, value: 1.0),
+                        CHHapticEventParameter(parameterID: .hapticSharpness, value: 1.0)
+                    ],
+                    relativeTime: t + 0.02))
+            }
         }
 
-        // Finale: a cluster of huge booms + a final swell.
-        let finale = max(0, duration - 0.3)
-        for (k, dt) in [0.0, 0.08, 0.17].enumerated() {
+        // Finale: a barrage of huge booms + a final swell.
+        let finale = max(0, duration - 0.5)
+        for dt in [0.0, 0.07, 0.14, 0.22, 0.31, 0.42] {
             events.append(CHHapticEvent(
                 eventType: .hapticTransient,
                 parameters: [
                     CHHapticEventParameter(parameterID: .hapticIntensity, value: 1.0),
-                    CHHapticEventParameter(parameterID: .hapticSharpness, value: k == 2 ? 0.95 : 0.5)
+                    CHHapticEventParameter(parameterID: .hapticSharpness, value: dt >= 0.31 ? 0.95 : 0.55)
                 ],
                 relativeTime: finale + dt))
         }
@@ -91,15 +108,15 @@ final class WinHaptics {
                 CHHapticEventParameter(parameterID: .hapticIntensity, value: 1.0),
                 CHHapticEventParameter(parameterID: .hapticSharpness, value: 0.6)
             ],
-            relativeTime: finale, duration: 0.4))
+            relativeTime: finale, duration: 0.55))
 
-        // Intensity curve: swell in, pulse, then peak at the finale.
+        // Intensity curve: swell in fast and stay high, peaking at the finale.
         let intensityCurve = CHHapticParameterCurve(
             parameterID: .hapticIntensityControl,
             controlPoints: [
-                .init(relativeTime: 0, value: 0.5),
-                .init(relativeTime: duration * 0.3, value: 0.95),
-                .init(relativeTime: duration * 0.6, value: 0.7),
+                .init(relativeTime: 0, value: 0.7),
+                .init(relativeTime: duration * 0.2, value: 1.0),
+                .init(relativeTime: duration * 0.6, value: 0.9),
                 .init(relativeTime: duration * 0.85, value: 1.0),
                 .init(relativeTime: duration, value: 0.0)
             ],
