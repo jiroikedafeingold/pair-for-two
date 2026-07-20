@@ -45,7 +45,9 @@ struct WinnerOverlay: View {
     let winnerTheme: PlayerTheme
     let winnerName: String
     var loserChar: String = "🦨"
+    var canReplay: Bool = false
     let onPlayAgain: () -> Void
+    var onReplay: () -> Void = {}
 
     @State private var animateIn = false
     @State private var rotate = false
@@ -167,6 +169,15 @@ struct WinnerOverlay: View {
                     .shadow(color: .black.opacity(0.45), radius: 10, y: 4)
                 }
                 .padding(.top, 4)
+
+                if canReplay {
+                    Button(action: onReplay) {
+                        Label("Replay scoring", systemImage: "play.circle.fill")
+                            .font(.system(size: 13, weight: .bold, design: .rounded))
+                            .foregroundStyle(.white.opacity(0.9))
+                    }
+                    .buttonStyle(.plain)
+                }
             }
             .padding(28)
             .frame(maxWidth: 320)

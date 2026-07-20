@@ -26,6 +26,14 @@ struct GameTableView: View {
     @State private var pegAlert: String? = nil
     @State private var pegAlertTask: Task<Void, Never>? = nil
 
+    // "Check my count" — shows the correct scoring for the hand/crib currently being counted.
+    @State private var showCheck = false
+
+    // Scoring replay (win screen). `replayIsPreWin` = the auto replay shown *before* the win screen.
+    @State private var showReplay = false
+    @State private var replayIsPreWin = false
+    @AppStorage("replayBeforeWin") private var replayBeforeWin = false
+
     var body: some View {
         GeometryReader { geo in
             let s = vm.snapshot
@@ -58,7 +66,9 @@ struct GameTableView: View {
             .overlay(alignment: .top) { pegAlertBanner.padding(.top, topBandHeight + 12) }
             .overlay(alignment: .topLeading) { quitButton }
             .overlay(alignment: .topTrailing) { settingsButton }
-            .overlay { if s.phase == .gameOver { winnerOverlay(s) } }
+            .overlay { if s.phase == .gameOver && !(showReplay && replayIsPreWin) { winnerOverlay(s) } }
+            .overlay { if showReplay { replayOverlay(s) } }
+            .overlay { if showCheck { checkOverlay(s) } }
             .overlay { if vm.opponentLeft { opponentLeftOverlay } }
         }
         .sheet(isPresented: $showingSettings) {
@@ -96,6 +106,11 @@ struct GameTableView: View {
         .onChange(of: vm.snapshot.phase) { old, new in
             if new == .discardToCrib { GameFeedback.shared.play(.deal) }
             else if old == .cutStarter && new == .pegging { GameFeedback.shared.play(.starterReveal) }
+            else if new == .gameOver && replayBeforeWin && !vm.scoreLog.isEmpty {
+                // Auto-play the scoring replay first; the win screen shows when it finishes.
+                replayIsPreWin = true
+                showReplay = true
+            }
         }
         .onChange(of: vm.pegEventTick) { old, new in
             if new > old { handlePegEvent() }
@@ -562,17 +577,36 @@ struct GameTableView: View {
                     Text(s.scoringMode == .auto ? "Scored automatically" : "Count it on your slider, then Continue")
                         .font(.caption).foregroundStyle(.white.opacity(0.7))
                     // With a pending slider value (confirm-after-release), the button adds it, then advances.
-                    Button(uncommittedLocal > 0 ? "Add \(uncommittedLocal) & continue" : "Continue") {
-                        if uncommittedLocal > 0 {
-                            GameFeedback.shared.play(.score)
-                            vm.claim(uncommittedLocal, for: vm.snapshot.you)
-                            clearScoreSignal += 1; uncommittedLocal = 0
-                        } else {
-                            GameFeedback.shared.play(.advance)
+                    // In manual modes a check button sits to the right to verify the count.
+                    HStack(spacing: 12) {
+                        Button(uncommittedLocal > 0 ? "Add \(uncommittedLocal) & continue" : "Continue") {
+                            if uncommittedLocal > 0 {
+                                GameFeedback.shared.play(.score)
+                                vm.claim(uncommittedLocal, for: vm.snapshot.you)
+                                clearScoreSignal += 1; uncommittedLocal = 0
+                            } else {
+                                GameFeedback.shared.play(.advance)
+                            }
+                            vm.advance()
                         }
-                        vm.advance()
+                        .buttonStyle(.borderedProminent).tint(.cribGold).foregroundStyle(.black)
+
+                        if s.scoringMode != .auto {
+                            Button {
+                                GameFeedback.shared.play(.advance)
+                                withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) { showCheck = true }
+                            } label: {
+                                Image(systemName: "checkmark.circle.fill")
+                                    .font(.system(size: 22, weight: .bold))
+                                    .foregroundStyle(Color.cribGold)
+                                    .frame(width: 44, height: 44)
+                                    .background(Circle().fill(Color.white.opacity(0.12)))
+                                    .overlay(Circle().stroke(Color.cribGold.opacity(0.6), lineWidth: 1.2))
+                            }
+                            .buttonStyle(.plain)
+                            .accessibilityLabel("Check my count")
+                        }
                     }
-                    .buttonStyle(.borderedProminent).tint(.cribGold).foregroundStyle(.black)
                 } else {
                     waitingLabel("Waiting for \(vm.name(of: vm.showCountingPlayer ?? s.you)) to count…")
                 }
@@ -621,6 +655,60 @@ struct GameTableView: View {
         .transition(.opacity)
     }
 
+    // MARK: Check-my-count overlay
+
+    /// Shows the correct count for the hand/crib being counted, so a manual scorer can verify.
+    @ViewBuilder private func checkOverlay(_ s: PlayerSnapshot) -> some View {
+        let flags = vm.checkScoreFlags
+        let total = vm.checkScoreTotal
+        ZStack {
+            Color.black.opacity(0.6).ignoresSafeArea()
+                .onTapGesture { withAnimation { showCheck = false } }
+
+            VStack(spacing: 12) {
+                Text("Correct count").font(.title3.weight(.bold)).foregroundStyle(.white)
+                Text(vm.showLabel).font(.caption).foregroundStyle(.white.opacity(0.7))
+
+                if flags.isEmpty {
+                    Text("0").font(.system(size: 46, weight: .heavy, design: .rounded)).foregroundStyle(Color.cribGold)
+                    Text("Nothing scores in this hand.").font(.caption).foregroundStyle(.white.opacity(0.7))
+                } else {
+                    ScrollView {
+                        VStack(spacing: 6) {
+                            ForEach(flags) { f in
+                                HStack {
+                                    Text(f.detail).font(.callout).foregroundStyle(.white.opacity(0.9))
+                                    Spacer(minLength: 16)
+                                    Text("+\(f.points)").font(.callout.weight(.heavy)).foregroundStyle(Color.cribGold)
+                                }
+                            }
+                        }
+                    }
+                    .frame(maxWidth: 300).frame(maxHeight: 150)
+                    Rectangle().fill(.white.opacity(0.15)).frame(height: 1).frame(maxWidth: 300)
+                    HStack(alignment: .firstTextBaseline, spacing: 8) {
+                        Text("\(total)").font(.system(size: 44, weight: .heavy, design: .rounded)).foregroundStyle(Color.cribGold)
+                        Text(total == 1 ? "point" : "points").font(.caption).foregroundStyle(.white.opacity(0.7))
+                    }
+                }
+
+                Button("Got it") { withAnimation { showCheck = false } }
+                    .buttonStyle(.borderedProminent).tint(.cribGold).foregroundStyle(.black)
+                    .padding(.top, 2)
+            }
+            .padding(24)
+            .frame(maxWidth: 380)
+            .background(
+                RoundedRectangle(cornerRadius: 24, style: .continuous)
+                    .fill(.ultraThinMaterial)
+                    .overlay(RoundedRectangle(cornerRadius: 24, style: .continuous)
+                        .stroke(Color.cribGold.opacity(0.4), lineWidth: 1))
+            )
+            .padding(24)
+        }
+        .transition(.opacity)
+    }
+
     // MARK: Winner overlay (Criboard's confetti + skunk celebration)
 
     @ViewBuilder private func winnerOverlay(_ s: PlayerSnapshot) -> some View {
@@ -630,9 +718,23 @@ struct GameTableView: View {
                 skunk: info.skunk,
                 winnerTheme: vm.theme(for: info.winner),
                 winnerName: vm.name(of: info.winner),
-                onPlayAgain: { vm.playAgain() }
+                canReplay: !vm.scoreLog.isEmpty,
+                onPlayAgain: { vm.playAgain() },
+                onReplay: { replayIsPreWin = false; withAnimation { showReplay = true } }
             )
         }
+    }
+
+    /// The scoring replay — steps through every score of the game. Shown before the win screen (auto
+    /// option) or from the win screen's "Replay scoring" button.
+    @ViewBuilder private func replayOverlay(_ s: PlayerSnapshot) -> some View {
+        ScoringReplayView(
+            events: vm.scoreLog,
+            p1Name: vm.name(of: .one), p2Name: vm.name(of: .two),
+            p1Theme: vm.theme(for: .one), p2Theme: vm.theme(for: .two),
+            onFinish: { withAnimation { showReplay = false; replayIsPreWin = false } }
+        )
+        .transition(.opacity)
     }
 }
 

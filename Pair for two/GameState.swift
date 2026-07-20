@@ -189,7 +189,8 @@ extension GameState {
             lastClaimPlayer: claimHistory.last?.player,
             lastClaimAmount: claimHistory.last?.amount ?? 0,
             pegEventTick: pegEventTick,
-            lastPegEvent: lastPegEvent
+            lastPegEvent: lastPegEvent,
+            scoreLog: phase == .gameOver ? claimHistory : []   // only needed for the win-screen replay
         )
     }
 }
@@ -250,6 +251,10 @@ nonisolated struct PlayerSnapshot: Codable, Hashable, Sendable {
     /// A go/31 alert for the other device (see `PegEvent`). `pegEventTick` de-dupes heartbeat repeats.
     let pegEventTick: Int
     let lastPegEvent: PegEvent?
+
+    /// The ordered scoring history for the whole game (each claim in order) — only populated at
+    /// `.gameOver`, so the win screen can replay how the scores were built up.
+    let scoreLog: [Claim]
 
     /// True when it is this device's turn to act during pegging.
     var isYourTurn: Bool { whoseTurn == you }

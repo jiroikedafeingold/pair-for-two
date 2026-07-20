@@ -158,7 +158,7 @@ final class GameViewModel {
                        yourColorID: colorID, opponentColorID: you == .one ? 7 : 1,
                        playersWithClaims: [],
                        claimTick: 0, lastClaimPlayer: nil, lastClaimAmount: 0,
-                       pegEventTick: 0, lastPegEvent: nil)
+                       pegEventTick: 0, lastPegEvent: nil, scoreLog: [])
     }
 
     // MARK: Transport event loop
@@ -464,6 +464,26 @@ final class GameViewModel {
         default:          return ""
         }
     }
+
+    /// The correct count for what's on the table right now, computed on this device from the revealed
+    /// cards — powers the "check my count" button so a manual counter can verify their scoring.
+    var checkScoreFlags: [ScoreFlag] {
+        guard let starter = snapshot.starter else { return [] }
+        switch snapshot.phase {
+        case .showPone, .showDealer:
+            return CribbageScorer.handScore(hand: showCards, starter: starter, isCrib: false)
+        case .showCrib:
+            return CribbageScorer.handScore(hand: showCards, starter: starter, isCrib: true)
+        default:
+            return []
+        }
+    }
+
+    var checkScoreTotal: Int { checkScoreFlags.totalPoints }
+
+    /// The ordered scoring history for the finished game (each claim, in order) — drives the win-screen
+    /// scoring replay. Empty until game over.
+    var scoreLog: [Claim] { snapshot.scoreLog }
 
     var coachBanner: String {
         let s = snapshot

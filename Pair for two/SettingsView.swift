@@ -15,6 +15,7 @@ struct SettingsView: View {
     @AppStorage("hapticsEnabled") private var hapticsEnabled = true
     @AppStorage("soundEnabled") private var soundEnabled = true
     @AppStorage("celebrationEffects") private var celebrationEffects = true
+    @AppStorage("replayBeforeWin") private var replayBeforeWin = false
 
     private var scoringMode: ScoringMode { ScoringMode(rawValue: scoringModeRaw) ?? .feedback }
 
@@ -83,6 +84,15 @@ struct SettingsView: View {
                     Text("Haptics are the vibrations during play and on a win. Sound effects are the "
                          + "in-game sounds. Celebration effects are the fireworks and flash on the win "
                          + "screen (the win screen itself still shows).")
+                }
+
+                Section {
+                    Toggle("Scoring replay before win", isOn: $replayBeforeWin)
+                } header: {
+                    Text("Win screen")
+                } footer: {
+                    Text("When someone wins, replay the whole game's scoring — score by score — before "
+                         + "showing the win screen. You can also replay it any time from the win screen.")
                 }
             }
             .navigationTitle("Settings")
