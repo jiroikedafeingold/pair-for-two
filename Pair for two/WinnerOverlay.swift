@@ -104,16 +104,16 @@ struct WinnerOverlay: View {
             ConfettiBurst(colors: effectColors)
                 .opacity(animateIn ? 1 : 0)
 
-            VStack(spacing: 16) {
+            VStack(spacing: 10) {
                 ZStack {
                     Circle()
                         .fill(
                             RadialGradient(
                                 colors: [winnerColor.opacity(0.6), winnerColor.opacity(0.0)],
-                                center: .center, startRadius: 10, endRadius: 110
+                                center: .center, startRadius: 8, endRadius: 72
                             )
                         )
-                        .frame(width: 200, height: 200)
+                        .frame(width: 130, height: 130)
                         .scaleEffect(pulse ? 1.08 : 0.95)
                         .animation(.easeInOut(duration: 1.4).repeatForever(autoreverses: true), value: pulse)
 
@@ -127,7 +127,7 @@ struct WinnerOverlay: View {
                         .foregroundStyle(.white.opacity(0.75))
 
                     Text(LocalizedStringKey(skunk.title))
-                        .font(.system(size: skunk == .double ? 36 : 44, weight: .black, design: .rounded))
+                        .font(.system(size: skunk == .double ? 30 : 34, weight: .black, design: .rounded))
                         .foregroundStyle(
                             LinearGradient(
                                 colors: skunk == .none ? [.white, .cribGold] : skunk.accentColors,
@@ -155,7 +155,7 @@ struct WinnerOverlay: View {
                     }
                     .foregroundStyle(.black.opacity(0.88))
                     .padding(.horizontal, 26)
-                    .padding(.vertical, 13)
+                    .padding(.vertical, 11)
                     .background(
                         Capsule()
                             .fill(
@@ -168,7 +168,7 @@ struct WinnerOverlay: View {
                     .overlay(Capsule().stroke(.white.opacity(0.4), lineWidth: 1.2))
                     .shadow(color: .black.opacity(0.45), radius: 10, y: 4)
                 }
-                .padding(.top, 4)
+                .padding(.top, 2)
 
                 if canReplay {
                     Button(action: onReplay) {
@@ -179,7 +179,7 @@ struct WinnerOverlay: View {
                     .buttonStyle(.plain)
                 }
             }
-            .padding(28)
+            .padding(20)
             .frame(maxWidth: 320)
             .background(
                 RoundedRectangle(cornerRadius: 32, style: .continuous)
@@ -233,7 +233,7 @@ struct WinnerOverlay: View {
         switch skunk {
         case .none:
             Image(systemName: "crown.fill")
-                .font(.system(size: 96, weight: .black))
+                .font(.system(size: 60, weight: .black))
                 .foregroundStyle(
                     LinearGradient(
                         colors: [.cribGold, Color(red: 0.85, green: 0.65, blue: 0.20)],
@@ -245,19 +245,19 @@ struct WinnerOverlay: View {
                 .animation(.easeInOut(duration: 1.6).repeatForever(autoreverses: true), value: rotate)
         case .single:
             Text(loserChar)
-                .font(.system(size: 132))
+                .font(.system(size: 86))
                 .shadow(color: .black.opacity(0.55), radius: 14, y: 6)
                 .rotationEffect(.degrees(rotate ? 10 : -10))
                 .animation(.easeInOut(duration: 1.4).repeatForever(autoreverses: true), value: rotate)
         case .double:
             HStack(spacing: -18) {
                 Text(loserChar)
-                    .font(.system(size: 110))
+                    .font(.system(size: 74))
                     .shadow(color: .black.opacity(0.55), radius: 12, y: 6)
                     .rotationEffect(.degrees(rotate ? -18 : -8))
                     .animation(.easeInOut(duration: 1.3).repeatForever(autoreverses: true), value: rotate)
                 Text(loserChar)
-                    .font(.system(size: 110))
+                    .font(.system(size: 74))
                     .shadow(color: .black.opacity(0.55), radius: 12, y: 6)
                     .rotationEffect(.degrees(rotate ? 18 : 8))
                     .animation(.easeInOut(duration: 1.3).repeatForever(autoreverses: true), value: rotate)
