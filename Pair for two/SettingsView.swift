@@ -13,6 +13,7 @@ struct SettingsView: View {
     @AppStorage("scoringMode") private var scoringModeRaw = ScoringMode.feedback.rawValue
     @AppStorage("cardBackID") private var cardBackID = 0
     @AppStorage("hapticsEnabled") private var hapticsEnabled = true
+    @AppStorage("soundEnabled") private var soundEnabled = true
     @AppStorage("celebrationEffects") private var celebrationEffects = true
 
     private var scoringMode: ScoringMode { ScoringMode(rawValue: scoringModeRaw) ?? .feedback }
@@ -74,12 +75,14 @@ struct SettingsView: View {
 
                 Section {
                     Toggle("Haptics", isOn: $hapticsEnabled)
+                    Toggle("Sound effects", isOn: $soundEnabled)
                     Toggle("Celebration effects", isOn: $celebrationEffects)
                 } header: {
                     Text("Feel & effects")
                 } footer: {
-                    Text("Haptics are the vibrations during play and on a win. Celebration effects are "
-                         + "the fireworks and flash on the win screen (the win screen itself still shows).")
+                    Text("Haptics are the vibrations during play and on a win. Sound effects are the "
+                         + "in-game sounds. Celebration effects are the fireworks and flash on the win "
+                         + "screen (the win screen itself still shows).")
                 }
             }
             .navigationTitle("Settings")

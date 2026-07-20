@@ -2,6 +2,12 @@ import UIKit
 import CoreHaptics
 import AVFoundation
 
+/// Whether sound effects are enabled (Settings → "Sound effects"). Read at each play so turning it
+/// off silences all SFX. Defaults to on.
+enum SoundSetting {
+    static var enabled: Bool { (UserDefaults.standard.object(forKey: "soundEnabled") as? Bool) ?? true }
+}
+
 /// Unified tactile + audio feedback for in-game actions. One call — `GameFeedback.shared.play(.cardPlay)`
 /// — fires a rich Core Haptics pattern (with a graceful UIKit fallback) and a matching sound effect.
 ///
@@ -59,7 +65,7 @@ final class GameFeedback {
     /// Fire a volley of firework pops for the win celebration (sound only). Overlapping pops play
     /// through a small pool, each with a little pitch/volume variation so they don't sound identical.
     func playCelebration() {
-        guard audioReady, !celebrationPool.isEmpty else { return }
+        guard SoundSetting.enabled, audioReady, !celebrationPool.isEmpty else { return }
         celebrationTask?.cancel()
         celebrationTask = Task { @MainActor [weak self] in
             for k in 0..<14 {
@@ -216,6 +222,7 @@ final class GameFeedback {
     // MARK: Sound
 
     private func playSound(for action: Action) {
+        guard SoundSetting.enabled else { return }
         guard audioReady, let player = players[soundKey(action)] else { return }
         player.currentTime = 0
         player.play()
