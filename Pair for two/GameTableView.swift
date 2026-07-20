@@ -520,32 +520,35 @@ struct GameTableView: View {
 
     @ViewBuilder private func showArea(_ s: PlayerSnapshot, pileWidth: CGFloat) -> some View {
         let isCrib = s.phase == .showCrib
-        VStack(spacing: 12) {
+        // The crib adds a badge + backing, so shrink its cards a touch to keep the whole group (and the
+        // Continue button) on screen on a short landscape iPhone.
+        let cardW = isCrib ? pileWidth * 0.8 : pileWidth
+        VStack(spacing: 10) {
             HStack(alignment: .top, spacing: 24) {
                 VStack(spacing: 4) {
                     Text("The Cut").font(.caption2).foregroundStyle(.white.opacity(0.7))
-                    if let starter = s.starter { CardView(card: starter, width: pileWidth) }
+                    if let starter = s.starter { CardView(card: starter, width: cardW) }
                 }
                 VStack(spacing: 6) {
                     // The crib gets a distinct gold badge + backing so it's obvious it's the crib
                     // being counted (not another hand).
                     if isCrib {
                         Label("\(vm.name(of: s.dealer))'s crib".uppercased(), systemImage: "square.stack.3d.up.fill")
-                            .font(.caption.weight(.heavy))
+                            .font(.caption2.weight(.heavy))
                             .foregroundStyle(.black)
-                            .padding(.horizontal, 12).padding(.vertical, 4)
+                            .padding(.horizontal, 10).padding(.vertical, 3)
                             .background(Capsule().fill(Color.cribGold))
                     } else {
                         Text(vm.showLabel).font(.caption2).foregroundStyle(.white.opacity(0.7))
                     }
                     // Cards deal out one-by-one as they're shown (re-triggers each show sub-phase).
-                    DealtCardsRow(cards: vm.showCards, cardWidth: pileWidth, dealSignal: s.phase)
-                        .padding(isCrib ? 8 : 0)
+                    DealtCardsRow(cards: vm.showCards, cardWidth: cardW, dealSignal: s.phase)
+                        .padding(isCrib ? 5 : 0)
                         .background {
                             if isCrib {
-                                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                RoundedRectangle(cornerRadius: 12, style: .continuous)
                                     .fill(Color.cribGold.opacity(0.12))
-                                    .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                    .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous)
                                         .stroke(Color.cribGold.opacity(0.55), lineWidth: 1))
                             }
                         }
@@ -554,7 +557,7 @@ struct GameTableView: View {
 
             // A little space under the cards, then the prompt + button. The whole group is centered
             // vertically (below), so the button sits just under the cards — never pinned to the bottom.
-            VStack(spacing: 10) {
+            VStack(spacing: 8) {
                 if vm.youAreCounting {
                     Text(s.scoringMode == .auto ? "Scored automatically" : "Count it on your slider, then Continue")
                         .font(.caption).foregroundStyle(.white.opacity(0.7))
@@ -574,7 +577,7 @@ struct GameTableView: View {
                     waitingLabel("Waiting for \(vm.name(of: vm.showCountingPlayer ?? s.you)) to count…")
                 }
             }
-            .padding(.top, 18)
+            .padding(.top, 10)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)   // centers the cards + button group
     }
