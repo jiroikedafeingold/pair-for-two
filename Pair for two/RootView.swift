@@ -93,6 +93,9 @@ struct RootView: View {
     private func startOnlineGame(_ match: GKMatch, isHost: Bool) {
         showingInvite = false
         activeMatchmaker = nil
+        // Starting an online game also forgets any in-progress nearby game.
+        GamePersistence.clear()
+        resumeMarker = nil
         let transport = GameCenterTransport(match: match, isHost: isHost)
         resumeRole = nil
         vm = GameViewModel.networked(transport: transport,
@@ -123,7 +126,11 @@ struct RootView: View {
                                                              localColorID: colorID,
                                                              scoringMode: ScoringMode(rawValue: scoringModeRaw) ?? .feedback)
                             } else {
-                                // Fresh game — isHost was already set by Host/Join.
+                                // Fresh game — isHost was already set by Host/Join. Starting a new game
+                                // forgets any other in-progress game on this device (the new game writes
+                                // its own resume marker as it plays).
+                                GamePersistence.clear()
+                                resumeMarker = nil
                                 vm = GameViewModel.networked(transport: session,
                                                              localName: playerName,
                                                              localColorID: colorID,
