@@ -62,7 +62,7 @@ Whether you’re teaching a beginner with automatic scoring or keeping it honest
 ```
 A big update — learn faster, play smoother, and celebrate (or commiserate) in style:
 
-• Check your count — while counting a hand or the crib, tap the ✓ to see the correct score with proper cribbage terms (double run, pair royal, run of five, and more). Great for learning.
+• Check your count — while counting a hand or the crib, tap the check button to see the correct score with proper cribbage terms (double run, pair royal, run of five, and more). Great for learning.
 • Scoring replay — replay the whole game score-by-score on the win screen, or automatically right before it (Settings).
 • Welcome tour + full "How to Play" guide — tap the ? on the board anytime for help with scoring, playing nearby or online, and the settings.
 • Tidier table — hands are sorted by rank and suit, cards deal out as each hand is counted, and the crib is clearly marked.
