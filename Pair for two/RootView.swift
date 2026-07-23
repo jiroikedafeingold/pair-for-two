@@ -16,6 +16,9 @@ struct RootView: View {
     @State private var pendingFallbackPicker = false          // present Apple's picker after the sheet closes
     @State private var activeMatchmaker: MatchmakerContext?   // Apple's matchmaking UI (fallback)
     @State private var wasBackgrounded = false                // distinguish a real background from a transient inactive
+    @State private var showingHelp = false
+    @State private var showOnboarding = false
+    @AppStorage("hasOnboarded") private var hasOnboarded = false
     @Environment(\.scenePhase) private var scenePhase
 
     @AppStorage("localName") private var name = "Player"
@@ -31,6 +34,11 @@ struct RootView: View {
     var body: some View {
         content
             .task { gameCenter.authenticate() }   // Game Center sign-in for online play
+            .task { if !hasOnboarded { showOnboarding = true } }   // first-run welcome
+            .fullScreenCover(isPresented: $showOnboarding) {
+                OnboardingView(onFinish: { hasOnboarded = true; showOnboarding = false })
+            }
+            .sheet(isPresented: $showingHelp) { HelpView(onDone: { showingHelp = false }) }
             .onChange(of: scenePhase) { _, phase in
                 switch phase {
                 case .active:
@@ -238,6 +246,13 @@ struct RootView: View {
                             .multilineTextAlignment(.center)
                     }
                 }
+
+                Button { showingHelp = true } label: {
+                    Label("How to play", systemImage: "questionmark.circle")
+                        .font(.callout.weight(.semibold))
+                        .foregroundStyle(.white.opacity(0.85))
+                }
+                .buttonStyle(.plain)
             }
             .padding(28)
         }

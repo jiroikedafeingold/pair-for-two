@@ -62,6 +62,86 @@ nonisolated enum CribbageScorer {
         return flags
     }
 
+    /// A human-readable breakdown of a hand/crib show score using proper cribbage terminology —
+    /// "double run", "pair royal", "run of five", etc. — one line per scoring element. The point
+    /// totals match `handScore`; this is a presentation of the same count for the "check my count" view.
+    static func handBreakdown(hand: [Card], starter: Card, isCrib: Bool) -> [ScoreFlag] {
+        let all = hand + [starter]
+        var flags: [ScoreFlag] = []
+
+        // Fifteens (each distinct subset summing to 15 is 2 points).
+        let n15 = fifteens(in: all).count
+        if n15 > 0 {
+            flags.append(ScoreFlag(.fifteen, points: n15 * 2,
+                                   detail: n15 == 1 ? "Fifteen" : "\(numberWord(n15).capitalized) fifteens"))
+        }
+
+        // Runs, folding any in-run duplicates into the run's name (double/triple/double-double run).
+        var counts: [Int: Int] = [:]
+        for c in all { counts[c.orderValue, default: 0] += 1 }
+        let distinct = counts.keys.sorted()
+        var consumedByRun = Set<Int>()
+        var i = 0
+        while i < distinct.count {
+            var end = i
+            while end + 1 < distinct.count, distinct[end + 1] == distinct[end] + 1 { end += 1 }
+            let length = end - i + 1
+            if length >= 3 {
+                let blockRanks = Array(distinct[i...end])
+                let multiplicity = blockRanks.reduce(1) { $0 * (counts[$1] ?? 1) }
+                let inRunPairPts = blockRanks.reduce(0) { $0 + pairPoints(counts[$1] ?? 1) }
+                flags.append(ScoreFlag(.run, points: multiplicity * length + inRunPairPts,
+                                       detail: runName(multiplicity: multiplicity, length: length)))
+                blockRanks.forEach { consumedByRun.insert($0) }
+            }
+            i = end + 1
+        }
+
+        // Pairs / trips / quads for ranks not already folded into a run.
+        for rank in distinct where !consumedByRun.contains(rank) {
+            let c = counts[rank] ?? 0
+            if c >= 2 { flags.append(ScoreFlag(.pair, points: pairPoints(c), detail: pairName(c))) }
+        }
+
+        flags += flush(hand: hand, starter: starter, isCrib: isCrib)
+        flags += nobs(hand: hand, starter: starter)
+        return flags
+    }
+
+    private static func pairPoints(_ count: Int) -> Int {
+        switch count {
+        case 2: return 2
+        case 3: return 6
+        case 4: return 12
+        default: return 0
+        }
+    }
+
+    private static func pairName(_ count: Int) -> String {
+        switch count {
+        case 2: return "Pair"
+        case 3: return "Pair royal"
+        case 4: return "Double pair royal"
+        default: return "Pair"
+        }
+    }
+
+    private static func runName(multiplicity: Int, length: Int) -> String {
+        let base: String
+        switch multiplicity {
+        case 1:  base = "Run of \(numberWord(length))"
+        case 2:  base = length == 3 ? "Double run" : "Double run of \(numberWord(length))"
+        case 3:  base = length == 3 ? "Triple run" : "Triple run of \(numberWord(length))"
+        default: base = length == 3 ? "Double double run" : "Double double run of \(numberWord(length))"
+        }
+        return base
+    }
+
+    private static func numberWord(_ n: Int) -> String {
+        let words = ["zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine"]
+        return (n >= 0 && n < words.count) ? words[n] : "\(n)"
+    }
+
     // MARK: Pegging scoring (the play)
 
     /// Scores the card just laid onto the pegging pile. `pile` is the current run of play since the

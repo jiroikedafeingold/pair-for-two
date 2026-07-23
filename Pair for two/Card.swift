@@ -119,3 +119,27 @@ nonisolated struct Card: Codable, Hashable, Sendable, Identifiable {
         return "\(rankName) of \(suitName)"
     }
 }
+
+// MARK: - Display sorting
+
+extension Suit {
+    /// Order suits appear in a sorted hand (spades, hearts, diamonds, clubs).
+    var displayOrder: Int {
+        switch self {
+        case .spades:   return 0
+        case .hearts:   return 1
+        case .diamonds: return 2
+        case .clubs:    return 3
+        }
+    }
+}
+
+extension Card {
+    /// Stable key for laying a hand out: by rank (Ace → King), then by suit.
+    var displaySortKey: Int { rank.orderValue * 4 + suit.displayOrder }
+}
+
+extension Array where Element == Card {
+    /// A copy sorted for display — by rank, then suit.
+    func sortedForDisplay() -> [Card] { sorted { $0.displaySortKey < $1.displaySortKey } }
+}

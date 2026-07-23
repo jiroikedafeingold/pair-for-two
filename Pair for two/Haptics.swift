@@ -133,6 +133,60 @@ final class WinHaptics {
     }
 }
 
+// MARK: - Lose Haptics
+
+/// A gentle, melancholy "wah-wah" for the losing player — two soft descending thuds under a fading
+/// low rumble. Deliberately subdued (the opposite of the win rumble).
+final class LoseHaptics {
+    static let shared = LoseHaptics()
+    private var engine: CHHapticEngine?
+    private let supportsHaptics = CHHapticEngine.capabilitiesForHardware().supportsHaptics
+
+    init() {
+        guard supportsHaptics else { return }
+        do {
+            engine = try CHHapticEngine()
+            try engine?.start()
+            engine?.resetHandler = { [weak self] in try? self?.engine?.start() }
+            engine?.stoppedHandler = { _ in }
+        } catch { engine = nil }
+    }
+
+    func play() {
+        guard HapticsSetting.enabled else { return }
+        guard supportsHaptics, let engine else {
+            UIImpactFeedbackGenerator(style: .soft).impactOccurred(intensity: 0.6)
+            return
+        }
+        let events: [CHHapticEvent] = [
+            CHHapticEvent(eventType: .hapticContinuous, parameters: [
+                CHHapticEventParameter(parameterID: .hapticIntensity, value: 0.5),
+                CHHapticEventParameter(parameterID: .hapticSharpness, value: 0.15)
+            ], relativeTime: 0, duration: 0.9),
+            CHHapticEvent(eventType: .hapticTransient, parameters: [
+                CHHapticEventParameter(parameterID: .hapticIntensity, value: 0.7),
+                CHHapticEventParameter(parameterID: .hapticSharpness, value: 0.2)
+            ], relativeTime: 0),
+            CHHapticEvent(eventType: .hapticTransient, parameters: [
+                CHHapticEventParameter(parameterID: .hapticIntensity, value: 0.45),
+                CHHapticEventParameter(parameterID: .hapticSharpness, value: 0.12)
+            ], relativeTime: 0.35)
+        ]
+        let curve = CHHapticParameterCurve(parameterID: .hapticIntensityControl, controlPoints: [
+            .init(relativeTime: 0, value: 1.0),
+            .init(relativeTime: 0.9, value: 0.0)
+        ], relativeTime: 0)
+        do {
+            let pattern = try CHHapticPattern(events: events, parameterCurves: [curve])
+            let player = try engine.makePlayer(with: pattern)
+            try engine.start()
+            try player.start(atTime: CHHapticTimeImmediate)
+        } catch {
+            UIImpactFeedbackGenerator(style: .soft).impactOccurred(intensity: 0.6)
+        }
+    }
+}
+
 // MARK: - Drag Tick Haptics (reused from Criboard)
 
 /// Per-step feedback for the points slider. Uses Core Haptics so the tick scales in strength as the

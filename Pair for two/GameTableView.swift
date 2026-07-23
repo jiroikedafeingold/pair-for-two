@@ -7,6 +7,7 @@ struct GameTableView: View {
     @State var vm: GameViewModel
     var onExit: () -> Void = {}
     @State private var showingSettings = false
+    @State private var showingHelp = false
     @State private var showingQuitConfirm = false
     @AppStorage("confirmRelease") private var confirmRelease = true
     @AppStorage("localName") private var localName = "Player"
@@ -65,7 +66,7 @@ struct GameTableView: View {
             .overlay(alignment: .top) { connectionBanner }
             .overlay(alignment: .top) { pegAlertBanner.padding(.top, topBandHeight + 12) }
             .overlay(alignment: .topLeading) { quitButton }
-            .overlay(alignment: .topTrailing) { settingsButton }
+            .overlay(alignment: .topTrailing) { topRightControls }
             .overlay { if s.phase == .gameOver && !(showReplay && replayIsPreWin) { winnerOverlay(s) } }
             .overlay { if showReplay { replayOverlay(s) } }
             .overlay { if showCheck { checkOverlay(s) } }
@@ -73,6 +74,9 @@ struct GameTableView: View {
         }
         .sheet(isPresented: $showingSettings) {
             SettingsView(onDone: { showingSettings = false })
+        }
+        .sheet(isPresented: $showingHelp) {
+            HelpView(onDone: { showingHelp = false })
         }
         .confirmationDialog("Quit this game?", isPresented: $showingQuitConfirm, titleVisibility: .visible) {
             Button("Quit game", role: .destructive) { vm.quit() }
@@ -196,16 +200,25 @@ struct GameTableView: View {
         }
     }
 
-    private var settingsButton: some View {
-        Button { showingSettings = true } label: {
-            Image(systemName: "gearshape.fill")
-                .font(.system(size: 15, weight: .semibold))
-                .foregroundStyle(.white.opacity(0.7))
-                .padding(8)
-                .background(Circle().fill(Color.black.opacity(0.3)))
+    private var topRightControls: some View {
+        HStack(spacing: 10) {
+            controlButton("questionmark") { showingHelp = true }
+                .accessibilityLabel("How to play")
+            controlButton("gearshape.fill") { showingSettings = true }
+                .accessibilityLabel("Settings")
         }
         .padding(.top, 6)
         .padding(.trailing, 10)
+    }
+
+    private func controlButton(_ systemName: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Image(systemName: systemName)
+                .font(.system(size: 15, weight: .semibold))
+                .foregroundStyle(.white.opacity(0.7))
+                .frame(width: 32, height: 32)
+                .background(Circle().fill(Color.black.opacity(0.3)))
+        }
     }
 
     /// Leave the current game (ends it for both players). Confirmed before it takes effect.
@@ -420,7 +433,7 @@ struct GameTableView: View {
     @ViewBuilder private func discardArea(_ s: PlayerSnapshot, width: CGFloat) -> some View {
         VStack(spacing: 16) {
             Spacer(minLength: 0)
-            HandView(cards: s.yourHand,
+            HandView(cards: s.yourHand.sortedForDisplay(),
                      selected: vm.selectedForDiscard,
                      onTap: { GameFeedback.shared.play(.discardSelect); vm.toggleDiscard($0) },
                      cardWidth: width)
@@ -516,7 +529,7 @@ struct GameTableView: View {
                 }
             } else {
                 HStack(spacing: 16) {
-                    HandView(cards: s.yourHand,
+                    HandView(cards: s.yourHand.sortedForDisplay(),
                              isEnabled: { vm.isLegalPlay($0) },
                              onTap: { vm.play($0) },
                              cardWidth: handWidth)
@@ -557,7 +570,7 @@ struct GameTableView: View {
                         Text(vm.showLabel).font(.caption2).foregroundStyle(.white.opacity(0.7))
                     }
                     // Cards deal out one-by-one as they're shown (re-triggers each show sub-phase).
-                    DealtCardsRow(cards: vm.showCards, cardWidth: cardW, dealSignal: s.phase)
+                    DealtCardsRow(cards: vm.showCards.sortedForDisplay(), cardWidth: cardW, dealSignal: s.phase)
                         .padding(isCrib ? 5 : 0)
                         .background {
                             if isCrib {
@@ -675,7 +688,7 @@ struct GameTableView: View {
                 } else {
                     ScrollView {
                         VStack(spacing: 6) {
-                            ForEach(flags) { f in
+                            ForEach(Array(flags.enumerated()), id: \.offset) { _, f in
                                 HStack {
                                     Text(f.detail).font(.callout).foregroundStyle(.white.opacity(0.9))
                                     Spacer(minLength: 16)
@@ -713,15 +726,27 @@ struct GameTableView: View {
 
     @ViewBuilder private func winnerOverlay(_ s: PlayerSnapshot) -> some View {
         if let info = vm.winnerInfo {
-            WinnerOverlay(
-                winner: info.winner,
-                skunk: info.skunk,
-                winnerTheme: vm.theme(for: info.winner),
-                winnerName: vm.name(of: info.winner),
-                canReplay: !vm.scoreLog.isEmpty,
-                onPlayAgain: { vm.playAgain() },
-                onReplay: { replayIsPreWin = false; withAnimation { showReplay = true } }
-            )
+            // Pass-and-play shows the winner celebration; networked shows each device its own result.
+            let youWon = vm.isLoopback || info.winner == s.you
+            if youWon {
+                WinnerOverlay(
+                    winner: info.winner,
+                    skunk: info.skunk,
+                    winnerTheme: vm.theme(for: info.winner),
+                    winnerName: vm.name(of: info.winner),
+                    canReplay: !vm.scoreLog.isEmpty,
+                    onPlayAgain: { vm.playAgain() },
+                    onReplay: { replayIsPreWin = false; withAnimation { showReplay = true } }
+                )
+            } else {
+                LoserOverlay(
+                    winnerName: vm.name(of: info.winner),
+                    skunk: info.skunk,
+                    canReplay: !vm.scoreLog.isEmpty,
+                    onPlayAgain: { vm.playAgain() },
+                    onReplay: { replayIsPreWin = false; withAnimation { showReplay = true } }
+                )
+            }
         }
     }
 

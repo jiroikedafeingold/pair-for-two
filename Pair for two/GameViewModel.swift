@@ -471,9 +471,9 @@ final class GameViewModel {
         guard let starter = snapshot.starter else { return [] }
         switch snapshot.phase {
         case .showPone, .showDealer:
-            return CribbageScorer.handScore(hand: showCards, starter: starter, isCrib: false)
+            return CribbageScorer.handBreakdown(hand: showCards, starter: starter, isCrib: false)
         case .showCrib:
-            return CribbageScorer.handScore(hand: showCards, starter: starter, isCrib: true)
+            return CribbageScorer.handBreakdown(hand: showCards, starter: starter, isCrib: true)
         default:
             return []
         }
