@@ -167,94 +167,101 @@ struct RootView: View {
             LinearGradient(colors: [.feltMid, .feltDark], startPoint: .top, endPoint: .bottom)
                 .ignoresSafeArea()
 
-            VStack(spacing: 24) {
-                VStack(spacing: 6) {
-                    Text("Pair for Two")
-                        .font(.system(size: 46, weight: .heavy, design: .serif))
-                        .foregroundStyle(.white)
-                    Text("Two-phone cribbage")
-                        .font(.headline).foregroundStyle(Color.cribGold)
-                }
-
-                // Your identity, tap to edit in Settings.
-                Button { showingSettings = true } label: {
-                    HStack(spacing: 10) {
-                        Circle().fill(playerTheme(colorID: colorID).primary).frame(width: 22, height: 22)
-                        Text(name.isEmpty ? "Player" : name).fontWeight(.semibold).foregroundStyle(.white)
-                        Image(systemName: "pencil.circle.fill").foregroundStyle(.white.opacity(0.6))
+            GeometryReader { geo in
+              ScrollView {
+                VStack(spacing: 14) {
+                    VStack(spacing: 4) {
+                        Text("Pair for Two")
+                            .font(.system(size: 32, weight: .heavy, design: .serif))
+                            .foregroundStyle(.white)
+                        Text("Two-phone cribbage")
+                            .font(.subheadline).foregroundStyle(Color.cribGold)
                     }
-                    .padding(.horizontal, 18).padding(.vertical, 10)
-                    .background(Capsule().fill(Color.white.opacity(0.10)))
-                }
-                .buttonStyle(.plain)
 
-                if let resumeMarker {
+                    // Your identity, tap to edit in Settings.
+                    Button { showingSettings = true } label: {
+                        HStack(spacing: 10) {
+                            Circle().fill(playerTheme(colorID: colorID).primary).frame(width: 20, height: 20)
+                            Text(name.isEmpty ? "Player" : name).fontWeight(.semibold).foregroundStyle(.white)
+                            Image(systemName: "pencil.circle.fill").foregroundStyle(.white.opacity(0.6))
+                        }
+                        .padding(.horizontal, 16).padding(.vertical, 8)
+                        .background(Capsule().fill(Color.white.opacity(0.10)))
+                    }
+                    .buttonStyle(.plain)
+
+                    if let resumeMarker {
+                        Button {
+                            resumeRole = resumeMarker.isHost ? .host : .guest
+                            screen = .connect
+                        } label: {
+                            VStack(spacing: 2) {
+                                HStack(spacing: 8) {
+                                    Image(systemName: "arrow.clockwise.circle.fill")
+                                    Text("Rejoin game").fontWeight(.bold)
+                                }
+                                Text(resumeMarker.summary).font(.caption2).foregroundStyle(.black.opacity(0.6))
+                            }
+                            .font(.headline)
+                            .padding(.horizontal, 22).padding(.vertical, 9)
+                        }
+                        .buttonStyle(.borderedProminent).tint(.cribGold).foregroundStyle(.black)
+                    }
+
                     Button {
-                        resumeRole = resumeMarker.isHost ? .host : .guest
+                        resumeRole = nil
+                        GamePersistence.clear()   // fresh game supersedes any saved one
+                        resumeMarker = nil
                         screen = .connect
                     } label: {
-                        VStack(spacing: 2) {
-                            HStack(spacing: 8) {
-                                Image(systemName: "arrow.clockwise.circle.fill")
-                                Text("Rejoin game").fontWeight(.bold)
-                            }
-                            Text(resumeMarker.summary).font(.caption).foregroundStyle(.black.opacity(0.6))
-                        }
-                        .font(.title3)
-                        .padding(.horizontal, 26).padding(.vertical, 12)
-                    }
-                    .buttonStyle(.borderedProminent).tint(.cribGold).foregroundStyle(.black)
-                }
-
-                Button {
-                    resumeRole = nil
-                    GamePersistence.clear()   // fresh game supersedes any saved one
-                    resumeMarker = nil
-                    screen = .connect
-                } label: {
-                    HStack(spacing: 8) {
-                        Image(systemName: "dot.radiowaves.left.and.right")
-                        Text(resumeMarker == nil ? "Play nearby" : "New nearby game").fontWeight(.bold)
-                    }
-                    .font(.title3)
-                    .padding(.horizontal, 30).padding(.vertical, 14)
-                }
-                .buttonStyle(.borderedProminent)
-                .tint(resumeMarker == nil ? .cribGold : Color.white.opacity(0.22))
-                .foregroundStyle(resumeMarker == nil ? .black : .white)
-
-                // Online play over Game Center. Enabled once signed in.
-                VStack(spacing: 6) {
-                    Button {
-                        showingInvite = true
-                    } label: {
                         HStack(spacing: 8) {
-                            Image(systemName: "globe")
-                            Text("Play online").fontWeight(.bold)
+                            Image(systemName: "dot.radiowaves.left.and.right")
+                            Text(resumeMarker == nil ? "Play nearby" : "New nearby game").fontWeight(.bold)
                         }
-                        .font(.title3)
-                        .padding(.horizontal, 30).padding(.vertical, 14)
+                        .font(.headline)
+                        .padding(.horizontal, 26).padding(.vertical, 11)
                     }
                     .buttonStyle(.borderedProminent)
-                    .tint(Color.white.opacity(0.22))
-                    .foregroundStyle(.white)
-                    .disabled(!gameCenter.isAuthenticated)
+                    .tint(resumeMarker == nil ? .cribGold : Color.white.opacity(0.22))
+                    .foregroundStyle(resumeMarker == nil ? .black : .white)
 
-                    if !gameCenter.isAuthenticated {
-                        Text(gameCenter.unavailableReason ?? "Sign in to Game Center to play online.")
-                            .font(.caption).foregroundStyle(.white.opacity(0.55))
-                            .multilineTextAlignment(.center)
+                    // Online play over Game Center. Enabled once signed in.
+                    VStack(spacing: 5) {
+                        Button {
+                            showingInvite = true
+                        } label: {
+                            HStack(spacing: 8) {
+                                Image(systemName: "globe")
+                                Text("Play online").fontWeight(.bold)
+                            }
+                            .font(.headline)
+                            .padding(.horizontal, 26).padding(.vertical, 11)
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .tint(Color.white.opacity(0.22))
+                        .foregroundStyle(.white)
+                        .disabled(!gameCenter.isAuthenticated)
+
+                        if !gameCenter.isAuthenticated {
+                            Text(gameCenter.unavailableReason ?? "Sign in to Game Center to play online.")
+                                .font(.caption2).foregroundStyle(.white.opacity(0.55))
+                                .multilineTextAlignment(.center)
+                        }
                     }
-                }
 
-                Button { showingHelp = true } label: {
-                    Label("How to play", systemImage: "questionmark.circle")
-                        .font(.callout.weight(.semibold))
-                        .foregroundStyle(.white.opacity(0.85))
+                    Button { showingHelp = true } label: {
+                        Label("How to play", systemImage: "questionmark.circle")
+                            .font(.callout.weight(.semibold))
+                            .foregroundStyle(.white.opacity(0.85))
+                    }
+                    .buttonStyle(.plain)
                 }
-                .buttonStyle(.plain)
+                .frame(maxWidth: .infinity)
+                .padding(.horizontal, 28)
+                .padding(.vertical, 18)
+                .frame(minHeight: geo.size.height)   // center with breathing room; scroll if ever too tall
+              }
             }
-            .padding(28)
         }
         .onAppear { resumeMarker = GamePersistence.loadMarker() }
         .sheet(isPresented: $showingSettings) {

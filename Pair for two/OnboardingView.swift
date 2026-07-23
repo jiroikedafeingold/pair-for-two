@@ -51,7 +51,17 @@ struct OnboardingView: View {
                         slideView(slide).tag(idx)
                     }
                 }
-                .tabViewStyle(.page(indexDisplayMode: .always))
+                .tabViewStyle(.page(indexDisplayMode: .never))
+
+                // Custom page dots, kept clear of the slide text (the built-in dots overlapped it).
+                HStack(spacing: 8) {
+                    ForEach(0..<slides.count, id: \.self) { i in
+                        Circle()
+                            .fill(i == page ? Color.cribGold : Color.white.opacity(0.3))
+                            .frame(width: 7, height: 7)
+                    }
+                }
+                .padding(.bottom, 14)
 
                 Button(page == slides.count - 1 ? "Start playing" : "Continue") {
                     if page == slides.count - 1 { onFinish() }
@@ -65,24 +75,27 @@ struct OnboardingView: View {
     }
 
     private func slideView(_ slide: Slide) -> some View {
-        VStack(spacing: 22) {
-            Spacer(minLength: 0)
+        VStack(spacing: 16) {
+            Spacer(minLength: 8)
             Image(systemName: slide.icon)
-                .font(.system(size: 64, weight: .bold))
+                .font(.system(size: 50, weight: .bold))
                 .foregroundStyle(Color.cribGold)
                 .shadow(color: .black.opacity(0.35), radius: 8, y: 4)
             Text(slide.title)
-                .font(.system(size: 30, weight: .heavy, design: .rounded))
+                .font(.system(size: 26, weight: .heavy, design: .rounded))
                 .foregroundStyle(.white)
                 .multilineTextAlignment(.center)
+                .minimumScaleFactor(0.8)
             Text(slide.body)
-                .font(.body)
+                .font(.callout)
                 .foregroundStyle(.white.opacity(0.85))
                 .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)   // show the full text, never clip
                 .frame(maxWidth: 520)
-            Spacer(minLength: 0)
+            Spacer(minLength: 8)
         }
         .padding(.horizontal, 32)
+        .padding(.bottom, 6)
     }
 }
 
