@@ -130,10 +130,9 @@ struct HelpView: View {
     }
 
     private func bullet(_ markdown: String) -> some View {
-        HStack(alignment: .firstTextBaseline, spacing: 8) {
-            Image(systemName: "circle.fill").font(.system(size: 5)).foregroundStyle(.secondary).padding(.top, 6)
-            Text(.init(markdown)).font(.callout)
-        }
+        Text(.init(markdown))
+            .font(.callout)
+            .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
 

@@ -1,11 +1,20 @@
 import SwiftUI
 
-/// A short, paged welcome shown on first launch: what the app is, how to connect (local + online),
-/// how scoring works, and where the Settings options live. Sets `hasOnboarded` when finished.
+/// A short, paged welcome shown on first launch — what the app is, how to connect, how scoring works,
+/// where Settings live — ending with a name prompt. On a true first run it also picks a random colour.
+/// Sets `hasOnboarded` when finished (via `onFinish`).
 struct OnboardingView: View {
     var onFinish: () -> Void
 
     @State private var page = 0
+    @State private var askName = false
+    @FocusState private var nameFocused: Bool
+
+    @AppStorage("localName") private var name = "Player"
+    @AppStorage("localColorID") private var colorID = 1
+    @AppStorage("hasOnboarded") private var hasOnboarded = false
+
+    private var lastSlide: Bool { page == slides.count - 1 }
 
     private struct Slide: Identifiable {
         let id = UUID()
@@ -37,40 +46,56 @@ struct OnboardingView: View {
             LinearGradient(colors: [.feltMid, .feltDark], startPoint: .top, endPoint: .bottom)
                 .ignoresSafeArea()
 
-            VStack(spacing: 0) {
-                HStack {
-                    Spacer()
-                    Button("Skip") { onFinish() }
-                        .font(.callout.weight(.semibold))
-                        .foregroundStyle(.white.opacity(0.8))
-                }
-                .padding(.horizontal, 20).padding(.top, 12)
-
-                TabView(selection: $page) {
-                    ForEach(Array(slides.enumerated()), id: \.offset) { idx, slide in
-                        slideView(slide).tag(idx)
-                    }
-                }
-                .tabViewStyle(.page(indexDisplayMode: .never))
-
-                // Custom page dots, kept clear of the slide text (the built-in dots overlapped it).
-                HStack(spacing: 8) {
-                    ForEach(0..<slides.count, id: \.self) { i in
-                        Circle()
-                            .fill(i == page ? Color.cribGold : Color.white.opacity(0.3))
-                            .frame(width: 7, height: 7)
-                    }
-                }
-                .padding(.bottom, 14)
-
-                Button(page == slides.count - 1 ? "Start playing" : "Continue") {
-                    if page == slides.count - 1 { onFinish() }
-                    else { withAnimation { page += 1 } }
-                }
-                .buttonStyle(.borderedProminent).tint(.cribGold).foregroundStyle(.black)
-                .controlSize(.large)
-                .padding(.bottom, 28)
+            if askName { nameEntry } else { tour }
+        }
+        .onAppear {
+            // Only a true first run personalises: pick a random colour and start the name blank.
+            if !hasOnboarded {
+                colorID = Int.random(in: 0..<max(playerThemes.count, 1))
+                if name == "Player" { name = "" }
             }
+        }
+    }
+
+    // MARK: Tour
+
+    private var tour: some View {
+        VStack(spacing: 0) {
+            HStack {
+                Spacer()
+                Button("Skip") { onFinish() }
+                    .font(.callout.weight(.semibold))
+                    .foregroundStyle(.white.opacity(0.8))
+            }
+            .padding(.horizontal, 20).padding(.top, 12)
+
+            TabView(selection: $page) {
+                ForEach(Array(slides.enumerated()), id: \.offset) { idx, slide in
+                    slideView(slide).tag(idx)
+                }
+            }
+            .tabViewStyle(.page(indexDisplayMode: .never))
+
+            HStack(spacing: 8) {
+                ForEach(0..<slides.count, id: \.self) { i in
+                    Circle()
+                        .fill(i == page ? Color.cribGold : Color.white.opacity(0.3))
+                        .frame(width: 7, height: 7)
+                }
+            }
+            .padding(.bottom, 14)
+
+            Button(lastSlide && hasOnboarded ? "Done" : "Continue") {
+                if lastSlide {
+                    // First run ends with the name prompt; a replay from Help just finishes.
+                    if hasOnboarded { onFinish() } else { withAnimation { askName = true } }
+                } else {
+                    withAnimation { page += 1 }
+                }
+            }
+            .buttonStyle(.borderedProminent).tint(.cribGold).foregroundStyle(.black)
+            .controlSize(.large)
+            .padding(.bottom, 28)
         }
     }
 
@@ -90,12 +115,60 @@ struct OnboardingView: View {
                 .font(.callout)
                 .foregroundStyle(.white.opacity(0.85))
                 .multilineTextAlignment(.center)
-                .fixedSize(horizontal: false, vertical: true)   // show the full text, never clip
+                .fixedSize(horizontal: false, vertical: true)
                 .frame(maxWidth: 520)
             Spacer(minLength: 8)
         }
         .padding(.horizontal, 32)
         .padding(.bottom, 6)
+    }
+
+    // MARK: Name entry
+
+    private var nameEntry: some View {
+        VStack(spacing: 16) {
+            Spacer(minLength: 8)
+
+            HStack(spacing: 10) {
+                Circle().fill(playerTheme(colorID: colorID).primary)
+                    .frame(width: 26, height: 26)
+                    .overlay(Circle().stroke(.white.opacity(0.5), lineWidth: 1))
+                Image(systemName: "person.crop.circle.fill")
+                    .font(.system(size: 40, weight: .bold))
+                    .foregroundStyle(.white.opacity(0.85))
+            }
+
+            Text("What's your name?")
+                .font(.system(size: 26, weight: .heavy, design: .rounded))
+                .foregroundStyle(.white)
+
+            TextField("", text: $name, prompt: Text("Your name").foregroundStyle(.white.opacity(0.45)))
+                .textInputAutocapitalization(.words)
+                .submitLabel(.go)
+                .focused($nameFocused)
+                .multilineTextAlignment(.center)
+                .font(.title3.weight(.semibold))
+                .foregroundStyle(.white)
+                .padding(.horizontal, 18).padding(.vertical, 12)
+                .background(Capsule().fill(Color.white.opacity(0.12)))
+                .overlay(Capsule().stroke(Color.cribGold.opacity(0.5), lineWidth: 1))
+                .frame(maxWidth: 360)
+                .onSubmit { onFinish() }
+
+            Text("Your colour was picked for you — change either in Settings.")
+                .font(.caption).foregroundStyle(.white.opacity(0.6))
+                .multilineTextAlignment(.center)
+
+            Button("Start playing") { onFinish() }
+                .buttonStyle(.borderedProminent).tint(.cribGold).foregroundStyle(.black)
+                .controlSize(.large)
+                .padding(.top, 2)
+
+            Spacer(minLength: 8)
+        }
+        .padding(.horizontal, 32)
+        .padding(.bottom, 12)
+        .onAppear { nameFocused = true }
     }
 }
 

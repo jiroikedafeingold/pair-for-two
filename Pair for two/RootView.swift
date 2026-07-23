@@ -170,9 +170,7 @@ struct RootView: View {
             LinearGradient(colors: [.feltMid, .feltDark], startPoint: .top, endPoint: .bottom)
                 .ignoresSafeArea()
 
-            GeometryReader { geo in
-              ScrollView {
-                VStack(spacing: 14) {
+            VStack(spacing: 14) {
                     VStack(spacing: 4) {
                         Text("Pair for Two")
                             .font(.system(size: 32, weight: .heavy, design: .serif))
@@ -252,13 +250,9 @@ struct RootView: View {
                         }
                     }
 
-                }
-                .frame(maxWidth: .infinity)
-                .padding(.horizontal, 28)
-                .padding(.vertical, 18)
-                .frame(minHeight: geo.size.height)   // center with breathing room; scroll if ever too tall
-              }
             }
+            .frame(maxWidth: .infinity)
+            .padding(.horizontal, 28)
         }
         .overlay(alignment: .topTrailing) {
             Button { showingHelp = true } label: {
