@@ -38,7 +38,10 @@ struct RootView: View {
             .fullScreenCover(isPresented: $showOnboarding) {
                 OnboardingView(onFinish: { hasOnboarded = true; showOnboarding = false })
             }
-            .sheet(isPresented: $showingHelp) { HelpView(onDone: { showingHelp = false }) }
+            .sheet(isPresented: $showingHelp) {
+                HelpView(onDone: { showingHelp = false },
+                         onReplayOnboarding: { showingHelp = false; showOnboarding = true })
+            }
             .onChange(of: scenePhase) { _, phase in
                 switch phase {
                 case .active:
@@ -249,12 +252,6 @@ struct RootView: View {
                         }
                     }
 
-                    Button { showingHelp = true } label: {
-                        Label("How to play", systemImage: "questionmark.circle")
-                            .font(.callout.weight(.semibold))
-                            .foregroundStyle(.white.opacity(0.85))
-                    }
-                    .buttonStyle(.plain)
                 }
                 .frame(maxWidth: .infinity)
                 .padding(.horizontal, 28)
@@ -262,6 +259,16 @@ struct RootView: View {
                 .frame(minHeight: geo.size.height)   // center with breathing room; scroll if ever too tall
               }
             }
+        }
+        .overlay(alignment: .topTrailing) {
+            Button { showingHelp = true } label: {
+                Image(systemName: "questionmark.circle.fill")
+                    .font(.system(size: 24, weight: .semibold))
+                    .foregroundStyle(.white.opacity(0.85))
+                    .padding(.top, 8).padding(.trailing, 14)
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("How to play")
         }
         .onAppear { resumeMarker = GamePersistence.loadMarker() }
         .sheet(isPresented: $showingSettings) {
