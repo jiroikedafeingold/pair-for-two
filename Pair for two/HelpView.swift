@@ -7,6 +7,14 @@ struct HelpView: View {
     /// When provided (from the menu), offers a "Replay the welcome tour" action.
     var onReplayOnboarding: (() -> Void)? = nil
 
+    /// A live, throwaway score so the help panel's slider actually works. Wraps back to 0 at 121.
+    @State private var demoScore = 0
+
+    private func addDemo(_ points: Int) {
+        demoScore += points
+        if demoScore >= 121 { demoScore = 0 }   // hitting/passing 121 just resets the demo
+    }
+
     var body: some View {
         NavigationStack {
             Form {
@@ -52,11 +60,12 @@ struct HelpView: View {
                 }
 
                 Section("Scoring your points") {
+                    helpText("**Try it below** — drag the slider and release, then tap the **+N** button to confirm and add the points. (This demo resets at 121.)")
                     feltStrip {
-                        ScorePanel(name: "You", score: 12, opponentScore: 9,
+                        ScorePanel(name: "You", score: demoScore, opponentScore: 0,
                                    primary: playerThemes[1].primary, deep: playerThemes[1].deep,
-                                   disabled: false, canUndo: false,
-                                   onAdd: { _ in }, onPlusOne: {}, onUndo: {})
+                                   disabled: false, canUndo: false, requireConfirm: true,
+                                   onAdd: { addDemo($0) }, onPlusOne: { addDemo(1) }, onUndo: {})
                             .frame(height: 88)
                     }
                     bullet("**Slider:** drag to the number of points and let go.")
