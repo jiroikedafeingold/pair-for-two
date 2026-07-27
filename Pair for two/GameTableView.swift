@@ -119,6 +119,13 @@ struct GameTableView: View {
         .onChange(of: vm.pegEventTick) { old, new in
             if new > old { handlePegEvent() }
         }
+        // The opponent just ran out of cards while you still hold more — nudge you to keep laying.
+        .onChange(of: vm.snapshot.opponentHandCount) { old, new in
+            if new == 0 && old > 0 && vm.opponentOutKeepPlaying {
+                GameFeedback.shared.play(.go)
+                showPegAlert("\(vm.snapshot.opponentName) is out — keep playing")
+            }
+        }
         .ignoresSafeArea(.container, edges: .bottom)
     }
 
@@ -148,6 +155,16 @@ struct GameTableView: View {
             pegAlert = auto ? "31 for \(event.points)!"
                             : (mine ? "31 — take \(event.points)" : "\(who) hits 31 for \(event.points)")
         }
+        scheduleClearPegAlert()
+    }
+
+    /// Show the gold toast, then clear it after a couple of seconds.
+    private func showPegAlert(_ text: String) {
+        withAnimation { pegAlert = text }
+        scheduleClearPegAlert()
+    }
+
+    private func scheduleClearPegAlert() {
         pegAlertTask?.cancel()
         pegAlertTask = Task { @MainActor in
             try? await Task.sleep(for: .seconds(2.6))
@@ -436,7 +453,8 @@ struct GameTableView: View {
             HandView(cards: s.yourHand.sortedForDisplay(),
                      selected: vm.selectedForDiscard,
                      onTap: { GameFeedback.shared.play(.discardSelect); vm.toggleDiscard($0) },
-                     cardWidth: width)
+                     cardWidth: width,
+                     dealSignal: AnyHashable(s.yourHand.map(\.id)))   // deal cards in on a fresh hand
             Button("Send 2 to \(s.yourSeat == .dealer ? "your crib" : "\(vm.name(of: s.dealer))'s crib")") {
                 GameFeedback.shared.play(.discardConfirm)
                 vm.confirmDiscard()

@@ -373,6 +373,13 @@ final class GameViewModel {
     var pegEventTick: Int { snapshot.pegEventTick }
     var lastPegEvent: PegEvent? { snapshot.lastPegEvent }
 
+    /// The opponent is out of cards while you still hold more than one — you keep laying on your own,
+    /// so we tell you (otherwise it looks like the game is stuck on your turn).
+    var opponentOutKeepPlaying: Bool {
+        snapshot.phase == .pegging && snapshot.isYourTurn
+            && snapshot.opponentHandCount == 0 && snapshot.yourHand.count > 1
+    }
+
     /// Every card has been played; the hand is over and it's time to count.
     var peggingComplete: Bool {
         snapshot.phase == .pegging && snapshot.whoseTurn == nil
@@ -508,6 +515,7 @@ final class GameViewModel {
                               : "Waiting for \(name(of: s.pone)) to cut the deck…"
         case .pegging:
             if peggingComplete { return "All cards played — count the hands" }
+            if opponentOutKeepPlaying { return "\(s.opponentName) is out — keep laying your cards" }
             if s.isYourTurn {
                 return canSayGo ? "\(s.yourName): no card to play — say Go" : "\(s.yourName)'s play"
             }
