@@ -830,11 +830,11 @@ private struct DealtCardsRow: View {
         .task(id: dealSignal) {
             revealed = 0
             guard !cards.isEmpty else { return }
-            try? await Task.sleep(for: .milliseconds(180))
+            try? await Task.sleep(for: .milliseconds(140))
             for i in 1...cards.count {
                 revealed = i
                 GameFeedback.shared.play(.cardPlay)   // a deal tick as each card lands
-                try? await Task.sleep(for: .milliseconds(150))
+                try? await Task.sleep(for: .milliseconds(105))
             }
         }
     }

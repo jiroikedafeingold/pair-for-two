@@ -271,6 +271,9 @@ struct ScoreTrackOverlay: View {
                           cornerRadius: cornerRadius, inset: 8.5, lineWidth: 1.75)
             }
             StartTick(long: opponentFraction != nil)
+            // The skunk (90) and double-skunk (60) lines, as small radial ticks across the track.
+            SkunkTick(fraction: 60.0 / 121.0, long: opponentFraction != nil, cornerRadius: cornerRadius)
+            SkunkTick(fraction: 90.0 / 121.0, long: opponentFraction != nil, cornerRadius: cornerRadius)
         }
         .allowsHitTesting(false)
     }
@@ -312,6 +315,50 @@ private struct StartTick: View {
             .fill(.white.opacity(0.5))
             .frame(width: 2, height: long ? 13 : 8)
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
+    }
+}
+
+/// A small tick drawn across the track at a given fraction — used for the skunk (90) and
+/// double-skunk (60) lines.
+private struct SkunkTick: View {
+    let fraction: Double
+    let long: Bool
+    var cornerRadius: CGFloat = 22
+
+    var body: some View {
+        SkunkTickShape(fraction: CGFloat(fraction), cornerRadius: cornerRadius,
+                       centerInset: 5.5, halfLength: long ? 7 : 4.5)
+            .stroke(.white.opacity(0.5), style: StrokeStyle(lineWidth: 1.5, lineCap: .round))
+    }
+}
+
+/// A short radial line crossing the track at `fraction` of the way around. The point and its
+/// normal are read off the same `TrackShape` the loops use, so the mark lines up with the fill.
+private struct SkunkTickShape: Shape {
+    var fraction: CGFloat
+    var cornerRadius: CGFloat
+    var centerInset: CGFloat
+    var halfLength: CGFloat
+
+    func path(in rect: CGRect) -> Path {
+        let base = TrackShape(cornerRadius: cornerRadius).inset(by: centerInset).path(in: rect)
+        let eps: CGFloat = 0.004
+        // Centre of a tiny slice of the path ≈ a point on it; two adjacent slices give the tangent.
+        func point(_ a: CGFloat, _ b: CGFloat) -> CGPoint {
+            let r = base.trimmedPath(from: max(0, a), to: min(1, b)).boundingRect
+            return CGPoint(x: r.midX, y: r.midY)
+        }
+        let before = point(fraction - eps, fraction)
+        let after = point(fraction, fraction + eps)
+        let pt = CGPoint(x: (before.x + after.x) / 2, y: (before.y + after.y) / 2)
+        var dx = after.x - before.x, dy = after.y - before.y
+        let len = max(hypot(dx, dy), 0.0001)
+        dx /= len; dy /= len
+        let nx = -dy, ny = dx   // unit normal (radial) — perpendicular to the track
+        var p = Path()
+        p.move(to: CGPoint(x: pt.x - nx * halfLength, y: pt.y - ny * halfLength))
+        p.addLine(to: CGPoint(x: pt.x + nx * halfLength, y: pt.y + ny * halfLength))
+        return p
     }
 }
 

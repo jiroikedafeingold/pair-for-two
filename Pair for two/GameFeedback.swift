@@ -35,6 +35,10 @@ final class GameFeedback {
 
     private var engine: CHHapticEngine?
     private let supportsHaptics = CHHapticEngine.capabilitiesForHardware().supportsHaptics
+    /// Pattern players built once per action and reused, so firing a haptic is a single lightweight
+    /// `start()` — no per-call pattern compile/allocation, which mattered during the rapid
+    /// card-by-card deal-out when counting hands.
+    private var hapticPlayers: [Action: CHHapticPatternPlayer] = [:]
 
     // UIKit fallbacks (used when Core Haptics is unavailable).
     private let lightImpact = UIImpactFeedbackGenerator(style: .light)
@@ -93,9 +97,24 @@ final class GameFeedback {
         guard supportsHaptics else { return }
         do {
             engine = try CHHapticEngine()
+            // Keep the engine running between events so we never pay a synchronous `start()` per
+            // haptic — doing that on every card stalled the main thread during the counting deal-out
+            // on iPhone (iPads have no haptics, so they were unaffected).
+            engine?.isAutoShutdownEnabled = false
+            engine?.resetHandler = { [weak self] in
+                try? self?.engine?.start()
+                // Players are tied to the engine instance — drop them so they rebuild after a reset.
+                Task { @MainActor in self?.hapticPlayers.removeAll() }
+            }
+            engine?.stoppedHandler = { [weak self] reason in
+                // The system stops the engine on interruptions (calls, other haptics). Bring it back
+                // so haptics keep working mid-game, unless the app itself is going away.
+                switch reason {
+                case .applicationSuspended, .engineDestroyed: break
+                default: try? self?.engine?.start()
+                }
+            }
             try engine?.start()
-            engine?.resetHandler = { [weak self] in try? self?.engine?.start() }
-            engine?.stoppedHandler = { _ in }
         } catch {
             engine = nil
         }
@@ -103,15 +122,25 @@ final class GameFeedback {
 
     private func playHaptic(_ action: Action) {
         guard HapticsSetting.enabled else { return }
-        guard supportsHaptics, let engine else { fallbackHaptic(action); return }
+        guard supportsHaptics, engine != nil, let player = hapticPlayer(for: action) else {
+            fallbackHaptic(action); return
+        }
         do {
-            let pattern = try haptic(for: action)
-            let player = try engine.makePlayer(with: pattern)
-            try engine.start()
             try player.start(atTime: CHHapticTimeImmediate)
         } catch {
             fallbackHaptic(action)
         }
+    }
+
+    /// Returns the cached pattern player for `action`, building it on first use. Runs on the main
+    /// actor, so the lazy build is race-free.
+    private func hapticPlayer(for action: Action) -> CHHapticPatternPlayer? {
+        if let player = hapticPlayers[action] { return player }
+        guard let engine,
+              let pattern = try? haptic(for: action),
+              let player = try? engine.makePlayer(with: pattern) else { return nil }
+        hapticPlayers[action] = player
+        return player
     }
 
     private func transient(_ time: Double, _ intensity: Float, _ sharpness: Float) -> CHHapticEvent {
