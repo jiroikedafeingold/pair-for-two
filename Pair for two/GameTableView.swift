@@ -34,6 +34,7 @@ struct GameTableView: View {
     @State private var showReplay = false
     @State private var replayIsPreWin = false
     @AppStorage("replayBeforeWin") private var replayBeforeWin = false
+    @AppStorage("scoreTrackEnabled") private var scoreTrackEnabled = true
 
     var body: some View {
         GeometryReader { geo in
@@ -300,13 +301,32 @@ struct GameTableView: View {
     /// Auto-scoring scoreboard: each player's name over a big score, in their colour. The opponent's
     /// column carries the 3-second "+X" preview.
     @ViewBuilder private func autoScoreboard(_ s: PlayerSnapshot) -> some View {
+        let you = s.you, opp = s.you.opponent
+        let oppValue = displayedOppScore ?? vm.score(of: opp)
         HStack(spacing: 0) {
-            scoreColumn(for: s.you, s: s)
+            scoreColumn(for: you, s: s)
             Rectangle().fill(.white.opacity(0.15)).frame(width: 1, height: 48)
-            scoreColumn(for: s.you.opponent, s: s)
+            scoreColumn(for: opp, s: s)
         }
         .frame(maxWidth: 700)
+        // An imagined oval around both names + scores, carrying each player's progress loop.
+        .padding(.horizontal, 34)
+        .padding(.vertical, 12)
+        .overlay {
+            if scoreTrackEnabled {
+                ScoreTrackOverlay(youFraction: loopFraction(vm.score(of: you)),
+                                  youColor: vm.theme(for: you).primary,
+                                  opponentFraction: loopFraction(oppValue),
+                                  opponentColor: vm.theme(for: opp).primary,
+                                  cornerRadius: 200)
+            }
+        }
         .padding(.horizontal, 12)
+    }
+
+    /// How much of the loop a score fills: 0 at the start, a full loop (1) at the 121 game point.
+    private func loopFraction(_ points: Int) -> Double {
+        min(1, max(0, Double(points) / 121))
     }
 
     @ViewBuilder private func scoreColumn(for player: PlayerID, s: PlayerSnapshot) -> some View {
@@ -847,6 +867,25 @@ private struct GameTablePreview: View {
 
 #Preview(traits: .landscapeLeft) {
     GameTablePreview()
+}
+
+private struct AutoScoreboardPreview: View {
+    @State private var vm: GameViewModel = {
+        let vm = GameViewModel.loopback(names: [.one: "Ann", .two: "Ben"],
+                                        colorIDs: [.one: 1, .two: 7], seed: 42, scoringMode: .auto)
+        vm.cut(); vm.cut(); vm.advance()
+        for _ in 0..<2 where vm.snapshot.phase == .discardToCrib {
+            let hand = vm.snapshot.yourHand
+            if hand.count >= 2 { vm.toggleDiscard(hand[0]); vm.toggleDiscard(hand[1]); vm.confirmDiscard() }
+        }
+        vm.claim(42, for: .one); vm.claim(67, for: .two)
+        return vm
+    }()
+    var body: some View { GameTableView(vm: vm) }
+}
+
+#Preview("Auto scoreboard", traits: .landscapeLeft) {
+    AutoScoreboardPreview()
 }
 
 // The manual starter cut, stopped with the pone about to lift the deck.

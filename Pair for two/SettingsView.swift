@@ -16,6 +16,7 @@ struct SettingsView: View {
     @AppStorage("soundEnabled") private var soundEnabled = true
     @AppStorage("celebrationEffects") private var celebrationEffects = true
     @AppStorage("replayBeforeWin") private var replayBeforeWin = false
+    @AppStorage("scoreTrackEnabled") private var scoreTrackEnabled = true
 
     private var scoringMode: ScoringMode { ScoringMode(rawValue: scoringModeRaw) ?? .feedback }
 
@@ -78,12 +79,14 @@ struct SettingsView: View {
                     Toggle("Haptics", isOn: $hapticsEnabled)
                     Toggle("Sound effects", isOn: $soundEnabled)
                     Toggle("Celebration effects", isOn: $celebrationEffects)
+                    Toggle("Score progress rings", isOn: $scoreTrackEnabled)
                 } header: {
                     Text("Feel & effects")
                 } footer: {
                     Text("Haptics are the vibrations during play and on a win. Sound effects are the "
                          + "in-game sounds. Celebration effects are the fireworks and flash on the win "
-                         + "screen (the win screen itself still shows).")
+                         + "screen (the win screen itself still shows). Score progress rings trace each "
+                         + "player's colour around the scores, closing the loop at 121.")
                 }
 
                 Section {

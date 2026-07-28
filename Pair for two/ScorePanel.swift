@@ -39,6 +39,7 @@ struct ScorePanel: View {
     @State private var plusHeavy = UIImpactFeedbackGenerator(style: .heavy)
     @State private var plusRigid = UIImpactFeedbackGenerator(style: .rigid)
     @State private var glowPulse: Bool = false
+    @AppStorage("scoreTrackEnabled") private var scoreTrackEnabled = true
 
     private var awaitingConfirm: Bool { requireConfirm && pending > 0 && !sliderIsDragging }
 
@@ -218,15 +219,13 @@ struct ScorePanel: View {
         // they climb toward 121, closing into a complete loop at game point. Overlaid (not clipped)
         // so the stroke rides the rounded edge.
         .overlay {
-            ZStack {
-                ScoreLoop(fraction: loopFraction(score), color: primary,
-                          inset: 2, lineWidth: 3.5)
-                if showOpponentTrack {
-                    ScoreLoop(fraction: loopFraction(opponentScore), color: opponentColor,
-                              inset: 10, lineWidth: 2.5)
-                }
+            if scoreTrackEnabled {
+                ScoreTrackOverlay(youFraction: loopFraction(score), youColor: primary,
+                                  opponentFraction: showOpponentTrack ? loopFraction(opponentScore) : nil,
+                                  opponentColor: opponentColor)
+                    // Sit a touch outside the controls so the lines stay clear of the numbers.
+                    .padding(-4)
             }
-            .allowsHitTesting(false)
         }
         .animation(.spring(response: 0.3, dampingFraction: 0.7), value: opponentPending)
         .onChange(of: pending) { _, _ in reportUncommitted() }
@@ -250,30 +249,106 @@ struct ScorePanel: View {
     }
 }
 
-/// A single progress loop traced around the score panel's rounded edge, in one player's colour.
-/// A faint full-loop track sits behind it so the remaining distance to 121 stays visible; the
-/// filled portion glows, brightening into a closed ring at game point.
+/// One or two cribbage progress loops (0 → 121) traced around a rounded region, plus a small tick
+/// at the bottom-middle marking where the loop starts and finishes. Used on the manual score panels
+/// and, in auto-scoring, around the names + scores. Subtle by design so it frames the numbers
+/// without competing with them.
+struct ScoreTrackOverlay: View {
+    var youFraction: Double
+    var youColor: Color
+    /// nil draws a single loop (one oval per player); a value adds a nested opponent loop just
+    /// inside (a lone oval carrying both players).
+    var opponentFraction: Double? = nil
+    var opponentColor: Color = .gray
+    var cornerRadius: CGFloat = 22
+
+    var body: some View {
+        ZStack {
+            ScoreLoop(fraction: youFraction, color: youColor,
+                      cornerRadius: cornerRadius, inset: 3, lineWidth: 2)
+            if let opp = opponentFraction {
+                ScoreLoop(fraction: opp, color: opponentColor,
+                          cornerRadius: cornerRadius, inset: 8.5, lineWidth: 1.75)
+            }
+            StartTick(long: opponentFraction != nil)
+        }
+        .allowsHitTesting(false)
+    }
+}
+
+/// A single progress loop traced around a rounded edge, in one player's colour. A faint full-loop
+/// track sits behind it so the remaining distance to 121 stays visible; the filled portion glows,
+/// brightening into a closed ring at game point.
 private struct ScoreLoop: View {
     let fraction: Double
     let color: Color
-    /// How far inside the panel edge this loop sits — lets a second (opponent) loop nest within.
+    var cornerRadius: CGFloat = 22
+    /// How far inside the edge this loop sits — lets a second (opponent) loop nest within.
     let inset: CGFloat
     let lineWidth: CGFloat
 
     private var complete: Bool { fraction >= 1 }
 
     var body: some View {
-        let shape = RoundedRectangle(cornerRadius: 22, style: .continuous)
-            .inset(by: inset)
+        let shape = TrackShape(cornerRadius: cornerRadius).inset(by: inset)
         ZStack {
-            shape.stroke(color.opacity(0.16), lineWidth: lineWidth)
+            shape.stroke(color.opacity(0.12), lineWidth: lineWidth)
             shape
                 .trim(from: 0, to: fraction)
-                .stroke(color, style: StrokeStyle(lineWidth: lineWidth, lineCap: .round))
-                .shadow(color: color.opacity(complete ? 0.9 : 0.5),
-                        radius: complete ? 9 : 4)
+                .stroke(color.opacity(0.9), style: StrokeStyle(lineWidth: lineWidth, lineCap: .round))
+                .shadow(color: color.opacity(complete ? 0.7 : 0.3),
+                        radius: complete ? 6 : 3)
         }
         .animation(.easeInOut(duration: 0.5), value: fraction)
+    }
+}
+
+/// The small tick at the bottom-middle where the loops start and finish (the 0 / 121 point).
+private struct StartTick: View {
+    let long: Bool
+
+    var body: some View {
+        Capsule()
+            .fill(.white.opacity(0.5))
+            .frame(width: 2, height: long ? 13 : 8)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
+    }
+}
+
+/// The rounded-rectangle perimeter as a path that *starts at the bottom-middle* and winds
+/// counter-clockwise, so a `.trim` fills the loop from the bottom outward the way the score climbs.
+/// (SwiftUI's `RoundedRectangle` starts near the top and goes clockwise.)
+private struct TrackShape: InsettableShape {
+    var cornerRadius: CGFloat
+    var insetAmount: CGFloat = 0
+
+    func inset(by amount: CGFloat) -> TrackShape {
+        var copy = self
+        copy.insetAmount += amount
+        return copy
+    }
+
+    func path(in rect: CGRect) -> Path {
+        let r = rect.insetBy(dx: insetAmount, dy: insetAmount)
+        let rad = max(0, min(cornerRadius - insetAmount, min(r.width, r.height) / 2))
+        var p = Path()
+        // Start at bottom-middle, then head right and wind counter-clockwise (right side up, across
+        // the top, down the left) back to the start.
+        p.move(to: CGPoint(x: r.midX, y: r.maxY))
+        p.addLine(to: CGPoint(x: r.maxX - rad, y: r.maxY))
+        p.addArc(tangent1End: CGPoint(x: r.maxX, y: r.maxY),
+                 tangent2End: CGPoint(x: r.maxX, y: r.maxY - rad), radius: rad)
+        p.addLine(to: CGPoint(x: r.maxX, y: r.minY + rad))
+        p.addArc(tangent1End: CGPoint(x: r.maxX, y: r.minY),
+                 tangent2End: CGPoint(x: r.maxX - rad, y: r.minY), radius: rad)
+        p.addLine(to: CGPoint(x: r.minX + rad, y: r.minY))
+        p.addArc(tangent1End: CGPoint(x: r.minX, y: r.minY),
+                 tangent2End: CGPoint(x: r.minX, y: r.minY + rad), radius: rad)
+        p.addLine(to: CGPoint(x: r.minX, y: r.maxY - rad))
+        p.addArc(tangent1End: CGPoint(x: r.minX, y: r.maxY),
+                 tangent2End: CGPoint(x: r.minX + rad, y: r.maxY), radius: rad)
+        p.addLine(to: CGPoint(x: r.midX, y: r.maxY))
+        return p
     }
 }
 
