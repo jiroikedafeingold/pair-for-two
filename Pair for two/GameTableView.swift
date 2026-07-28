@@ -354,6 +354,9 @@ struct GameTableView: View {
             requireConfirm: isLocal ? confirmRelease : false,
             opponentColor: vm.theme(for: player.opponent).primary,
             opponentPending: isLocal ? oppPending : 0,
+            // A lone panel (networked play) carries both players' loops; with two panels
+            // (pass-and-play) each shows only its own player's loop.
+            showOpponentTrack: vm.scorablePlayers.count == 1,
             uncommitted: isLocal ? $uncommittedLocal : nil,
             clearSignal: isLocal ? clearScoreSignal : 0,
             onAdd: { GameFeedback.shared.play(.score); vm.claim($0, for: player) },

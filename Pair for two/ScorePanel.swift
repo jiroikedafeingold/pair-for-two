@@ -19,6 +19,10 @@ struct ScorePanel: View {
     /// score updates), so this player can see what the other is scoring.
     var opponentColor: Color = .gray
     var opponentPending: Int = 0
+    /// When true this is the only panel on screen (networked play), so it carries *both* players'
+    /// progress loops — your colour on the outer edge, the opponent's just inside it. When false
+    /// (pass-and-play, one panel per player) only this player's own loop is drawn.
+    var showOpponentTrack: Bool = false
     /// Reports this panel's currently-uncommitted amount (slider/​+1 staged in a confirm mode) so the
     /// screen can prompt before advancing. `clearSignal` (when it changes) tells the panel to drop its
     /// staged pending — used after the amount has been claimed elsewhere.
@@ -210,6 +214,20 @@ struct ScorePanel: View {
                 .shadow(color: .black.opacity(0.35), radius: 14, y: 6)
         )
         .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+        // The panel edge doubles as a cribbage track: each player's colour fills around the oval as
+        // they climb toward 121, closing into a complete loop at game point. Overlaid (not clipped)
+        // so the stroke rides the rounded edge.
+        .overlay {
+            ZStack {
+                ScoreLoop(fraction: loopFraction(score), color: primary,
+                          inset: 2, lineWidth: 3.5)
+                if showOpponentTrack {
+                    ScoreLoop(fraction: loopFraction(opponentScore), color: opponentColor,
+                              inset: 10, lineWidth: 2.5)
+                }
+            }
+            .allowsHitTesting(false)
+        }
         .animation(.spring(response: 0.3, dampingFraction: 0.7), value: opponentPending)
         .onChange(of: pending) { _, _ in reportUncommitted() }
         .onChange(of: clearSignal) { _, _ in
@@ -225,6 +243,38 @@ struct ScorePanel: View {
     private func reportUncommitted() {
         uncommitted?.wrappedValue = requireConfirm ? pending : 0
     }
+
+    /// How much of the loop a score fills: 0 at the start, a full loop (1) at the 121 game point.
+    private func loopFraction(_ points: Int) -> Double {
+        min(1, max(0, Double(points) / 121))
+    }
+}
+
+/// A single progress loop traced around the score panel's rounded edge, in one player's colour.
+/// A faint full-loop track sits behind it so the remaining distance to 121 stays visible; the
+/// filled portion glows, brightening into a closed ring at game point.
+private struct ScoreLoop: View {
+    let fraction: Double
+    let color: Color
+    /// How far inside the panel edge this loop sits — lets a second (opponent) loop nest within.
+    let inset: CGFloat
+    let lineWidth: CGFloat
+
+    private var complete: Bool { fraction >= 1 }
+
+    var body: some View {
+        let shape = RoundedRectangle(cornerRadius: 22, style: .continuous)
+            .inset(by: inset)
+        ZStack {
+            shape.stroke(color.opacity(0.16), lineWidth: lineWidth)
+            shape
+                .trim(from: 0, to: fraction)
+                .stroke(color, style: StrokeStyle(lineWidth: lineWidth, lineCap: .round))
+                .shadow(color: color.opacity(complete ? 0.9 : 0.5),
+                        radius: complete ? 9 : 4)
+        }
+        .animation(.easeInOut(duration: 0.5), value: fraction)
+    }
 }
 
 #Preview(traits: .landscapeLeft) {
@@ -232,6 +282,7 @@ struct ScorePanel: View {
                primary: playerThemes[1].primary, deep: playerThemes[1].deep,
                disabled: false, canUndo: true,
                opponentColor: playerThemes[7].primary, opponentPending: 3,
+               showOpponentTrack: true,
                onAdd: { _ in }, onPlusOne: {}, onUndo: {})
         .frame(width: 420, height: 90)
         .padding()
