@@ -327,8 +327,8 @@ private struct SkunkTick: View {
 
     var body: some View {
         SkunkTickShape(fraction: CGFloat(fraction), cornerRadius: cornerRadius,
-                       centerInset: 5.5, halfLength: long ? 7 : 4.5)
-            .stroke(.white.opacity(0.5), style: StrokeStyle(lineWidth: 1.5, lineCap: .round))
+                       centerInset: 5.5, halfLength: long ? 5 : 3)
+            .stroke(.white.opacity(0.28), style: StrokeStyle(lineWidth: 1, lineCap: .round))
     }
 }
 

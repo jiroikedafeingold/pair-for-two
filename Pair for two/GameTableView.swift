@@ -830,10 +830,14 @@ private struct DealtCardsRow: View {
         .task(id: dealSignal) {
             revealed = 0
             guard !cards.isEmpty else { return }
+            // One riffle for the whole deal-out. Per-card feedback fired a synchronous Core Haptics
+            // start() on every card, which stalled the reveal animation on iPhone (iPads have no
+            // haptics, so they stayed smooth) — the start-of-round deal has no per-card feedback and
+            // is smooth, so we match it here.
+            GameFeedback.shared.play(.deal)
             try? await Task.sleep(for: .milliseconds(140))
             for i in 1...cards.count {
                 revealed = i
-                GameFeedback.shared.play(.cardPlay)   // a deal tick as each card lands
                 try? await Task.sleep(for: .milliseconds(105))
             }
         }
