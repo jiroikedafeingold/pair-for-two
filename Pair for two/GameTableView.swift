@@ -33,7 +33,7 @@ struct GameTableView: View {
     // Scoring replay (win screen). `replayIsPreWin` = the auto replay shown *before* the win screen.
     @State private var showReplay = false
     @State private var replayIsPreWin = false
-    @AppStorage("replayBeforeWin") private var replayBeforeWin = false
+    @AppStorage("replayBeforeWin") private var replayBeforeWin = true
     @AppStorage("scoreTrackEnabled") private var scoreTrackEnabled = true
 
     var body: some View {

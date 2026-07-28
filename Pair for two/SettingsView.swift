@@ -15,7 +15,7 @@ struct SettingsView: View {
     @AppStorage("hapticsEnabled") private var hapticsEnabled = true
     @AppStorage("soundEnabled") private var soundEnabled = true
     @AppStorage("celebrationEffects") private var celebrationEffects = true
-    @AppStorage("replayBeforeWin") private var replayBeforeWin = false
+    @AppStorage("replayBeforeWin") private var replayBeforeWin = true
     @AppStorage("scoreTrackEnabled") private var scoreTrackEnabled = true
 
     private var scoringMode: ScoringMode { ScoringMode(rawValue: scoringModeRaw) ?? .feedback }
