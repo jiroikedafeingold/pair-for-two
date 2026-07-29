@@ -125,16 +125,20 @@ struct OnboardingView: View {
                     .shadow(color: .black.opacity(0.35), radius: 8, y: 4)
             }
             Text(slide.title)
-                .font(.system(size: 26, weight: .heavy, design: .rounded))
+                .font(.system(size: slide.interactiveScoring ? 22 : 26, weight: .heavy, design: .rounded))
                 .foregroundStyle(.white)
                 .multilineTextAlignment(.center)
                 .minimumScaleFactor(0.8)
-            Text(slide.body)
-                .font(.callout)
-                .foregroundStyle(.white.opacity(0.85))
-                .multilineTextAlignment(.center)
-                .fixedSize(horizontal: false, vertical: true)
-                .frame(maxWidth: 520)
+            // The scoring slide skips the body paragraph — the title asks the question and each
+            // option carries its own one-line description — so all three options fit without scrolling.
+            if !slide.interactiveScoring {
+                Text(slide.body)
+                    .font(.callout)
+                    .foregroundStyle(.white.opacity(0.85))
+                    .multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .frame(maxWidth: 520)
+            }
             if slide.interactiveScoring { scoringPicker }
             Spacer(minLength: 8)
         }
@@ -142,27 +146,36 @@ struct OnboardingView: View {
         .padding(.bottom, 6)
     }
 
-    /// Tappable scoring-mode chooser shown on the scoring slide. Writes straight to the shared
-    /// `scoringMode` setting; it starts on the default (Player responsibility — fully manual).
+    /// A short one-line description for each mode, so every option fits on a single row.
+    private func scoringBlurb(_ mode: ScoringMode) -> String {
+        switch mode {
+        case .auto:     return "the app scores for you"
+        case .feedback: return "you score, with hints"
+        case .off:      return "you score, no hints"
+        }
+    }
+
+    /// Tappable scoring-mode chooser shown on the scoring slide. Each option is a single compact
+    /// line so all three fit without scrolling. Writes straight to the shared `scoringMode` setting;
+    /// it starts on the default (Player responsibility — fully manual).
     private var scoringPicker: some View {
-        VStack(spacing: 6) {
+        VStack(spacing: 8) {
             ForEach(ScoringMode.allCases, id: \.rawValue) { mode in
                 let selected = scoringModeRaw == mode.rawValue
                 Button {
                     withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) { scoringModeRaw = mode.rawValue }
                 } label: {
-                    HStack(spacing: 10) {
+                    HStack(spacing: 9) {
                         Image(systemName: selected ? "checkmark.circle.fill" : "circle")
-                            .font(.title3)
+                            .font(.body)
                             .foregroundStyle(selected ? Color.cribGold : .white.opacity(0.5))
-                        VStack(alignment: .leading, spacing: 1) {
-                            Text(mode.title).font(.callout.weight(.semibold)).foregroundStyle(.white)
-                            Text(mode.detail).font(.caption2).foregroundStyle(.white.opacity(0.7))
-                                .fixedSize(horizontal: false, vertical: true)
-                        }
+                        Text(mode.title).font(.callout.weight(.semibold)).foregroundStyle(.white)
+                        Text("— \(scoringBlurb(mode))").font(.caption).foregroundStyle(.white.opacity(0.65))
                         Spacer(minLength: 0)
                     }
-                    .padding(.horizontal, 14).padding(.vertical, 8)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
+                    .padding(.horizontal, 14).padding(.vertical, 10)
                     .background(RoundedRectangle(cornerRadius: 12, style: .continuous)
                         .fill(Color.white.opacity(selected ? 0.14 : 0.06)))
                     .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous)
@@ -171,8 +184,8 @@ struct OnboardingView: View {
                 .buttonStyle(.plain)
             }
         }
-        .frame(maxWidth: 460)
-        .padding(.top, 4)
+        .frame(maxWidth: 520)
+        .padding(.top, 2)
     }
 
     // MARK: Name entry
