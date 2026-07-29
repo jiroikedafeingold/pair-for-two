@@ -103,9 +103,9 @@ struct GameTableView: View {
             let height: CGFloat = geo.size.height
             let width: CGFloat = geo.size.width
             // Cap the scoreboard band so it doesn't leave a tall dead zone on iPad; the play area
-            // takes the rest, giving the cards more room on bigger screens. The 0.44 fraction gives
-            // the compact banner + flags + scoreboard comfortable room on a short landscape iPhone.
-            let topBandHeight: CGFloat = min(height * 0.44, 210)
+            // takes the rest, giving the cards more room on bigger screens. The 0.46 fraction gives
+            // the banner + flags + scoreboard comfortable room on a short landscape iPhone.
+            let topBandHeight: CGFloat = min(height * 0.46, 220)
             let playHeight: CGFloat = height - topBandHeight
             // Discard shows a full 6-card hand and nothing else, so those cards can be large (fill the
             // width, leave room for one button). Pegging must stack a pile ABOVE the hand, so its cards
@@ -131,10 +131,15 @@ struct GameTableView: View {
         let s = vm.snapshot
         VStack(spacing: 0) {
             topBand(s)
-                .frame(height: topBandHeight)
                 .frame(maxWidth: .infinity)
-                .background(Color.black.opacity(0.22))
-                .clipped()   // guarantee the band's content can never spill off the top of the screen
+                .frame(height: topBandHeight)
+                .clipped()   // clip any bottom overflow to the band (banner is top-anchored, so safe)
+                // Full-bleed dark band: the background (added after the clip) extends into the top +
+                // side safe areas so it spans the whole screen width, while the content inside stays
+                // within the safe area.
+                .background(alignment: .top) {
+                    Color.black.opacity(0.22).ignoresSafeArea(edges: [.top, .horizontal])
+                }
 
             bottomBand(s, handWidth: handWidth, peggingHandWidth: peggingHandWidth,
                        pileWidth: pileWidth, showWidth: showWidth, cutWidth: cutWidth)
@@ -340,8 +345,12 @@ struct GameTableView: View {
                 .padding(.horizontal, 12)
             }
         }
-        .frame(maxHeight: .infinity)   // center vertically within the capped band
-        .padding(.vertical, 4)
+        // Anchor to the top (not centered) with clearance below the top controls, so the coach
+        // banner is always visible near the top and can never be pushed off the top edge, whatever
+        // the scoreboard/panel height. Any excess spills downward within the band.
+        .frame(maxHeight: .infinity, alignment: .top)
+        .padding(.top, 12)
+        .padding(.bottom, 4)
     }
 
     /// Auto-scoring scoreboard: each player's name over a big score, in their colour. The opponent's
