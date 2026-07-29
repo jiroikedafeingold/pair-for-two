@@ -40,7 +40,7 @@ nonisolated struct GameState: Codable, Sendable {
     var matchID: UUID
     var phase: GamePhase = .connecting
     var handNumber: Int = 0
-    var scoringMode: ScoringMode = .feedback
+    var scoringMode: ScoringMode = .off
 
     // Players
     var names: [PlayerID: String]
@@ -110,7 +110,7 @@ nonisolated struct GameState: Codable, Sendable {
                          seed: UInt64,
                          names: [PlayerID: String],
                          colorIDs: [PlayerID: Int],
-                         scoringMode: ScoringMode = .feedback) -> GameState {
+                         scoringMode: ScoringMode = .off) -> GameState {
         GameState(matchID: matchID,
                   scoringMode: scoringMode,
                   names: names,

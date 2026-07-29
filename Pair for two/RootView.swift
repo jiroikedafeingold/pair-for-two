@@ -18,12 +18,14 @@ struct RootView: View {
     @State private var wasBackgrounded = false                // distinguish a real background from a transient inactive
     @State private var showingHelp = false
     @State private var showOnboarding = false
+    @State private var iconGlow = false          // brief attention glow on settings/help at launch
+    @State private var didGlowIntro = false
     @AppStorage("hasOnboarded") private var hasOnboarded = false
     @Environment(\.scenePhase) private var scenePhase
 
     @AppStorage("localName") private var name = "Player"
     @AppStorage("localColorID") private var colorID = 1
-    @AppStorage("scoringMode") private var scoringModeRaw = ScoringMode.feedback.rawValue
+    @AppStorage("scoringMode") private var scoringModeRaw = ScoringMode.off.rawValue
 
     /// Trimmed, non-empty player name.
     private var playerName: String {
@@ -254,6 +256,17 @@ struct RootView: View {
             .frame(maxWidth: .infinity)
             .padding(.horizontal, 28)
         }
+        .overlay(alignment: .topLeading) {
+            Button { showingSettings = true } label: {
+                Image(systemName: "gearshape.fill")
+                    .font(.system(size: 24, weight: .semibold))
+                    .foregroundStyle(.white.opacity(0.85))
+                    .padding(.top, 8).padding(.leading, 14)
+            }
+            .buttonStyle(.plain)
+            .attentionGlow(active: iconGlow)
+            .accessibilityLabel("Settings")
+        }
         .overlay(alignment: .topTrailing) {
             Button { showingHelp = true } label: {
                 Image(systemName: "questionmark.circle.fill")
@@ -262,13 +275,50 @@ struct RootView: View {
                     .padding(.top, 8).padding(.trailing, 14)
             }
             .buttonStyle(.plain)
+            .attentionGlow(active: iconGlow)
             .accessibilityLabel("How to play")
         }
-        .onAppear { resumeMarker = GamePersistence.loadMarker() }
+        .onAppear {
+            resumeMarker = GamePersistence.loadMarker()
+            // On the first time the menu appears this launch, softly glow the settings + help icons
+            // for a few seconds so new players notice where to change scoring and find help.
+            if !didGlowIntro {
+                didGlowIntro = true
+                iconGlow = true
+                Task { @MainActor in
+                    try? await Task.sleep(for: .seconds(3.5))
+                    withAnimation(.easeInOut(duration: 0.6)) { iconGlow = false }
+                }
+            }
+        }
         .sheet(isPresented: $showingSettings) {
             SettingsView(onDone: { showingSettings = false })
         }
     }
+}
+
+/// A brief, subtle gold glow + gentle pulse used to draw the eye to an icon. Visible only while
+/// `active`; the pulse keeps running underneath but is gated to nothing when inactive.
+private struct AttentionGlow: ViewModifier {
+    let active: Bool
+    @State private var pulse = false
+
+    func body(content: Content) -> some View {
+        content
+            .scaleEffect(active && pulse ? 1.08 : 1.0)
+            .shadow(color: Color.cribGold.opacity(active ? (pulse ? 0.9 : 0.35) : 0),
+                    radius: active ? (pulse ? 13 : 6) : 0)
+            .animation(.easeInOut(duration: 0.5), value: active)
+            .onAppear {
+                withAnimation(.easeInOut(duration: 0.85).repeatForever(autoreverses: true)) {
+                    pulse = true
+                }
+            }
+    }
+}
+
+private extension View {
+    func attentionGlow(active: Bool) -> some View { modifier(AttentionGlow(active: active)) }
 }
 
 #Preview(traits: .landscapeLeft) {

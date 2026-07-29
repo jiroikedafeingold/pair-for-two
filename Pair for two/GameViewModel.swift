@@ -105,7 +105,7 @@ final class GameViewModel {
     static func networked(transport: any GameTransport,
                           localName: String,
                           localColorID: Int,
-                          scoringMode: ScoringMode = .feedback,
+                          scoringMode: ScoringMode = .off,
                           resumable: Bool = true,
                           seed: UInt64 = UInt64.random(in: 0...UInt64.max)) -> GameViewModel {
         let you: PlayerID = transport.isHost ? .one : .two

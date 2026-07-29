@@ -10,7 +10,7 @@ struct SettingsView: View {
     @AppStorage("localName") private var name = "Player"
     @AppStorage("localColorID") private var colorID = 1
     @AppStorage("confirmRelease") private var confirmRelease = true
-    @AppStorage("scoringMode") private var scoringModeRaw = ScoringMode.feedback.rawValue
+    @AppStorage("scoringMode") private var scoringModeRaw = ScoringMode.off.rawValue
     @AppStorage("cardBackID") private var cardBackID = 0
     @AppStorage("hapticsEnabled") private var hapticsEnabled = true
     @AppStorage("soundEnabled") private var soundEnabled = true
@@ -18,11 +18,23 @@ struct SettingsView: View {
     @AppStorage("replayBeforeWin") private var replayBeforeWin = true
     @AppStorage("scoreTrackEnabled") private var scoreTrackEnabled = true
 
-    private var scoringMode: ScoringMode { ScoringMode(rawValue: scoringModeRaw) ?? .feedback }
+    private var scoringMode: ScoringMode { ScoringMode(rawValue: scoringModeRaw) ?? .off }
+
+    @State private var showOnboarding = false
 
     var body: some View {
         NavigationStack {
             Form {
+                Section {
+                    Button {
+                        showOnboarding = true
+                    } label: {
+                        Label("Replay welcome tour", systemImage: "sparkles")
+                    }
+                } footer: {
+                    Text("See the intro again — how to connect, keep score, and where to change settings.")
+                }
+
                 Section("You") {
                     LabeledContent("Name") {
                         TextField("Name", text: $name)
@@ -64,7 +76,7 @@ struct SettingsView: View {
                     Text("Applies to the whole game — either player can change it.")
                 }
 
-                if scoringMode != .off {
+                if scoringMode != .auto {
                     Section {
                         Toggle("Confirm after release", isOn: $confirmRelease)
                     } header: {
@@ -105,6 +117,9 @@ struct SettingsView: View {
                     Button("Done", action: onDone).fontWeight(.semibold)
                 }
             }
+        }
+        .fullScreenCover(isPresented: $showOnboarding) {
+            OnboardingView(onFinish: { showOnboarding = false })
         }
     }
 

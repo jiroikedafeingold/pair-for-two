@@ -13,6 +13,7 @@ struct OnboardingView: View {
     @AppStorage("localName") private var name = "Player"
     @AppStorage("localColorID") private var colorID = 1
     @AppStorage("hasOnboarded") private var hasOnboarded = false
+    @AppStorage("scoringMode") private var scoringModeRaw = ScoringMode.off.rawValue
 
     private var lastSlide: Bool { page == slides.count - 1 }
 
@@ -21,6 +22,7 @@ struct OnboardingView: View {
         let icon: String
         let title: String
         let body: String
+        var interactiveScoring = false
     }
 
     private let slides: [Slide] = [
@@ -34,11 +36,12 @@ struct OnboardingView: View {
               title: "Keep your own score",
               body: "Add your points at the top: drag the slider to the amount and let go, or tap +1 to count up one at a time. Turn on “Confirm after release” in Settings to review before it counts."),
         Slide(icon: "checkmark.seal.fill",
-              title: "Learn as you go",
-              body: "While counting a hand, tap the ✓ to see the correct count with proper cribbage terms. Choose Automatic, Feedback, or Player‑responsibility scoring in Settings."),
+              title: "How do you want to score?",
+              body: "Pick who keeps score. You can change this anytime in Settings, and either player can switch it mid‑game.",
+              interactiveScoring: true),
         Slide(icon: "gearshape.fill",
               title: "Make it yours",
-              body: "In Settings: your name & colour, card back, scoring mode, and toggles for haptics, sound, and celebration effects. Tap the ? on the board anytime for the full how‑to.")
+              body: "Tap the gear on the menu or the board for Settings: your name & colour, card back, scoring mode, and toggles for haptics, sound, and effects. Tap the ? anytime for the full how‑to.")
     ]
 
     var body: some View {
@@ -100,12 +103,16 @@ struct OnboardingView: View {
     }
 
     private func slideView(_ slide: Slide) -> some View {
-        VStack(spacing: 16) {
+        VStack(spacing: slide.interactiveScoring ? 10 : 16) {
             Spacer(minLength: 8)
-            Image(systemName: slide.icon)
-                .font(.system(size: 50, weight: .bold))
-                .foregroundStyle(Color.cribGold)
-                .shadow(color: .black.opacity(0.35), radius: 8, y: 4)
+            // The interactive scoring slide drops the big icon to leave room for its three options
+            // on a short landscape screen.
+            if !slide.interactiveScoring {
+                Image(systemName: slide.icon)
+                    .font(.system(size: 50, weight: .bold))
+                    .foregroundStyle(Color.cribGold)
+                    .shadow(color: .black.opacity(0.35), radius: 8, y: 4)
+            }
             Text(slide.title)
                 .font(.system(size: 26, weight: .heavy, design: .rounded))
                 .foregroundStyle(.white)
@@ -117,10 +124,44 @@ struct OnboardingView: View {
                 .multilineTextAlignment(.center)
                 .fixedSize(horizontal: false, vertical: true)
                 .frame(maxWidth: 520)
+            if slide.interactiveScoring { scoringPicker }
             Spacer(minLength: 8)
         }
         .padding(.horizontal, 32)
         .padding(.bottom, 6)
+    }
+
+    /// Tappable scoring-mode chooser shown on the scoring slide. Writes straight to the shared
+    /// `scoringMode` setting; it starts on the default (Player responsibility — fully manual).
+    private var scoringPicker: some View {
+        VStack(spacing: 6) {
+            ForEach(ScoringMode.allCases, id: \.rawValue) { mode in
+                let selected = scoringModeRaw == mode.rawValue
+                Button {
+                    withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) { scoringModeRaw = mode.rawValue }
+                } label: {
+                    HStack(spacing: 10) {
+                        Image(systemName: selected ? "checkmark.circle.fill" : "circle")
+                            .font(.title3)
+                            .foregroundStyle(selected ? Color.cribGold : .white.opacity(0.5))
+                        VStack(alignment: .leading, spacing: 1) {
+                            Text(mode.title).font(.callout.weight(.semibold)).foregroundStyle(.white)
+                            Text(mode.detail).font(.caption2).foregroundStyle(.white.opacity(0.7))
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                        Spacer(minLength: 0)
+                    }
+                    .padding(.horizontal, 14).padding(.vertical, 8)
+                    .background(RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        .fill(Color.white.opacity(selected ? 0.14 : 0.06)))
+                    .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        .stroke(selected ? Color.cribGold.opacity(0.7) : Color.clear, lineWidth: 1.5))
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .frame(maxWidth: 460)
+        .padding(.top, 4)
     }
 
     // MARK: Name entry

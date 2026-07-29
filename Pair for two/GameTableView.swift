@@ -12,7 +12,7 @@ struct GameTableView: View {
     @AppStorage("confirmRelease") private var confirmRelease = true
     @AppStorage("localName") private var localName = "Player"
     @AppStorage("localColorID") private var localColorID = 1
-    @AppStorage("scoringMode") private var scoringModeRaw = ScoringMode.feedback.rawValue
+    @AppStorage("scoringMode") private var scoringModeRaw = ScoringMode.off.rawValue
 
     // Opponent "+X" score preview: hold their displayed score for 3s while showing what they added.
     @State private var displayedOppScore: Int? = nil
@@ -146,7 +146,8 @@ struct GameTableView: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
         .background(felt)
-        .overlay(alignment: .top) { connectionBanner }
+        // Sit the reconnect/peg toasts just below the top band so they never cover the coach banner.
+        .overlay(alignment: .top) { connectionBanner.padding(.top, topBandHeight + 12) }
         .overlay(alignment: .top) { pegAlertBanner.padding(.top, topBandHeight + 12) }
         .overlay(alignment: .topLeading) { quitButton }
         .overlay(alignment: .topTrailing) { topRightControls }
@@ -251,7 +252,6 @@ struct GameTableView: View {
             }
             .padding(.horizontal, 14).padding(.vertical, 7)
             .background(Capsule().fill(Color.black.opacity(0.7)))
-            .padding(.top, 6)
             .transition(.move(edge: .top).combined(with: .opacity))
         }
     }
