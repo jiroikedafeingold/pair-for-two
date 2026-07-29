@@ -34,14 +34,14 @@ struct OnboardingView: View {
               body: "Play nearby over Bluetooth and Wi‑Fi — no internet or account needed. One phone taps Host, the other taps Join. Or tap Play online to invite a friend through Game Center."),
         Slide(icon: "slider.horizontal.3",
               title: "Keep your own score",
-              body: "Add your points at the top: drag the slider to the amount and let go, or tap +1 to count up one at a time. Turn on “Confirm after release” in Settings to review before it counts."),
+              body: "Add your points at the top: drag the slider to and let go, or tap +1 to count up one at a time. Turn on “Confirm after release” in Settings to review before it counts."),
         Slide(icon: "checkmark.seal.fill",
               title: "How do you want to score?",
               body: "Pick who keeps score — change it anytime in Settings.",
               interactiveScoring: true),
         Slide(icon: "gearshape.fill",
               title: "Make it yours",
-              body: "Tap the gear on the menu or the board for Settings: your name & colour, card back, scoring mode, and toggles for haptics, sound, and effects. Tap the ? anytime for the full how‑to.")
+              body: "Tap the gear in the top right for settings: name & colour, card back, scoring mode, and toggles for haptics, sound, and effects. Tap the ? anytime for the full how‑to.")
     ]
 
     var body: some View {
