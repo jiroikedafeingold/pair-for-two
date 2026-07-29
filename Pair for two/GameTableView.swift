@@ -30,18 +30,79 @@ struct GameTableView: View {
     // "Check my count" — shows the correct scoring for the hand/crib currently being counted.
     @State private var showCheck = false
 
+    // Set when THIS device changes the scoring mode, so the resulting snapshot change doesn't also
+    // toast us — only the other player is told "so-and-so switched scoring".
+    @State private var initiatedScoringChange = false
+
     // Scoring replay (win screen). `replayIsPreWin` = the auto replay shown *before* the win screen.
     @State private var showReplay = false
     @State private var replayIsPreWin = false
     @AppStorage("replayBeforeWin") private var replayBeforeWin = true
     @AppStorage("scoreTrackEnabled") private var scoreTrackEnabled = true
 
+    // The body is split into layered `some View` properties on purpose: a single long chain of
+    // modifiers (sheets + ~10 onChange handlers) makes the Swift type-checker blow up (multi-minute
+    // builds). Each boundary below gives the checker a fixed anchor, keeping builds fast.
     var body: some View {
+        interactiveScreen
+            .modifier(FeedbackHandlers(vm: vm,
+                                       onCardPlay: { GameFeedback.shared.play(.cardPlay) },
+                                       onCutTap: { GameFeedback.shared.play(.cutTap) },
+                                       onDeckLift: { GameFeedback.shared.play(.deckLift) },
+                                       onPhase: handlePhaseChange,
+                                       onPegEvent: handlePegEvent,
+                                       onClaimTick: previewOpponentClaim,
+                                       onOpponentOut: handleOpponentOut,
+                                       onAppear: { GameFeedback.shared.prepare() }))
+            .ignoresSafeArea(.container, edges: .bottom)
+    }
+
+    /// The table plus the sheets, quit dialog, and the state-sync handlers.
+    private var interactiveScreen: some View {
+        tableScreen
+            .sheet(isPresented: $showingSettings) {
+                SettingsView(onDone: { showingSettings = false })
+            }
+            .sheet(isPresented: $showingHelp) {
+                HelpView(onDone: { showingHelp = false })
+            }
+            .confirmationDialog("Quit this game?", isPresented: $showingQuitConfirm, titleVisibility: .visible) {
+                Button("Quit game", role: .destructive) { vm.quit() }
+                Button("Keep playing", role: .cancel) {}
+            } message: {
+                Text("This ends the game for both players.")
+            }
+            // The game was quit (by you or the other player) — return to the menu.
+            .onChange(of: vm.ended) { _, ended in if ended { onExit() } }
+            // Push name/colour changes into the running game when Settings closes, so the highlight,
+            // slider and score colours update live (for this device and the opponent).
+            .onChange(of: showingSettings) { _, isShowing in
+                if !isShowing {
+                    vm.updateLocalIdentity(name: localName.trimmingCharacters(in: .whitespaces), colorID: localColorID)
+                    let newMode = ScoringMode(rawValue: scoringModeRaw) ?? .feedback
+                    // Note that WE changed it, so we don't toast ourselves when the shared state updates.
+                    if newMode != vm.snapshot.scoringMode { initiatedScoringChange = true }
+                    vm.setScoringMode(newMode)
+                }
+            }
+            // The scoring mode is shared: whoever changes it, both devices switch. Tell the other
+            // player, and keep this device's Settings in sync so closing it doesn't revert the change.
+            .onChange(of: vm.snapshot.scoringMode) { _, newMode in
+                scoringModeRaw = newMode.rawValue
+                if initiatedScoringChange {
+                    initiatedScoringChange = false
+                } else {
+                    showPegAlert("\(vm.snapshot.opponentName) switched scoring to \(newMode.title)")
+                }
+            }
+    }
+
+    private var tableScreen: some View {
         GeometryReader { geo in
             let s = vm.snapshot
             // Cap the scoreboard band so it doesn't leave a tall dead zone on iPad; the play area
             // takes the rest, giving the cards more room on bigger screens.
-            let topBandHeight = min(geo.size.height * 0.34, 210)
+            let topBandHeight = min(geo.size.height * 0.40, 210)
             let playHeight = geo.size.height - topBandHeight
             // Discard shows a full 6-card hand and nothing else, so those cards can be large (fill the
             // width, leave room for one button). Pegging must stack a pile ABOVE the hand, so its cards
@@ -58,6 +119,7 @@ struct GameTableView: View {
                     .frame(height: topBandHeight)
                     .frame(maxWidth: .infinity)
                     .background(Color.black.opacity(0.22))
+                    .clipped()   // never let the band's content spill off the top of the screen
 
                 bottomBand(s, handWidth: handWidth, peggingHandWidth: peggingHandWidth,
                            pileWidth: pileWidth, showWidth: showWidth, cutWidth: cutWidth)
@@ -68,66 +130,36 @@ struct GameTableView: View {
             .overlay(alignment: .top) { pegAlertBanner.padding(.top, topBandHeight + 12) }
             .overlay(alignment: .topLeading) { quitButton }
             .overlay(alignment: .topTrailing) { topRightControls }
-            .overlay { if s.phase == .gameOver && !(showReplay && replayIsPreWin) { winnerOverlay(s) } }
-            .overlay { if showReplay { replayOverlay(s) } }
-            .overlay { if showCheck { checkOverlay(s) } }
-            .overlay { if vm.opponentLeft { opponentLeftOverlay } }
+            .overlay { fullScreenOverlays(s) }
         }
-        .sheet(isPresented: $showingSettings) {
-            SettingsView(onDone: { showingSettings = false })
+    }
+
+    /// The modal, full-screen overlays (win, replay, check, opponent-left), grouped into one overlay
+    /// so `tableScreen`'s modifier chain stays short.
+    @ViewBuilder private func fullScreenOverlays(_ s: PlayerSnapshot) -> some View {
+        if s.phase == .gameOver && !(showReplay && replayIsPreWin) { winnerOverlay(s) }
+        if showReplay { replayOverlay(s) }
+        if showCheck { checkOverlay(s) }
+        if vm.opponentLeft { opponentLeftOverlay }
+    }
+
+    /// Routes a phase change to the right feedback / replay trigger.
+    private func handlePhaseChange(_ old: GamePhase, _ new: GamePhase) {
+        if new == .discardToCrib { GameFeedback.shared.play(.deal) }
+        else if old == .cutStarter && new == .pegging { GameFeedback.shared.play(.starterReveal) }
+        else if new == .gameOver && replayBeforeWin && !vm.scoreLog.isEmpty {
+            // Auto-play the scoring replay first; the win screen shows when it finishes.
+            replayIsPreWin = true
+            showReplay = true
         }
-        .sheet(isPresented: $showingHelp) {
-            HelpView(onDone: { showingHelp = false })
+    }
+
+    /// The opponent just ran out of cards while you still hold more — nudge you to keep laying.
+    private func handleOpponentOut() {
+        if vm.opponentOutKeepPlaying {
+            GameFeedback.shared.play(.go)
+            showPegAlert("\(vm.snapshot.opponentName) is out — keep playing")
         }
-        .confirmationDialog("Quit this game?", isPresented: $showingQuitConfirm, titleVisibility: .visible) {
-            Button("Quit game", role: .destructive) { vm.quit() }
-            Button("Keep playing", role: .cancel) {}
-        } message: {
-            Text("This ends the game for both players.")
-        }
-        // The game was quit (by you or the other player) — return to the menu.
-        .onChange(of: vm.ended) { _, ended in if ended { onExit() } }
-        // Push name/colour changes into the running game when Settings closes, so the highlight,
-        // slider and score colours update live (for this device and the opponent).
-        .onChange(of: showingSettings) { _, isShowing in
-            if !isShowing {
-                vm.updateLocalIdentity(name: localName.trimmingCharacters(in: .whitespaces), colorID: localColorID)
-                vm.setScoringMode(ScoringMode(rawValue: scoringModeRaw) ?? .feedback)
-            }
-        }
-        // Preview the opponent's "+X" for 3s before their score updates on this device.
-        .onChange(of: vm.snapshot.claimTick) { _, _ in previewOpponentClaim() }
-        // Tactile + audio feedback, driven by the state so BOTH devices feel each moment of play.
-        .onAppear { GameFeedback.shared.prepare() }
-        .onChange(of: vm.snapshot.playSequence.count) { old, new in
-            if new > old { GameFeedback.shared.play(.cardPlay) }
-        }
-        .onChange(of: vm.snapshot.cutForDeal.count) { old, new in
-            if new > old { GameFeedback.shared.play(.cutTap) }
-        }
-        .onChange(of: vm.snapshot.starterCutLifted) { old, new in
-            if new && !old { GameFeedback.shared.play(.deckLift) }
-        }
-        .onChange(of: vm.snapshot.phase) { old, new in
-            if new == .discardToCrib { GameFeedback.shared.play(.deal) }
-            else if old == .cutStarter && new == .pegging { GameFeedback.shared.play(.starterReveal) }
-            else if new == .gameOver && replayBeforeWin && !vm.scoreLog.isEmpty {
-                // Auto-play the scoring replay first; the win screen shows when it finishes.
-                replayIsPreWin = true
-                showReplay = true
-            }
-        }
-        .onChange(of: vm.pegEventTick) { old, new in
-            if new > old { handlePegEvent() }
-        }
-        // The opponent just ran out of cards while you still hold more — nudge you to keep laying.
-        .onChange(of: vm.snapshot.opponentHandCount) { old, new in
-            if new == 0 && old > 0 && vm.opponentOutKeepPlaying {
-                GameFeedback.shared.play(.go)
-                showPegAlert("\(vm.snapshot.opponentName) is out — keep playing")
-            }
-        }
-        .ignoresSafeArea(.container, edges: .bottom)
     }
 
     // MARK: Go / 31 alert
@@ -263,7 +295,7 @@ struct GameTableView: View {
     // MARK: Top band
 
     @ViewBuilder private func topBand(_ s: PlayerSnapshot) -> some View {
-        VStack(spacing: 10) {
+        VStack(spacing: 6) {
             Text(vm.coachBanner)
                 .font(.headline.weight(.bold))
                 .foregroundStyle(.white)
@@ -295,7 +327,7 @@ struct GameTableView: View {
             }
         }
         .frame(maxHeight: .infinity)   // center vertically within the capped band
-        .padding(.vertical, 8)
+        .padding(.vertical, 4)
     }
 
     /// Auto-scoring scoreboard: each player's name over a big score, in their colour. The opponent's
@@ -305,13 +337,13 @@ struct GameTableView: View {
         let oppValue = displayedOppScore ?? vm.score(of: opp)
         HStack(spacing: 0) {
             scoreColumn(for: you, s: s)
-            Rectangle().fill(.white.opacity(0.15)).frame(width: 1, height: 48)
+            Rectangle().fill(.white.opacity(0.15)).frame(width: 1, height: 36)
             scoreColumn(for: opp, s: s)
         }
         .frame(maxWidth: 700)
         // An imagined oval around both names + scores, carrying each player's progress loop.
         .padding(.horizontal, 34)
-        .padding(.vertical, 12)
+        .padding(.vertical, 8)
         .overlay {
             if scoreTrackEnabled {
                 ScoreTrackOverlay(youFraction: loopFraction(vm.score(of: you)),
@@ -333,20 +365,20 @@ struct GameTableView: View {
         let theme = vm.theme(for: player)
         let isOpponent = player != s.you
         let value = isOpponent ? (displayedOppScore ?? vm.score(of: player)) : vm.score(of: player)
-        VStack(spacing: 2) {
+        VStack(spacing: 0) {
             Text(vm.name(of: player).uppercased())
-                .font(.title3.weight(.heavy))
+                .font(.subheadline.weight(.heavy))
                 .foregroundStyle(theme.primary)
                 .lineLimit(1).minimumScaleFactor(0.6)
             HStack(alignment: .center, spacing: 6) {   // "+X" centered vertically against the score
                 Text("\(value)")
-                    .font(.system(size: 50, weight: .heavy, design: .rounded))
+                    .font(.system(size: 40, weight: .heavy, design: .rounded))
                     .foregroundStyle(.white)
                     .monospacedDigit()
                     .minimumScaleFactor(0.7)
                 if isOpponent && oppPending > 0 {
                     Text("+\(oppPending)")
-                        .font(.system(size: 22, weight: .heavy, design: .rounded))
+                        .font(.system(size: 18, weight: .heavy, design: .rounded))
                         .monospacedDigit()
                         .foregroundStyle(.white)
                         .padding(.horizontal, 8).padding(.vertical, 2)
@@ -844,6 +876,37 @@ private struct DealtCardsRow: View {
     }
 }
 
+// MARK: - Feedback handlers
+
+/// The cluster of state-driven feedback `onChange` handlers, pulled into its own `ViewModifier`.
+/// Keeping these out of the main view body is what stops the Swift type-checker from blowing up on
+/// one enormous modifier chain (which turned builds into multi-minute affairs).
+private struct FeedbackHandlers: ViewModifier {
+    let vm: GameViewModel
+    let onCardPlay: () -> Void
+    let onCutTap: () -> Void
+    let onDeckLift: () -> Void
+    let onPhase: (GamePhase, GamePhase) -> Void
+    let onPegEvent: () -> Void
+    let onClaimTick: () -> Void
+    let onOpponentOut: () -> Void
+    let onAppear: () -> Void
+
+    func body(content: Content) -> some View {
+        content
+            .onAppear(perform: onAppear)
+            // Preview the opponent's "+X" for 3s before their score updates on this device.
+            .onChange(of: vm.snapshot.claimTick) { _, _ in onClaimTick() }
+            // Tactile + audio feedback, driven by the state so BOTH devices feel each moment of play.
+            .onChange(of: vm.snapshot.playSequence.count) { old, new in if new > old { onCardPlay() } }
+            .onChange(of: vm.snapshot.cutForDeal.count) { old, new in if new > old { onCutTap() } }
+            .onChange(of: vm.snapshot.starterCutLifted) { old, new in if new && !old { onDeckLift() } }
+            .onChange(of: vm.snapshot.phase) { old, new in onPhase(old, new) }
+            .onChange(of: vm.pegEventTick) { old, new in if new > old { onPegEvent() } }
+            .onChange(of: vm.snapshot.opponentHandCount) { old, new in if new == 0 && old > 0 { onOpponentOut() } }
+    }
+}
+
 // MARK: - Preview
 
 private struct GameTablePreview: View {
@@ -882,7 +945,15 @@ private struct AutoScoreboardPreview: View {
             let hand = vm.snapshot.yourHand
             if hand.count >= 2 { vm.toggleDiscard(hand[0]); vm.toggleDiscard(hand[1]); vm.confirmDiscard() }
         }
-        vm.claim(42, for: .one); vm.claim(67, for: .two)
+        if vm.snapshot.phase == .cutStarter { vm.liftCut(); vm.revealStarter() }
+        var guardCount = 0                        // play out pegging → the show (count the hands)
+        while vm.snapshot.phase == .pegging && !vm.peggingComplete {
+            guardCount += 1; if guardCount > 60 { break }
+            let s = vm.snapshot
+            let legal = CribbageScorer.legalPlays(hand: s.yourHand, count: s.runningCount)
+            if let c = legal.min(by: { $0.countingValue < $1.countingValue }) { vm.play(c) } else { vm.sayGo() }
+        }
+        if vm.peggingComplete { vm.advance() }    // → showPone
         return vm
     }()
     var body: some View { GameTableView(vm: vm) }
