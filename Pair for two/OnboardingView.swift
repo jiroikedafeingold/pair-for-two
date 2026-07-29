@@ -37,7 +37,7 @@ struct OnboardingView: View {
               body: "Add your points at the top: drag the slider to the amount and let go, or tap +1 to count up one at a time. Turn on “Confirm after release” in Settings to review before it counts."),
         Slide(icon: "checkmark.seal.fill",
               title: "How do you want to score?",
-              body: "Pick who keeps score. You can change this anytime in Settings, and either player can switch it mid‑game.",
+              body: "Pick who keeps score — change it anytime in Settings.",
               interactiveScoring: true),
         Slide(icon: "gearshape.fill",
               title: "Make it yours",
@@ -74,7 +74,18 @@ struct OnboardingView: View {
 
             TabView(selection: $page) {
                 ForEach(Array(slides.enumerated()), id: \.offset) { idx, slide in
-                    slideView(slide).tag(idx)
+                    // Each slide scrolls if its content is taller than the page (e.g. the scoring
+                    // slide on a short landscape phone or at large text sizes), but stays centered
+                    // when it fits — so nothing is ever cut off.
+                    GeometryReader { geo in
+                        ScrollView {
+                            slideView(slide)
+                                .frame(maxWidth: .infinity)
+                                .frame(minHeight: geo.size.height)
+                        }
+                        .scrollBounceBehavior(.basedOnSize)
+                    }
+                    .tag(idx)
                 }
             }
             .tabViewStyle(.page(indexDisplayMode: .never))

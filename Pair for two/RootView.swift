@@ -18,8 +18,8 @@ struct RootView: View {
     @State private var wasBackgrounded = false                // distinguish a real background from a transient inactive
     @State private var showingHelp = false
     @State private var showOnboarding = false
-    @State private var iconGlow = false          // brief attention glow on settings/help at launch
-    @State private var didGlowIntro = false
+    @State private var iconGlow = false          // brief attention glow on settings/help at each start
+    @State private var glowTask: Task<Void, Never>? = nil
     @AppStorage("hasOnboarded") private var hasOnboarded = false
     @Environment(\.scenePhase) private var scenePhase
 
@@ -52,6 +52,7 @@ struct RootView: View {
                     // transient inactive (control centre, a banner) does a plain, non-destructive nudge.
                     vm?.reconnect(force: wasBackgrounded)
                     wasBackgrounded = false
+                    if screen == .menu { triggerIconGlow() }   // re-glow on every foreground at the menu
                 case .background:
                     wasBackgrounded = true
                     vm?.persist()      // save the game if we're being closed
@@ -92,6 +93,18 @@ struct RootView: View {
             } message: {
                 Text(gameCenter.presentedError ?? "")
             }
+    }
+
+    /// Briefly glow the settings + help icons (a few seconds) to point players to them. Runs on every
+    /// app start / foreground at the menu, replacing any in-flight glow.
+    private func triggerIconGlow() {
+        glowTask?.cancel()
+        iconGlow = true
+        glowTask = Task { @MainActor in
+            try? await Task.sleep(for: .seconds(3.5))
+            guard !Task.isCancelled else { return }
+            withAnimation(.easeInOut(duration: 0.6)) { iconGlow = false }
+        }
     }
 
     // MARK: Online (Game Center) matchmaking
@@ -280,16 +293,7 @@ struct RootView: View {
         }
         .onAppear {
             resumeMarker = GamePersistence.loadMarker()
-            // On the first time the menu appears this launch, softly glow the settings + help icons
-            // for a few seconds so new players notice where to change scoring and find help.
-            if !didGlowIntro {
-                didGlowIntro = true
-                iconGlow = true
-                Task { @MainActor in
-                    try? await Task.sleep(for: .seconds(3.5))
-                    withAnimation(.easeInOut(duration: 0.6)) { iconGlow = false }
-                }
-            }
+            triggerIconGlow()   // softly glow settings + help each time the menu appears
         }
         .sheet(isPresented: $showingSettings) {
             SettingsView(onDone: { showingSettings = false })
