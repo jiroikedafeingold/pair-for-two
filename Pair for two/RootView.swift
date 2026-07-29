@@ -38,7 +38,10 @@ struct RootView: View {
             .task { gameCenter.authenticate() }   // Game Center sign-in for online play
             .task { if !hasOnboarded { showOnboarding = true } }   // first-run welcome
             .fullScreenCover(isPresented: $showOnboarding) {
-                OnboardingView(onFinish: { hasOnboarded = true; showOnboarding = false })
+                OnboardingView(onFinish: {
+                    hasOnboarded = true; showOnboarding = false
+                    triggerIconGlow()   // glow once the menu is actually visible (first run)
+                })
             }
             .sheet(isPresented: $showingHelp) {
                 HelpView(onDone: { showingHelp = false },
@@ -274,10 +277,10 @@ struct RootView: View {
                 Image(systemName: "gearshape.fill")
                     .font(.system(size: 24, weight: .semibold))
                     .foregroundStyle(.white.opacity(0.85))
+                    .attentionGlow(active: iconGlow)
                     .padding(.top, 8).padding(.leading, 14)
             }
             .buttonStyle(.plain)
-            .attentionGlow(active: iconGlow)
             .accessibilityLabel("Settings")
         }
         .overlay(alignment: .topTrailing) {
@@ -285,10 +288,10 @@ struct RootView: View {
                 Image(systemName: "questionmark.circle.fill")
                     .font(.system(size: 24, weight: .semibold))
                     .foregroundStyle(.white.opacity(0.85))
+                    .attentionGlow(active: iconGlow)
                     .padding(.top, 8).padding(.trailing, 14)
             }
             .buttonStyle(.plain)
-            .attentionGlow(active: iconGlow)
             .accessibilityLabel("How to play")
         }
         .onAppear {
@@ -301,23 +304,26 @@ struct RootView: View {
     }
 }
 
-/// A brief, subtle gold glow + gentle pulse used to draw the eye to an icon. Visible only while
-/// `active`; the pulse keeps running underneath but is gated to nothing when inactive.
+/// A brief attention glow: a soft gold halo that pulses behind an icon for a few seconds. Visible
+/// only while `active`. Apply it to the icon itself (before any padding) so the halo stays centered.
 private struct AttentionGlow: ViewModifier {
     let active: Bool
     @State private var pulse = false
 
     func body(content: Content) -> some View {
         content
-            .scaleEffect(active && pulse ? 1.08 : 1.0)
-            .shadow(color: Color.cribGold.opacity(active ? (pulse ? 0.9 : 0.35) : 0),
-                    radius: active ? (pulse ? 13 : 6) : 0)
-            .animation(.easeInOut(duration: 0.5), value: active)
-            .onAppear {
-                withAnimation(.easeInOut(duration: 0.85).repeatForever(autoreverses: true)) {
-                    pulse = true
-                }
+            .background {
+                Circle()
+                    .fill(Color.cribGold)
+                    .frame(width: 40, height: 40)
+                    .blur(radius: 10)
+                    .opacity(active ? (pulse ? 0.95 : 0.55) : 0)
+                    .scaleEffect(pulse ? 1.55 : 1.05)
+                    .animation(.easeInOut(duration: 0.9).repeatForever(autoreverses: true), value: pulse)
+                    .animation(.easeInOut(duration: 0.45), value: active)
+                    .allowsHitTesting(false)
             }
+            .onAppear { pulse = true }
     }
 }
 
