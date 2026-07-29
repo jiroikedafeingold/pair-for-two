@@ -103,9 +103,9 @@ struct GameTableView: View {
             let height: CGFloat = geo.size.height
             let width: CGFloat = geo.size.width
             // Cap the scoreboard band so it doesn't leave a tall dead zone on iPad; the play area
-            // takes the rest, giving the cards more room on bigger screens. The 0.46 fraction gives
-            // the banner + flags + scoreboard comfortable room on a short landscape iPhone.
-            let topBandHeight: CGFloat = min(height * 0.46, 220)
+            // takes the rest. 0.40 is enough for the (top-anchored) banner + flags + scoreboard/panel
+            // while leaving the play area room for the show cards AND the Continue button below them.
+            let topBandHeight: CGFloat = min(height * 0.40, 200)
             let playHeight: CGFloat = height - topBandHeight
             // Discard shows a full 6-card hand and nothing else, so those cards can be large (fill the
             // width, leave room for one button). Pegging must stack a pile ABOVE the hand, so its cards
@@ -113,7 +113,7 @@ struct GameTableView: View {
             let handWidth: CGFloat = min((width - 40) / 7.0, (playHeight - 60) / 1.55)
             let peggingHandWidth: CGFloat = min(handWidth, (playHeight - 44) / 2.15)
             let pileWidth: CGFloat = peggingHandWidth * 0.5
-            let showWidth: CGFloat = handWidth * 0.72
+            let showWidth: CGFloat = handWidth * 0.66
             // Cut-for-deal stacks two cards vertically, so size them to the band height to avoid spill.
             let cutWidth: CGFloat = min(handWidth * 0.6, playHeight * 0.24)
 
