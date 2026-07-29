@@ -18,8 +18,6 @@ struct RootView: View {
     @State private var wasBackgrounded = false                // distinguish a real background from a transient inactive
     @State private var showingHelp = false
     @State private var showOnboarding = false
-    @State private var iconGlow = false          // brief attention glow on settings/help at each start
-    @State private var glowTask: Task<Void, Never>? = nil
     @AppStorage("hasOnboarded") private var hasOnboarded = false
     @Environment(\.scenePhase) private var scenePhase
 
@@ -38,10 +36,7 @@ struct RootView: View {
             .task { gameCenter.authenticate() }   // Game Center sign-in for online play
             .task { if !hasOnboarded { showOnboarding = true } }   // first-run welcome
             .fullScreenCover(isPresented: $showOnboarding) {
-                OnboardingView(onFinish: {
-                    hasOnboarded = true; showOnboarding = false
-                    triggerIconGlow()   // glow once the menu is actually visible (first run)
-                })
+                OnboardingView(onFinish: { hasOnboarded = true; showOnboarding = false })
             }
             .sheet(isPresented: $showingHelp) {
                 HelpView(onDone: { showingHelp = false },
@@ -55,7 +50,6 @@ struct RootView: View {
                     // transient inactive (control centre, a banner) does a plain, non-destructive nudge.
                     vm?.reconnect(force: wasBackgrounded)
                     wasBackgrounded = false
-                    if screen == .menu { triggerIconGlow() }   // re-glow on every foreground at the menu
                 case .background:
                     wasBackgrounded = true
                     vm?.persist()      // save the game if we're being closed
@@ -96,18 +90,6 @@ struct RootView: View {
             } message: {
                 Text(gameCenter.presentedError ?? "")
             }
-    }
-
-    /// Briefly glow the settings + help icons (a few seconds) to point players to them. Runs on every
-    /// app start / foreground at the menu, replacing any in-flight glow.
-    private func triggerIconGlow() {
-        glowTask?.cancel()
-        iconGlow = true
-        glowTask = Task { @MainActor in
-            try? await Task.sleep(for: .seconds(3.5))
-            guard !Task.isCancelled else { return }
-            withAnimation(.easeInOut(duration: 0.6)) { iconGlow = false }
-        }
     }
 
     // MARK: Online (Game Center) matchmaking
@@ -272,63 +254,21 @@ struct RootView: View {
             .frame(maxWidth: .infinity)
             .padding(.horizontal, 28)
         }
-        .overlay(alignment: .topLeading) {
-            Button { showingSettings = true } label: {
-                Image(systemName: "gearshape.fill")
-                    .font(.system(size: 24, weight: .semibold))
-                    .foregroundStyle(.white.opacity(0.85))
-                    .attentionGlow(active: iconGlow)
-                    .padding(.top, 8).padding(.leading, 14)
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel("Settings")
-        }
         .overlay(alignment: .topTrailing) {
             Button { showingHelp = true } label: {
                 Image(systemName: "questionmark.circle.fill")
                     .font(.system(size: 24, weight: .semibold))
                     .foregroundStyle(.white.opacity(0.85))
-                    .attentionGlow(active: iconGlow)
                     .padding(.top, 8).padding(.trailing, 14)
             }
             .buttonStyle(.plain)
             .accessibilityLabel("How to play")
         }
-        .onAppear {
-            resumeMarker = GamePersistence.loadMarker()
-            triggerIconGlow()   // softly glow settings + help each time the menu appears
-        }
+        .onAppear { resumeMarker = GamePersistence.loadMarker() }
         .sheet(isPresented: $showingSettings) {
             SettingsView(onDone: { showingSettings = false })
         }
     }
-}
-
-/// A brief attention glow: a soft gold halo that pulses behind an icon for a few seconds. Visible
-/// only while `active`. Apply it to the icon itself (before any padding) so the halo stays centered.
-private struct AttentionGlow: ViewModifier {
-    let active: Bool
-    @State private var pulse = false
-
-    func body(content: Content) -> some View {
-        content
-            .background {
-                Circle()
-                    .fill(Color.cribGold)
-                    .frame(width: 40, height: 40)
-                    .blur(radius: 10)
-                    .opacity(active ? (pulse ? 0.95 : 0.55) : 0)
-                    .scaleEffect(pulse ? 1.55 : 1.05)
-                    .animation(.easeInOut(duration: 0.9).repeatForever(autoreverses: true), value: pulse)
-                    .animation(.easeInOut(duration: 0.45), value: active)
-                    .allowsHitTesting(false)
-            }
-            .onAppear { pulse = true }
-    }
-}
-
-private extension View {
-    func attentionGlow(active: Bool) -> some View { modifier(AttentionGlow(active: active)) }
 }
 
 #Preview(traits: .landscapeLeft) {

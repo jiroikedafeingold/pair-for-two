@@ -99,3 +99,32 @@ enum CardBack: Int, CaseIterable, Identifiable {
     /// Resolve a stored id to a back, defaulting to Royal for anything unexpected.
     static func from(_ id: Int) -> CardBack { CardBack(rawValue: id) ?? .royal }
 }
+
+// MARK: - Attention glow
+
+/// A brief attention glow: a soft gold halo that pulses behind an icon while `active`. Apply it to
+/// the icon itself so the halo stays centered on it.
+struct AttentionGlow: ViewModifier {
+    let active: Bool
+    @State private var pulse = false
+
+    func body(content: Content) -> some View {
+        content
+            .background {
+                Circle()
+                    .fill(Color.cribGold)
+                    .frame(width: 40, height: 40)
+                    .blur(radius: 10)
+                    .opacity(active ? (pulse ? 0.95 : 0.55) : 0)
+                    .scaleEffect(pulse ? 1.55 : 1.05)
+                    .animation(.easeInOut(duration: 0.9).repeatForever(autoreverses: true), value: pulse)
+                    .animation(.easeInOut(duration: 0.45), value: active)
+                    .allowsHitTesting(false)
+            }
+            .onAppear { pulse = true }
+    }
+}
+
+extension View {
+    func attentionGlow(active: Bool) -> some View { modifier(AttentionGlow(active: active)) }
+}
