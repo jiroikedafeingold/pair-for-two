@@ -40,10 +40,9 @@ struct GameTableView: View {
     @AppStorage("replayBeforeWin") private var replayBeforeWin = true
     @AppStorage("scoreTrackEnabled") private var scoreTrackEnabled = true
 
-    // Brief gold glow on the help/settings icons when the play screen appears (and on foreground),
-    // so players notice where to find help and change scoring mid-game.
-    @State private var iconGlow = false
-    @State private var glowTask: Task<Void, Never>? = nil
+    // One brief gold flash on the help/settings icons when the play screen appears (and on
+    // foreground), so players notice where to find help and change scoring mid-game.
+    @State private var glowTrigger = 0
     @Environment(\.scenePhase) private var scenePhase
 
     // The body is split into layered `some View` properties on purpose: a single long chain of
@@ -64,17 +63,9 @@ struct GameTableView: View {
             .onChange(of: scenePhase) { _, phase in if phase == .active { triggerIconGlow() } }
     }
 
-    /// Briefly glow the help + settings icons (a few seconds) to point players to them. Runs when the
-    /// play screen appears and on every foreground, replacing any in-flight glow.
-    private func triggerIconGlow() {
-        glowTask?.cancel()
-        iconGlow = true
-        glowTask = Task { @MainActor in
-            try? await Task.sleep(for: .seconds(3.5))
-            guard !Task.isCancelled else { return }
-            withAnimation(.easeInOut(duration: 0.6)) { iconGlow = false }
-        }
-    }
+    /// Flash the help + settings icons once to point players to them. Runs when the play screen
+    /// appears and on every foreground.
+    private func triggerIconGlow() { glowTrigger += 1 }
 
     /// The table plus the sheets, quit dialog, and the state-sync handlers.
     private var interactiveScreen: some View {
@@ -306,7 +297,7 @@ struct GameTableView: View {
                 .foregroundStyle(.white.opacity(0.7))
                 .frame(width: 32, height: 32)
                 .background(Circle().fill(Color.black.opacity(0.3)))
-                .attentionGlow(active: iconGlow)
+                .attentionGlow(trigger: glowTrigger)
         }
     }
 

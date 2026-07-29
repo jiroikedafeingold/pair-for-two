@@ -102,29 +102,28 @@ enum CardBack: Int, CaseIterable, Identifiable {
 
 // MARK: - Attention glow
 
-/// A brief attention glow: a soft gold halo that pulses behind an icon while `active`. Apply it to
-/// the icon itself so the halo stays centered on it.
+/// A brief attention glow: a soft gold halo that flashes once behind an icon whenever `trigger`
+/// changes. Apply it to the icon itself so the halo stays centered on it. Subtle by design — it
+/// fades in and back out a single time.
 struct AttentionGlow: ViewModifier {
-    let active: Bool
-    @State private var pulse = false
+    let trigger: Int
 
     func body(content: Content) -> some View {
         content
             .background {
                 Circle()
                     .fill(Color.cribGold)
-                    .frame(width: 40, height: 40)
+                    .frame(width: 30, height: 30)
                     .blur(radius: 10)
-                    .opacity(active ? (pulse ? 0.95 : 0.55) : 0)
-                    .scaleEffect(pulse ? 1.55 : 1.05)
-                    .animation(.easeInOut(duration: 0.9).repeatForever(autoreverses: true), value: pulse)
-                    .animation(.easeInOut(duration: 0.45), value: active)
+                    .phaseAnimator([0.0, 1.0, 0.0], trigger: trigger) { halo, p in
+                        halo.opacity(p * 0.5).scaleEffect(1.0 + p * 0.25)
+                    } animation: { _ in .easeInOut(duration: 0.55) }
                     .allowsHitTesting(false)
             }
-            .onAppear { pulse = true }
     }
 }
 
 extension View {
-    func attentionGlow(active: Bool) -> some View { modifier(AttentionGlow(active: active)) }
+    /// Flash a subtle gold halo once each time `trigger` changes.
+    func attentionGlow(trigger: Int) -> some View { modifier(AttentionGlow(trigger: trigger)) }
 }
