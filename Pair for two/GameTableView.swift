@@ -99,39 +99,53 @@ struct GameTableView: View {
 
     private var tableScreen: some View {
         GeometryReader { geo in
-            let s = vm.snapshot
+            // Explicit CGFloat types keep these arithmetic bindings cheap for the type-checker.
+            let height: CGFloat = geo.size.height
+            let width: CGFloat = geo.size.width
             // Cap the scoreboard band so it doesn't leave a tall dead zone on iPad; the play area
-            // takes the rest, giving the cards more room on bigger screens.
-            let topBandHeight = min(geo.size.height * 0.40, 210)
-            let playHeight = geo.size.height - topBandHeight
+            // takes the rest, giving the cards more room on bigger screens. The 0.44 fraction gives
+            // the compact banner + flags + scoreboard comfortable room on a short landscape iPhone.
+            let topBandHeight: CGFloat = min(height * 0.44, 210)
+            let playHeight: CGFloat = height - topBandHeight
             // Discard shows a full 6-card hand and nothing else, so those cards can be large (fill the
             // width, leave room for one button). Pegging must stack a pile ABOVE the hand, so its cards
             // are clamped to the shorter vertical budget. Show cards sit in a single row.
-            let handWidth = min((geo.size.width - 40) / 7.0, (playHeight - 60) / 1.55)
-            let peggingHandWidth = min(handWidth, (playHeight - 44) / 2.15)
-            let pileWidth = peggingHandWidth * 0.5
-            let showWidth = handWidth * 0.72
+            let handWidth: CGFloat = min((width - 40) / 7.0, (playHeight - 60) / 1.55)
+            let peggingHandWidth: CGFloat = min(handWidth, (playHeight - 44) / 2.15)
+            let pileWidth: CGFloat = peggingHandWidth * 0.5
+            let showWidth: CGFloat = handWidth * 0.72
             // Cut-for-deal stacks two cards vertically, so size them to the band height to avoid spill.
-            let cutWidth = min(handWidth * 0.6, playHeight * 0.24)
+            let cutWidth: CGFloat = min(handWidth * 0.6, playHeight * 0.24)
 
-            VStack(spacing: 0) {
-                topBand(s)
-                    .frame(height: topBandHeight)
-                    .frame(maxWidth: .infinity)
-                    .background(Color.black.opacity(0.22))
-                    .clipped()   // never let the band's content spill off the top of the screen
-
-                bottomBand(s, handWidth: handWidth, peggingHandWidth: peggingHandWidth,
-                           pileWidth: pileWidth, showWidth: showWidth, cutWidth: cutWidth)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-            }
-            .background(felt)
-            .overlay(alignment: .top) { connectionBanner }
-            .overlay(alignment: .top) { pegAlertBanner.padding(.top, topBandHeight + 12) }
-            .overlay(alignment: .topLeading) { quitButton }
-            .overlay(alignment: .topTrailing) { topRightControls }
-            .overlay { fullScreenOverlays(s) }
+            tableLayout(topBandHeight: topBandHeight, handWidth: handWidth,
+                        peggingHandWidth: peggingHandWidth, pileWidth: pileWidth,
+                        showWidth: showWidth, cutWidth: cutWidth)
         }
+    }
+
+    /// The band-split layout + overlays. Extracted from the `GeometryReader` closure so that closure
+    /// stays a few cheap bindings + one call — keeping the Swift type-checker fast.
+    @ViewBuilder private func tableLayout(topBandHeight: CGFloat, handWidth: CGFloat,
+                                          peggingHandWidth: CGFloat, pileWidth: CGFloat,
+                                          showWidth: CGFloat, cutWidth: CGFloat) -> some View {
+        let s = vm.snapshot
+        VStack(spacing: 0) {
+            topBand(s)
+                .frame(height: topBandHeight)
+                .frame(maxWidth: .infinity)
+                .background(Color.black.opacity(0.22))
+                .clipped()   // guarantee the band's content can never spill off the top of the screen
+
+            bottomBand(s, handWidth: handWidth, peggingHandWidth: peggingHandWidth,
+                       pileWidth: pileWidth, showWidth: showWidth, cutWidth: cutWidth)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
+        .background(felt)
+        .overlay(alignment: .top) { connectionBanner }
+        .overlay(alignment: .top) { pegAlertBanner.padding(.top, topBandHeight + 12) }
+        .overlay(alignment: .topLeading) { quitButton }
+        .overlay(alignment: .topTrailing) { topRightControls }
+        .overlay { fullScreenOverlays(s) }
     }
 
     /// The modal, full-screen overlays (win, replay, check, opponent-left), grouped into one overlay
