@@ -2,7 +2,8 @@ default_platform(:ios)
 
 platform :ios do
   desc "Upload App Store metadata + screenshots (no binary) using an App Store Connect API key"
-  lane :upload_store do
+  desc "Pass version:X.Y to target/create a specific App Store version, and skip_screenshots:true to skip images."
+  lane :upload_store do |options|
     api_key = app_store_connect_api_key(
       key_id: ENV.fetch("ASC_KEY_ID"),
       issuer_id: ENV.fetch("ASC_ISSUER_ID"),
@@ -12,11 +13,12 @@ platform :ios do
 
     deliver(
       api_key: api_key,
-      skip_binary_upload: true,     # binary is delivered by Xcode Cloud
+      app_version: options[:version],   # target/create this version; nil = the current editable one
+      skip_binary_upload: true,         # binary is delivered by Xcode Cloud
       skip_metadata: false,
-      skip_screenshots: false,
+      skip_screenshots: options[:skip_screenshots] || false,
       overwrite_screenshots: true,
-      submit_for_review: false,     # you press submit in App Store Connect
+      submit_for_review: false,         # you press submit in App Store Connect
       run_precheck_before_submit: false,
       force: true
     )
