@@ -23,6 +23,8 @@ For _fastlane_ installation instructions, see [Installing _fastlane_](https://do
 
 Upload App Store metadata + screenshots (no binary) using an App Store Connect API key
 
+Pass version:X.Y to target/create a specific App Store version, and skip_screenshots:true to skip images.
+
 ----
 
 This README.md is auto-generated and will be re-generated every time [_fastlane_](https://fastlane.tools) is run.
