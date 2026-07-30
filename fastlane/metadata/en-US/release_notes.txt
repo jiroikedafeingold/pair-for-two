@@ -1,12 +1,8 @@
-A big update — learn faster, play smoother, and celebrate (or commiserate) in style:
-
-• Check your count — while counting a hand or the crib, tap the check button to see the correct score with proper cribbage terms (double run, pair royal, run of five, and more). Great for learning.
-• Scoring replay — replay the whole game score-by-score on the win screen, or automatically right before it (Settings).
-• Welcome tour + full "How to Play" guide — tap the ? on the board anytime for help with scoring, playing nearby or online, and the settings.
-• Tidier table — hands are sorted by rank and suit, cards deal out as each hand is counted, and the crib is clearly marked.
-• Win and lose in style — a bigger winner celebration with fireworks, and a gentle screen for the runner-up.
-• Make it yours — new toggles for haptics, sound effects, and celebration effects.
-• Smoother play — you're alerted when it's your Go, the count button folds in points you've queued, card ranks are clearer, reconnecting and rejoining are faster, and starting a new game clears any old one.
-• Stability and layout fixes.
+• Live score tracks — each player's score now traces a glowing loop toward 121 right on the scoreboard, complete with skunk and double-skunk marks. Prefer it off? There's a toggle in Settings.
+• Choose how you score — a new step in the welcome tour lets you pick Automatic, Feedback, or fully manual scoring. Change it anytime in Settings; switching now updates both phones and lets the other player know.
+• Cards deal out — a quick deal animation when a fresh hand is dealt, and again as each hand is counted.
+• Cleaner landscape layout — the scoreboard, cards, and buttons stay fully on screen, and the "reconnecting" notice no longer covers the banner.
+• Smoother and snappier — a smoother card deal-out and quicker feedback on iPhone.
+• Handy extras — the score-by-score replay before the win screen is now on by default, and you can replay the welcome tour anytime from Settings.
 
 Thanks for playing! Questions or feedback? apps@feingold5.com
