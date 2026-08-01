@@ -1,0 +1,13 @@
+{
+  "cards" : [
+    {
+      "rank" : 4,
+      "suit" : "spades"
+    },
+    {
+      "rank" : 10,
+      "suit" : "hearts"
+    }
+  ],
+  "t" : "intentDiscard"
+}

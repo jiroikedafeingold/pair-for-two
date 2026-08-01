@@ -29,8 +29,12 @@ final class GameCenterTransport: NSObject, GKMatchDelegate, GameTransport, @unch
         continuation.yield(.connected)   // buffered until the VM starts listening
     }
 
+    /// Which wire format the peer understands. Game Center only ever pairs iOS with iOS, so this
+    /// stays `.legacy` against a build that predates protocol v1 — see `PROTOCOL.md`.
+    private let negotiator = WireCodec.Negotiator()
+
     nonisolated func send(_ message: GameMessage) async {
-        guard let data = try? JSONEncoder().encode(message) else { return }
+        guard let data = try? WireCodec.encode(message, as: negotiator.format) else { return }
         try? match.sendData(toAllPlayers: data, with: .reliable)
     }
 
@@ -40,7 +44,8 @@ final class GameCenterTransport: NSObject, GKMatchDelegate, GameTransport, @unch
     // MARK: - GKMatchDelegate
 
     nonisolated func match(_ match: GKMatch, didReceive data: Data, fromRemotePlayer player: GKPlayer) {
-        if let message = try? JSONDecoder().decode(GameMessage.self, from: data) {
+        negotiator.observe(data)   // upgrade to v1 once the peer's hello announces it
+        if let message = WireCodec.decode(data) {
             continuation.yield(.received(message))
         }
     }

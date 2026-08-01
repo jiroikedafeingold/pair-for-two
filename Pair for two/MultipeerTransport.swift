@@ -186,11 +186,18 @@ final class MultipeerSession: NSObject, GameTransport {
     // confined alongside `session`.
     private var outbox: [GameMessage] = []
 
+    /// Which wire format the peer understands. Multipeer pairs iOS with iOS, so this stays
+    /// `.legacy` against a build that predates protocol v1 — see `PROTOCOL.md`.
+    ///
+    /// `nonisolated` because the MCSession delegate callback that observes the peer's `hello`
+    /// runs off the main actor, same as `continuation` above. The type is internally locked.
+    nonisolated private let negotiator = WireCodec.Negotiator()
+
     func send(_ message: GameMessage) async {
         let peers = session.connectedPeers
         guard !peers.isEmpty else { buffer(message); return }
         do {
-            let data = try JSONEncoder().encode(message)
+            let data = try WireCodec.encode(message, as: negotiator.format)
             try session.send(data, toPeers: peers, with: .reliable)
         } catch {
             buffer(message)   // couldn't hand off — keep it for the next connect
@@ -207,7 +214,7 @@ final class MultipeerSession: NSObject, GameTransport {
         guard !peers.isEmpty else { return }
         let pending = outbox; outbox.removeAll()
         for message in pending {
-            if let data = try? JSONEncoder().encode(message) {
+            if let data = try? WireCodec.encode(message, as: negotiator.format) {
                 try? session.send(data, toPeers: peers, with: .reliable)
             }
         }
@@ -279,7 +286,8 @@ extension MultipeerSession: MCSessionDelegate {
     }
 
     nonisolated func session(_ session: MCSession, didReceive data: Data, fromPeer peerID: MCPeerID) {
-        if let message = try? JSONDecoder().decode(GameMessage.self, from: data) {
+        negotiator.observe(data)   // upgrade to v1 once the peer's hello announces it
+        if let message = WireCodec.decode(data) {
             continuation.yield(.received(message))
         }
     }

@@ -1,0 +1,7 @@
+{
+  "card" : {
+    "rank" : 7,
+    "suit" : "clubs"
+  },
+  "t" : "intentPlay"
+}

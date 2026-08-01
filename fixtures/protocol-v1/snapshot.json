@@ -1,0 +1,89 @@
+{
+  "snapshot" : {
+    "claimTick" : 4,
+    "cribCount" : 4,
+    "cutForDeal" : {
+      "one" : {
+        "rank" : 3,
+        "suit" : "hearts"
+      },
+      "two" : {
+        "rank" : 12,
+        "suit" : "clubs"
+      }
+    },
+    "dealer" : "two",
+    "flags" : [
+      {
+        "detail" : "Fifteen 2",
+        "kind" : "fifteen",
+        "points" : 2
+      },
+      {
+        "detail" : "His Heels",
+        "kind" : "hisHeels",
+        "points" : 2
+      }
+    ],
+    "lapCardCount" : 1,
+    "lastClaimAmount" : 3,
+    "lastClaimPlayer" : "two",
+    "lastPegEvent" : {
+      "kind" : "thirtyOne",
+      "points" : 2,
+      "scorer" : "one"
+    },
+    "lastToPlay" : "two",
+    "matchID" : "6ba7b810-9dad-11d1-80b4-00c04fd430c8",
+    "opponentColorID" : 7,
+    "opponentHandCount" : 3,
+    "opponentName" : "Sam",
+    "opponentScore" : 58,
+    "pegEventTick" : 2,
+    "phase" : "pegging",
+    "playersWithClaims" : [
+      "one",
+      "two"
+    ],
+    "playSequence" : [
+      {
+        "card" : {
+          "rank" : 1,
+          "suit" : "diamonds"
+        },
+        "player" : "two"
+      }
+    ],
+    "runningCount" : 1,
+    "scoreLog" : [
+      {
+        "amount" : 2,
+        "phase" : "showPone",
+        "player" : "one"
+      }
+    ],
+    "scoringMode" : 1,
+    "starter" : {
+      "rank" : 11,
+      "suit" : "spades"
+    },
+    "starterCutLifted" : true,
+    "whoseTurn" : "one",
+    "you" : "one",
+    "yourColorID" : 2,
+    "yourHand" : [
+      {
+        "rank" : 5,
+        "suit" : "clubs"
+      },
+      {
+        "rank" : 13,
+        "suit" : "hearts"
+      }
+    ],
+    "yourName" : "Jiro",
+    "yourScore" : 61,
+    "yourSeat" : "pone"
+  },
+  "t" : "snapshot"
+}
