@@ -514,6 +514,34 @@ do {
         run(.advance)
     }
 
+    // Malformed discards arriving off the wire. Our own UI can't produce any of these — they exist
+    // because the host must referee a peer it doesn't control, and `[X, X]` in particular used to
+    // get through, taking one card out of the hand and putting two of it in the crib.
+    do {
+        let (rest, taken) = registerDeck(Deck.shuffled(seed: 0xD15_CA2D), dropping: 12)
+        var setup = Setup()
+        setup.phase = .discardToCrib
+        setup.dealer = .one
+        setup.hands = [.one: Array(taken.prefix(6)), .two: Array(taken.dropFirst(6))]
+        setup.deck = rest.cards
+        add("discard-malformed", setup) { state, run in
+            let pone = state().pone
+            let dealer = state().dealer
+            let poneHand = state().hands[pone]!
+            let dealerHand = state().hands[dealer]!
+
+            run(.discard(pone, [poneHand[0], poneHand[0]]))   // refused: the same card twice
+            run(.discard(pone, [poneHand[0]]))                // refused: only one card
+            run(.discard(pone, [poneHand[0], poneHand[1], poneHand[2]]))  // refused: three
+            run(.discard(pone, []))                           // refused: none
+            run(.discard(pone, [poneHand[0], dealerHand[0]])) // refused: not the pone's card
+            run(.discard(pone, [poneHand[0], poneHand[1]]))   // accepted
+            run(.discard(pone, [poneHand[2], poneHand[3]]))   // refused: already discarded
+            run(.discard(dealer, [dealerHand[0], dealerHand[0]]))  // refused: duplicate again
+            run(.discard(dealer, [dealerHand[0], dealerHand[1]]))  // accepted — on to the cut
+        }
+    }
+
     // Advance from a phase that has nothing to advance to.
     add("advance-noop", pegSetup(
         one: [c(10, .spades), c(6, .hearts), c(2, .diamonds), c(9, .clubs)],

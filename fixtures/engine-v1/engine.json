@@ -8382,6 +8382,32 @@
   ]
 },
 {
+  "name": "discard-malformed",
+  "setup": {"dealer":"one","phase":"discardToCrib","mode":2,"hand":1,"s1":0,"s2":0,"h1":["10s","8d","13h","13d","6h","1h"],"h2":["2c","4h","7c","3c","8s","4d"],"crib":[],"starter":null,"turn":null,"deck":["11h","6d","10h","1d","2h","11s","8c","4s","5d","8h","5c","12h","9c","13c","12c","9d","6s","11c","1c","3d","1s","9h","2d","10d","11d","13s","12d","5s","12s","2s","10c","7s","3s","5h","6c","3h","4c","7h","9s","7d"]},
+  "steps": [
+    {"do":"discard","p":"two","cards":["2c","2c"]},
+        {"do":"discard","p":"two","cards":["2c"]},
+        {"do":"discard","p":"two","cards":["2c","4h","7c"]},
+        {"do":"discard","p":"two","cards":[]},
+        {"do":"discard","p":"two","cards":["2c","10s"]},
+        {"do":"discard","p":"two","cards":["2c","4h"]},
+        {"do":"discard","p":"two","cards":["7c","3c"]},
+        {"do":"discard","p":"one","cards":["10s","10s"]},
+        {"do":"discard","p":"one","cards":["10s","8d"]}
+  ],
+  "trace": [
+    {"ok":false,"phase":"discardToCrib","hand":1,"dealer":"one","turn":null,"last":null,"s1":0,"s2":0,"h1":["10s","8d","13h","13d","6h","1h"],"h2":["2c","4h","7c","3c","8s","4d"],"u1":["10s","8d","13h","13d","6h","1h"],"u2":["2c","4h","7c","3c","8s","4d"],"lap":[],"count":0,"seq":[],"go":[],"flags":[],"crib":[],"starter":null,"lifted":false,"cutIdx":null,"disc":[],"cut1":null,"cut2":null,"ct":0,"claims":[],"pt":0,"pe":null,"win":null,"allPlayed":false,"snap1":"10s+8d+13h+13d+6h+1h:6:-:-:0:0:0","snap2":"2c+4h+7c+3c+8s+4d:6:-:-:0:0:0"},
+        {"ok":false,"phase":"discardToCrib","hand":1,"dealer":"one","turn":null,"last":null,"s1":0,"s2":0,"h1":["10s","8d","13h","13d","6h","1h"],"h2":["2c","4h","7c","3c","8s","4d"],"u1":["10s","8d","13h","13d","6h","1h"],"u2":["2c","4h","7c","3c","8s","4d"],"lap":[],"count":0,"seq":[],"go":[],"flags":[],"crib":[],"starter":null,"lifted":false,"cutIdx":null,"disc":[],"cut1":null,"cut2":null,"ct":0,"claims":[],"pt":0,"pe":null,"win":null,"allPlayed":false,"snap1":"10s+8d+13h+13d+6h+1h:6:-:-:0:0:0","snap2":"2c+4h+7c+3c+8s+4d:6:-:-:0:0:0"},
+        {"ok":false,"phase":"discardToCrib","hand":1,"dealer":"one","turn":null,"last":null,"s1":0,"s2":0,"h1":["10s","8d","13h","13d","6h","1h"],"h2":["2c","4h","7c","3c","8s","4d"],"u1":["10s","8d","13h","13d","6h","1h"],"u2":["2c","4h","7c","3c","8s","4d"],"lap":[],"count":0,"seq":[],"go":[],"flags":[],"crib":[],"starter":null,"lifted":false,"cutIdx":null,"disc":[],"cut1":null,"cut2":null,"ct":0,"claims":[],"pt":0,"pe":null,"win":null,"allPlayed":false,"snap1":"10s+8d+13h+13d+6h+1h:6:-:-:0:0:0","snap2":"2c+4h+7c+3c+8s+4d:6:-:-:0:0:0"},
+        {"ok":false,"phase":"discardToCrib","hand":1,"dealer":"one","turn":null,"last":null,"s1":0,"s2":0,"h1":["10s","8d","13h","13d","6h","1h"],"h2":["2c","4h","7c","3c","8s","4d"],"u1":["10s","8d","13h","13d","6h","1h"],"u2":["2c","4h","7c","3c","8s","4d"],"lap":[],"count":0,"seq":[],"go":[],"flags":[],"crib":[],"starter":null,"lifted":false,"cutIdx":null,"disc":[],"cut1":null,"cut2":null,"ct":0,"claims":[],"pt":0,"pe":null,"win":null,"allPlayed":false,"snap1":"10s+8d+13h+13d+6h+1h:6:-:-:0:0:0","snap2":"2c+4h+7c+3c+8s+4d:6:-:-:0:0:0"},
+        {"ok":false,"phase":"discardToCrib","hand":1,"dealer":"one","turn":null,"last":null,"s1":0,"s2":0,"h1":["10s","8d","13h","13d","6h","1h"],"h2":["2c","4h","7c","3c","8s","4d"],"u1":["10s","8d","13h","13d","6h","1h"],"u2":["2c","4h","7c","3c","8s","4d"],"lap":[],"count":0,"seq":[],"go":[],"flags":[],"crib":[],"starter":null,"lifted":false,"cutIdx":null,"disc":[],"cut1":null,"cut2":null,"ct":0,"claims":[],"pt":0,"pe":null,"win":null,"allPlayed":false,"snap1":"10s+8d+13h+13d+6h+1h:6:-:-:0:0:0","snap2":"2c+4h+7c+3c+8s+4d:6:-:-:0:0:0"},
+        {"ok":true,"phase":"discardToCrib","hand":1,"dealer":"one","turn":null,"last":null,"s1":0,"s2":0,"h1":["10s","8d","13h","13d","6h","1h"],"h2":["7c","3c","8s","4d"],"u1":["10s","8d","13h","13d","6h","1h"],"u2":["7c","3c","8s","4d"],"lap":[],"count":0,"seq":[],"go":[],"flags":[],"crib":["2c","4h"],"starter":null,"lifted":false,"cutIdx":null,"disc":["two"],"cut1":null,"cut2":null,"ct":0,"claims":[],"pt":0,"pe":null,"win":null,"allPlayed":false,"snap1":"10s+8d+13h+13d+6h+1h:4:-:-:0:0:0","snap2":"7c+3c+8s+4d:6:-:-:0:0:0"},
+        {"ok":false,"phase":"discardToCrib","hand":1,"dealer":"one","turn":null,"last":null,"s1":0,"s2":0,"h1":["10s","8d","13h","13d","6h","1h"],"h2":["7c","3c","8s","4d"],"u1":["10s","8d","13h","13d","6h","1h"],"u2":["7c","3c","8s","4d"],"lap":[],"count":0,"seq":[],"go":[],"flags":[],"crib":["2c","4h"],"starter":null,"lifted":false,"cutIdx":null,"disc":["two"],"cut1":null,"cut2":null,"ct":0,"claims":[],"pt":0,"pe":null,"win":null,"allPlayed":false,"snap1":"10s+8d+13h+13d+6h+1h:4:-:-:0:0:0","snap2":"7c+3c+8s+4d:6:-:-:0:0:0"},
+        {"ok":false,"phase":"discardToCrib","hand":1,"dealer":"one","turn":null,"last":null,"s1":0,"s2":0,"h1":["10s","8d","13h","13d","6h","1h"],"h2":["7c","3c","8s","4d"],"u1":["10s","8d","13h","13d","6h","1h"],"u2":["7c","3c","8s","4d"],"lap":[],"count":0,"seq":[],"go":[],"flags":[],"crib":["2c","4h"],"starter":null,"lifted":false,"cutIdx":null,"disc":["two"],"cut1":null,"cut2":null,"ct":0,"claims":[],"pt":0,"pe":null,"win":null,"allPlayed":false,"snap1":"10s+8d+13h+13d+6h+1h:4:-:-:0:0:0","snap2":"7c+3c+8s+4d:6:-:-:0:0:0"},
+        {"ok":true,"phase":"cutStarter","hand":1,"dealer":"one","turn":null,"last":null,"s1":0,"s2":0,"h1":["13h","13d","6h","1h"],"h2":["7c","3c","8s","4d"],"u1":["13h","13d","6h","1h"],"u2":["7c","3c","8s","4d"],"lap":[],"count":0,"seq":[],"go":[],"flags":[],"crib":["2c","4h","10s","8d"],"starter":null,"lifted":false,"cutIdx":null,"disc":["one","two"],"cut1":null,"cut2":null,"ct":0,"claims":[],"pt":0,"pe":null,"win":null,"allPlayed":false,"snap1":"13h+13d+6h+1h:4:-:-:0:0:0","snap2":"7c+3c+8s+4d:4:-:-:0:0:0"}
+  ]
+},
+{
   "name": "advance-noop",
   "setup": {"dealer":"one","phase":"pegging","mode":2,"hand":1,"s1":0,"s2":0,"h1":["10s","6h","2d","9c"],"h2":["10h","5s","3c","4d"],"crib":[],"starter":"7s","turn":"two","deck":["12d","3c","9c","2c","4c","10s","5c","10d","12h","1h","5d","7h","10c","3s","8d","11s","3h","5h","6s","13d","1c","11c","13s","3d","7s","10h","12c","8c","4h","11h","13h","4s","1s","9s","2s","5s","2d","9h","8h","6c"]},
   "steps": [

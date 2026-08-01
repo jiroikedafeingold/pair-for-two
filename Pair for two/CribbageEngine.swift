@@ -83,9 +83,15 @@ nonisolated enum CribbageEngine {
 
     /// A player lays 2 cards into the crib. When both have discarded, the game moves to the manual
     /// starter cut (the pone lifts the deck, the dealer reveals the starter).
+    ///
+    /// The two cards must be *distinct*. Our own UI can't offer the same card twice, but this is a
+    /// guest-supplied intent arriving off the wire: `[X, X]` would pass a count check, remove one
+    /// card from the hand and put two copies of it in the crib, leaving the host to peg a five-card
+    /// hand against a crib that scores a pair it doesn't hold.
     @discardableResult
     static func discard(_ s: inout GameState, player: PlayerID, cards: [Card]) -> Bool {
-        guard s.phase == .discardToCrib, !s.discarded.contains(player), cards.count == 2 else { return false }
+        guard s.phase == .discardToCrib, !s.discarded.contains(player),
+              cards.count == 2, Set(cards).count == 2 else { return false }
         guard let hand = s.hands[player], cards.allSatisfy(hand.contains) else { return false }
 
         s.hands[player]?.removeAll { cards.contains($0) }
