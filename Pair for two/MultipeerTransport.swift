@@ -11,7 +11,7 @@ import MultipeerConnectivity
 /// exactly like `LoopbackTransport`, so `GameViewModel` is transport-agnostic.
 @MainActor
 @Observable
-final class MultipeerSession: NSObject, GameTransport {
+final class MultipeerSession: NSObject, NearbyTransport {
 
     enum Phase: Sendable { case idle, hosting, browsing, connecting, connected, reconnecting, disconnected }
 

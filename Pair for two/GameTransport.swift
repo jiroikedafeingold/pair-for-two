@@ -61,3 +61,24 @@ extension GameTransport {
     func reconnect(force: Bool) {}   // no-op by default (e.g. loopback)
     func reconnect() { reconnect(force: false) }
 }
+
+// MARK: - Nearby transports
+
+/// A same-room transport that `ConnectView` drives directly and `RootView` can retarget as host
+/// or guest when resuming a saved game.
+///
+/// Two of them exist and run side by side: `MultipeerSession` (iOS↔iOS, needs no network) and
+/// `LANTransport` (iOS↔Android over Bonjour + TCP). The connect screen merges their discovery
+/// into one list, so this abstraction is what lets it hand either one up without caring which.
+///
+/// `GameCenterTransport` deliberately does *not* conform — an online match is created by the
+/// matchmaker, not browsed for, and its host role is elected rather than chosen.
+@MainActor
+protocol NearbyTransport: GameTransport, AnyObject {
+    /// Settable because a resume decides the host by who holds the saved state, not by which
+    /// button was tapped.
+    var isHost: Bool { get set }
+
+    /// Tear down discovery and any live connection.
+    func stop()
+}

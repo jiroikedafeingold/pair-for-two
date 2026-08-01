@@ -6,8 +6,12 @@
 	<false/>
 	<key>NSBonjourServices</key>
 	<array>
+		<!-- MultipeerConnectivity (serviceType "pairfortwo") registers these two. -->
 		<string>_pairfortwo._tcp</string>
 		<string>_pairfortwo._udp</string>
+		<!-- LANTransport: the cross-platform iOS<->Android path. Kept on its own type so its
+		     browser never discovers a Multipeer advertisement. See PROTOCOL.md. -->
+		<string>_pairfortwo-lan._tcp</string>
 	</array>
 </dict>
 </plist>
