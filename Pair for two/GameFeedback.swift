@@ -1,7 +1,6 @@
 import UIKit
 import CoreHaptics
 import AVFoundation
-import QuartzCore
 
 /// Whether sound effects are enabled (Settings → "Sound effects"). Read at each play so turning it
 /// off silences all SFX. Defaults to on.
@@ -51,9 +50,6 @@ final class GameFeedback {
     private var players: [String: AVAudioPlayer] = [:]
     private var audioReady = false
 
-    /// When the last scoring haptic fired (monotonic clock), used to thin out rapid replay ticks.
-    private var lastScoreTickAt: CFTimeInterval = 0
-
     // A small pool of firework players so celebration pops can overlap; driven by `playCelebration()`.
     private var celebrationPool: [AVAudioPlayer] = []
     private var celebrationTask: Task<Void, Never>?
@@ -77,13 +73,10 @@ final class GameFeedback {
         playSound(for: .score)
         guard HapticsSetting.enabled else { return }
         let p = max(1, points)
-        // Thin out the taps. During the replay small scores can land only ~0.12s apart, and even
-        // discrete taps that fast blur into one constant buzz — so a small score is skipped (sound
-        // only) if we buzzed very recently. Big hands always fire, so the moments that matter still
-        // land with a firm tap.
-        let now = CACurrentMediaTime()
-        if p < 7 && now - lastScoreTickAt < 0.3 { return }
-        lastScoreTickAt = now
+        // Only sizeable hands buzz. During the replay small scores land in quick succession, and even
+        // discrete taps that fast blur into one constant vibration — so anything under 8 points is
+        // sound-only, leaving just the big moments to land with a firm tap.
+        guard p >= 8 else { return }
         if supportsHaptics, let engine {
             do {
                 let player = try engine.makePlayer(with: scaledScorePattern(points: p))

@@ -37,6 +37,8 @@ struct GameTableView: View {
     // Scoring replay (win screen). `replayIsPreWin` = the auto replay shown *before* the win screen.
     @State private var showReplay = false
     @State private var replayIsPreWin = false
+    // Safety net so the pre-win replay can never strand the player short of the win screen.
+    @State private var replayWatchdog: Task<Void, Never>?
     @AppStorage("replayBeforeWin") private var replayBeforeWin = true
     @AppStorage("scoreTrackEnabled") private var scoreTrackEnabled = true
 
@@ -188,6 +190,23 @@ struct GameTableView: View {
             // Auto-play the scoring replay first; the win screen shows when it finishes.
             replayIsPreWin = true
             showReplay = true
+            startReplayWatchdog(eventCount: vm.scoreLog.count)
+        }
+    }
+
+    /// Force the win screen if the pre-win replay hasn't dismissed itself by the time it should have
+    /// finished (its self-dismiss is an async task that a stray re-render could cancel at the very end).
+    private func startReplayWatchdog(eventCount: Int) {
+        replayWatchdog?.cancel()
+        // Mirror ScoringReplayView's pacing (~7s of steps + a 1s hold) and add a generous buffer.
+        let per = max(0.12, min(0.5, 7.0 / Double(max(eventCount, 1))))
+        let timeout = per * Double(eventCount) + 1.0 + 3.0
+        replayWatchdog = Task { @MainActor in
+            try? await Task.sleep(for: .seconds(timeout))
+            guard !Task.isCancelled else { return }
+            if showReplay && replayIsPreWin {
+                withAnimation { showReplay = false; replayIsPreWin = false }
+            }
         }
     }
 
@@ -918,7 +937,10 @@ struct GameTableView: View {
             events: vm.scoreLog,
             p1Name: vm.name(of: .one), p2Name: vm.name(of: .two),
             p1Theme: vm.theme(for: .one), p2Theme: vm.theme(for: .two),
-            onFinish: { withAnimation { showReplay = false; replayIsPreWin = false } }
+            onFinish: {
+                replayWatchdog?.cancel()
+                withAnimation { showReplay = false; replayIsPreWin = false }
+            }
         )
         .transition(.opacity)
     }

@@ -107,7 +107,7 @@ struct ScoringReplayView: View {
 
     private func start() {
         withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) { appeared = true }
-        guard !events.isEmpty else { return }
+        guard !events.isEmpty else { onFinish(); return }
         // Keep the whole replay to a snappy ~7s regardless of how many scores there were.
         let per = max(0.12, min(0.5, 7.0 / Double(events.count)))
         task = Task { @MainActor in
