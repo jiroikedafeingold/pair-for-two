@@ -119,7 +119,7 @@ struct ScoringReplayView: View {
             }
             // Hold on the final totals for a moment, then automatically move on to the win screen
             // (the "Show result" button skips this wait).
-            try? await Task.sleep(for: .seconds(3.0))
+            try? await Task.sleep(for: .seconds(1.5))
             guard !Task.isCancelled else { return }
             onFinish()
         }

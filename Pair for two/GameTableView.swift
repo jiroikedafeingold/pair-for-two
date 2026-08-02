@@ -210,9 +210,9 @@ struct GameTableView: View {
     /// finished (its self-dismiss is an async task that a stray re-render could cancel at the very end).
     private func startReplayWatchdog(eventCount: Int) {
         replayWatchdog?.cancel()
-        // Mirror ScoringReplayView's pacing (~7s of steps + a 3s hold) and add a generous buffer.
+        // Mirror ScoringReplayView's pacing (~7s of steps + a 1.5s hold) and add a generous buffer.
         let per = max(0.12, min(0.5, 7.0 / Double(max(eventCount, 1))))
-        let timeout = per * Double(eventCount) + 3.0 + 3.0
+        let timeout = per * Double(eventCount) + 1.5 + 3.0
         replayWatchdog = Task { @MainActor in
             try? await Task.sleep(for: .seconds(timeout))
             guard !Task.isCancelled else { return }
