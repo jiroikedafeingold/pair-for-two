@@ -312,8 +312,8 @@ private struct StartTick: View {
 
     var body: some View {
         Capsule()
-            .fill(.white.opacity(0.5))
-            .frame(width: 2, height: long ? 13 : 8)
+            .fill(.white.opacity(0.28))
+            .frame(width: 1.5, height: long ? 10 : 6)
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
     }
 }

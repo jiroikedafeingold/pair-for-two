@@ -87,17 +87,21 @@ final class GameFeedback {
         }
     }
 
-    /// A transient tap plus a short rumble, both scaling from a small score (1) to a big hand (12+),
-    /// so bigger moves feel firmer and last a little longer.
+    /// A single crisp tap that scales from a small score (1) to a big hand (12+): mellow and soft for
+    /// a small move, hard and sharp for a big one — but always a brief tap, never a lingering rumble.
+    /// (The replay fires these in quick succession, so any sustained buzz runs together into one long
+    /// vibration — keeping each one transient keeps the ticks feeling discrete and proportional.)
     private func scaledScorePattern(points: Int) throws -> CHHapticPattern {
         let t = min(1.0, max(0.0, Double(points - 1) / 11.0))
-        let intensity = Float(0.45 + 0.55 * t)
-        let sharpness = Float(0.75 - 0.25 * t)   // bigger scores a touch rounder / heavier
-        let duration = 0.02 + 0.16 * t           // and longer
-        return try CHHapticPattern(events: [
-            transient(0, intensity, sharpness),
-            continuous(0, duration, intensity * 0.75, sharpness)
-        ], parameters: [])
+        let intensity = Float(0.35 + 0.65 * t)   // soft → strong
+        let sharpness = Float(0.30 + 0.65 * t)   // rounded/mellow → hard/crisp
+        var events = [transient(0, intensity, sharpness)]
+        // Only sizeable hands get a short firm thump for extra weight — still under 1/20th of a second,
+        // so it stays a punchy tap rather than a buzz.
+        if t > 0.5 {
+            events.append(continuous(0.01, 0.045, intensity * 0.6, sharpness))
+        }
+        return try CHHapticPattern(events: events, parameters: [])
     }
 
     /// Fire a volley of firework pops for the win celebration (sound only). Overlapping pops play
