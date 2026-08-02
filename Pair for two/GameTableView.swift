@@ -933,7 +933,7 @@ private struct DealtCardsRow: View {
         HStack(spacing: 8) {
             ForEach(Array(cards.enumerated()), id: \.element.id) { idx, card in
                 let shown = idx < revealed
-                RankSuitTile(card: card, width: cardWidth)
+                CardView(card: card, width: cardWidth)
                     .opacity(shown ? 1 : 0)
                     .scaleEffect(shown ? 1 : 0.6, anchor: .top)
                     .offset(y: shown ? 0 : -60)

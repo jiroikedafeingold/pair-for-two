@@ -22,7 +22,7 @@ struct PlayPileView: View {
         VStack(spacing: 6) {
             Text("The Cut").font(.caption2.weight(.semibold)).foregroundStyle(Color.cribGold)
             if let cut = snapshot.starter {
-                CardView(card: cut, width: cardWidth)
+                RankSuitTile(card: cut, width: cardWidth)
             } else {
                 CardView(card: nil, faceUp: false, width: cardWidth)
             }
