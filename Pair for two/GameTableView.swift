@@ -44,6 +44,7 @@ struct GameTableView: View {
     // foreground), so players notice where to find help and change scoring mid-game.
     @State private var glowTrigger = 0
     @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.horizontalSizeClass) private var hSizeClass
 
     // The body is split into layered `some View` properties on purpose: a single long chain of
     // modifiers (sheets + ~10 onChange handlers) makes the Swift type-checker blow up (multi-minute
@@ -117,20 +118,19 @@ struct GameTableView: View {
             // while leaving the play area room for the show cards AND the Continue button below them.
             let topBandHeight: CGFloat = min(height * 0.40, 200)
             let playHeight: CGFloat = height - topBandHeight
-            // Every phase reserves a fixed trailing "action rail" for its prompt + status + button, so
-            // nothing stacks below the cards and runs off the bottom. Cards size to the width that's
-            // left after the rail.
-            let railWidth: CGFloat = min(196, width * 0.26)
+            // Every phase reserves a fixed trailing "action rail" for its scoring flags + prompt +
+            // button, so nothing stacks below the cards. iPad gets a much wider rail (it dwarfed the
+            // big screen at the iPhone width); iPhone keeps it narrow so the cards get the space.
+            let railWidth: CGFloat = hSizeClass == .regular ? min(width * 0.30, 420) : 172
             let playWidth: CGFloat = width - railWidth
-            // Card aspect is height = width * 1.45. Each phase's cards fill as much of the play height
-            // as its layout allows (they have room now that the rail holds the buttons), capped by the
-            // width the row needs. Discard: a 6-card hand. Pegging: a pile ABOVE the hand, so shorter.
-            // Show: the cut + a 4-card row. Cut: just two big cards.
-            let handWidth: CGFloat = min((playWidth - 40) / 7.0, (playHeight - 70) / 1.45)
+            // Card aspect is height = width * 1.45. Each phase's cards fill as much of the play area as
+            // its layout allows, capped by the width the row needs. Discard: a 6-card hand. Pegging: a
+            // pile ABOVE the hand, so shorter. Show: the cut + a 4-card row. Cut: just two big cards.
+            let handWidth: CGFloat = min((playWidth - 34) / 7.0, (playHeight - 64) / 1.45)
             let peggingHandWidth: CGFloat = min(handWidth, (playHeight - 44) / 2.15)
             let pileWidth: CGFloat = peggingHandWidth * 0.5
-            let showWidth: CGFloat = min((playWidth - 50) / 5.0, (playHeight - 58) / 1.45)
-            let cutWidth: CGFloat = min((playWidth - 60) / 2.2, (playHeight - 84) / 1.45)
+            let showWidth: CGFloat = min((playWidth - 30) / 4.8, (playHeight - 40) / 1.45)
+            let cutWidth: CGFloat = min((playWidth - 50) / 2.2, (playHeight - 76) / 1.45)
 
             tableLayout(topBandHeight: topBandHeight, railWidth: railWidth, handWidth: handWidth,
                         peggingHandWidth: peggingHandWidth, pileWidth: pileWidth,
@@ -482,15 +482,6 @@ struct GameTableView: View {
         }
         .padding(.vertical, 14)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        // Scoring flags sit at the top of the felt (as an overlay, so they never shrink the cards),
-        // tinted in the scoring player's colour. Empty most of the time, so the felt stays clean.
-        .overlay(alignment: .top) {
-            ScoreFlagsView(flags: s.flags,
-                           accent: vm.scoringPlayer.map { vm.theme(for: $0).primary } ?? .cribGold,
-                           playerName: vm.scoringPlayer.map { vm.name(of: $0) })
-                .padding(.horizontal, 16)
-                .padding(.top, 2)
-        }
     }
 
     /// One consistent landscape layout for every play phase: the cards/primary visual fill and centre
@@ -498,21 +489,38 @@ struct GameTableView: View {
     /// column on the trailing side — the same place on every screen. Nothing stacks below the cards, so
     /// the action never runs off the bottom on a short landscape phone.
     @ViewBuilder private func playScene<Play: View, Action: View>(
+        _ s: PlayerSnapshot,
         railWidth: CGFloat,
         @ViewBuilder play: () -> Play,
         @ViewBuilder action: () -> Action
     ) -> some View {
-        // The rail's width is ALWAYS reserved, whether or not it currently holds a prompt/button, so
-        // the cards keep a fixed centred position and never jump when a "Go" or message appears.
+        // The rail's width is ALWAYS reserved, whether or not it currently holds flags/a button, so
+        // the cards keep a fixed centred position and never jump when a "Go" or message appears. The
+        // scoring flags ("Fifteen 2 +2" …) live at the top of the rail, above the prompt/button.
         HStack(spacing: 12) {
             play()
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
-            VStack(spacing: 12) { action() }
-                .frame(width: railWidth)
-                .frame(maxHeight: .infinity)
+            VStack(spacing: 10) {
+                railFlags(s)
+                action()
+            }
+            .frame(width: railWidth)
+            .frame(maxHeight: .infinity)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .padding(.horizontal, 4)
+    }
+
+    /// The scoring flags for the current context, as a vertical column for the action rail. Bounded
+    /// in height and scrollable, so a big hand's list never crowds out the button below it.
+    @ViewBuilder private func railFlags(_ s: PlayerSnapshot) -> some View {
+        if !s.flags.isEmpty {
+            ScoreFlagsView(flags: s.flags,
+                           accent: vm.scoringPlayer.map { vm.theme(for: $0).primary } ?? .cribGold,
+                           playerName: vm.scoringPlayer.map { vm.name(of: $0) },
+                           vertical: true)
+                .frame(maxHeight: 150)
+        }
     }
 
     // MARK: Cut for deal
@@ -520,7 +528,7 @@ struct GameTableView: View {
     /// Each player cuts once. Their card is shown to both. Once both have cut, the lower card wins the
     /// deal (and the first crib); the dealer then taps "Deal".
     @ViewBuilder private func cutForDealArea(_ s: PlayerSnapshot, width: CGFloat, railWidth: CGFloat) -> some View {
-        playScene(railWidth: railWidth) {
+        playScene(s, railWidth: railWidth) {
             HStack(spacing: 34) {
                 cutResult(for: .one, s: s, width: width)
                 cutResult(for: .two, s: s, width: width)
@@ -577,7 +585,7 @@ struct GameTableView: View {
     // MARK: Discard
 
     @ViewBuilder private func discardArea(_ s: PlayerSnapshot, width: CGFloat, railWidth: CGFloat) -> some View {
-        playScene(railWidth: railWidth) {
+        playScene(s, railWidth: railWidth) {
             HandView(cards: s.yourHand.sortedForDisplay(),
                      selected: vm.selectedForDiscard,
                      onTap: { GameFeedback.shared.play(.discardSelect); vm.toggleDiscard($0) },
@@ -598,7 +606,7 @@ struct GameTableView: View {
 
     @ViewBuilder private func starterCutArea(_ s: PlayerSnapshot, width: CGFloat, railWidth: CGFloat) -> some View {
         let lifted = vm.starterCutLifted
-        playScene(railWidth: railWidth) {
+        playScene(s, railWidth: railWidth) {
             HStack(alignment: .center, spacing: lifted ? 30 : 0) {
                 // The remaining ("bottom") deck. The dealer taps it to turn up the starter.
                 deckPile(width: width, highlighted: vm.youLiftCut || vm.youRevealStarter)
@@ -647,7 +655,7 @@ struct GameTableView: View {
     // MARK: Pegging
 
     @ViewBuilder private func peggingArea(_ s: PlayerSnapshot, handWidth: CGFloat, pileWidth: CGFloat, railWidth: CGFloat) -> some View {
-        playScene(railWidth: railWidth) {
+        playScene(s, railWidth: railWidth) {
             VStack(spacing: 8) {
                 // The running count lives inside the play pile, freeing this space for bigger cards.
                 PlayPileView(snapshot: s, vm: vm, cardWidth: pileWidth)
@@ -693,10 +701,10 @@ struct GameTableView: View {
 
     @ViewBuilder private func showArea(_ s: PlayerSnapshot, pileWidth: CGFloat, railWidth: CGFloat) -> some View {
         let isCrib = s.phase == .showCrib
-        // The crib adds a badge + backing, so shrink its cards only a touch.
-        let cardW = isCrib ? pileWidth * 0.86 : pileWidth
-        playScene(railWidth: railWidth) {
-            HStack(alignment: .top, spacing: 24) {
+        // The crib adds a badge + backing, so shrink its cards only a hair.
+        let cardW = isCrib ? pileWidth * 0.92 : pileWidth
+        playScene(s, railWidth: railWidth) {
+            HStack(alignment: .top, spacing: 16) {
                 VStack(spacing: 4) {
                     Text("The Cut").font(.caption2).foregroundStyle(.white.opacity(0.7))
                     if let starter = s.starter { CardView(card: starter, width: cardW) }
@@ -769,7 +777,7 @@ struct GameTableView: View {
     // MARK: Hand complete
 
     @ViewBuilder private func handCompleteArea(_ s: PlayerSnapshot, railWidth: CGFloat) -> some View {
-        playScene(railWidth: railWidth) {
+        playScene(s, railWidth: railWidth) {
             VStack(spacing: 10) {
                 Text("Hand complete").font(.title2.weight(.bold)).foregroundStyle(.white)
                 Text("\(s.yourName) \(s.yourScore)  •  \(s.opponentName) \(s.opponentScore)")
