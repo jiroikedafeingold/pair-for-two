@@ -187,7 +187,9 @@ struct GameTableView: View {
         if s.phase == .gameOver && !wantsPreWinReplay { winnerOverlay(s) }
         if wantsPreWinReplay || showManualReplay { replayOverlay(s, isPreWin: wantsPreWinReplay) }
         if showCheck { checkOverlay(s) }
-        if vm.opponentLeft { opponentLeftOverlay }
+        // At game-over the win/lose overlay handles the "opponent gone" case itself (its primary button
+        // becomes "Back to menu"); the standalone notice is only for a mid-game disconnect.
+        if vm.opponentLeft && s.phase != .gameOver { opponentLeftOverlay }
     }
 
     /// Routes a phase change to the right feedback / replay trigger.
@@ -925,6 +927,7 @@ struct GameTableView: View {
                     winnerTheme: vm.theme(for: info.winner),
                     winnerName: vm.name(of: info.winner),
                     canReplay: !vm.scoreLog.isEmpty,
+                    opponentLeft: vm.opponentLeft,
                     onPlayAgain: { vm.playAgain() },
                     onReplay: { withAnimation { showManualReplay = true } },
                     onExit: { vm.quit() }
@@ -934,6 +937,7 @@ struct GameTableView: View {
                     winnerName: vm.name(of: info.winner),
                     skunk: info.skunk,
                     canReplay: !vm.scoreLog.isEmpty,
+                    opponentLeft: vm.opponentLeft,
                     onPlayAgain: { vm.playAgain() },
                     onReplay: { withAnimation { showManualReplay = true } },
                     onExit: { vm.quit() }

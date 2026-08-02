@@ -46,6 +46,9 @@ struct WinnerOverlay: View {
     let winnerName: String
     var loserChar: String = "🦨"
     var canReplay: Bool = false
+    /// The other player has disconnected — a rematch isn't possible, so the primary button just goes
+    /// home (and the separate "Back to menu" link is dropped).
+    var opponentLeft: Bool = false
     let onPlayAgain: () -> Void
     var onReplay: () -> Void = {}
     var onExit: () -> Void = {}
@@ -146,30 +149,12 @@ struct WinnerOverlay: View {
                         .italic()
                 }
 
-                Button(action: onPlayAgain) {
-                    HStack(spacing: 8) {
-                        Image(systemName: "arrow.counterclockwise.circle.fill")
-                            .font(.system(size: 18, weight: .bold))
-                        Text("PLAY AGAIN")
-                            .font(.system(size: 15, weight: .black, design: .rounded))
-                            .tracking(2.2)
-                    }
-                    .foregroundStyle(.black.opacity(0.88))
-                    .padding(.horizontal, 26)
-                    .padding(.vertical, 11)
-                    .background(
-                        Capsule()
-                            .fill(
-                                LinearGradient(
-                                    colors: [.cribGold, Color(red: 0.78, green: 0.55, blue: 0.20)],
-                                    startPoint: .topLeading, endPoint: .bottomTrailing
-                                )
-                            )
-                    )
-                    .overlay(Capsule().stroke(.white.opacity(0.4), lineWidth: 1.2))
-                    .shadow(color: .black.opacity(0.45), radius: 10, y: 4)
+                // With the opponent gone, a rematch can't happen — the primary button goes home instead.
+                if opponentLeft {
+                    primaryButton(title: "BACK TO MENU", icon: "house.fill", action: onExit)
+                } else {
+                    primaryButton(title: "PLAY AGAIN", icon: "arrow.counterclockwise.circle.fill", action: onPlayAgain)
                 }
-                .padding(.top, 2)
 
                 if canReplay {
                     Button(action: onReplay) {
@@ -180,12 +165,14 @@ struct WinnerOverlay: View {
                     .buttonStyle(.plain)
                 }
 
-                // Always a clean way home from the game-over screen — works even if the other player
-                // has already left (Play Again would just wait).
-                Button("Back to menu", action: onExit)
-                    .font(.system(size: 12, weight: .semibold, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.6))
-                    .buttonStyle(.plain)
+                // A separate way home for normal games; redundant once the primary button is "Back to
+                // menu" (opponent gone), so it's dropped then.
+                if !opponentLeft {
+                    Button("Back to menu", action: onExit)
+                        .font(.system(size: 12, weight: .semibold, design: .rounded))
+                        .foregroundStyle(.white.opacity(0.6))
+                        .buttonStyle(.plain)
+                }
             }
             .padding(20)
             .frame(maxWidth: 320)
@@ -234,6 +221,34 @@ struct WinnerOverlay: View {
             WinHaptics.shared.play(skunk: skunk)
             if celebrationEffects { GameFeedback.shared.playCelebration() }
         }
+    }
+
+    /// The big gold capsule button, shared by "Play again" and (opponent gone) "Back to menu".
+    private func primaryButton(title: String, icon: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            HStack(spacing: 8) {
+                Image(systemName: icon)
+                    .font(.system(size: 18, weight: .bold))
+                Text(title)
+                    .font(.system(size: 15, weight: .black, design: .rounded))
+                    .tracking(2.2)
+            }
+            .foregroundStyle(.black.opacity(0.88))
+            .padding(.horizontal, 26)
+            .padding(.vertical, 11)
+            .background(
+                Capsule()
+                    .fill(
+                        LinearGradient(
+                            colors: [.cribGold, Color(red: 0.78, green: 0.55, blue: 0.20)],
+                            startPoint: .topLeading, endPoint: .bottomTrailing
+                        )
+                    )
+            )
+            .overlay(Capsule().stroke(.white.opacity(0.4), lineWidth: 1.2))
+            .shadow(color: .black.opacity(0.45), radius: 10, y: 4)
+        }
+        .padding(.top, 2)
     }
 
     @ViewBuilder
