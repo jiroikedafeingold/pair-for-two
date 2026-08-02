@@ -34,9 +34,11 @@ struct GameTableView: View {
     // toast us — only the other player is told "so-and-so switched scoring".
     @State private var initiatedScoringChange = false
 
-    // Scoring replay (win screen). `replayIsPreWin` = the auto replay shown *before* the win screen.
-    @State private var showReplay = false
-    @State private var replayIsPreWin = false
+    // Scoring replay. The auto pre-win replay plays before the win screen; `preWinReplayShown` flips
+    // once it's done so the win screen — and its celebration haptic — appears only then, never while
+    // the replay is still covering the table. `showManualReplay` is the win screen's "Replay scoring".
+    @State private var preWinReplayShown = false
+    @State private var showManualReplay = false
     // Safety net so the pre-win replay can never strand the player short of the win screen.
     @State private var replayWatchdog: Task<Void, Never>?
     @AppStorage("replayBeforeWin") private var replayBeforeWin = true
@@ -176,20 +178,30 @@ struct GameTableView: View {
     /// The modal, full-screen overlays (win, replay, check, opponent-left), grouped into one overlay
     /// so `tableScreen`'s modifier chain stays short.
     @ViewBuilder private func fullScreenOverlays(_ s: PlayerSnapshot) -> some View {
-        if s.phase == .gameOver && !(showReplay && replayIsPreWin) { winnerOverlay(s) }
-        if showReplay { replayOverlay(s) }
+        // Whether to auto-play the scoring replay before revealing the win screen. Computed on the same
+        // render as `.gameOver` (not set afterwards in onChange), so the win overlay — and the 4–7s
+        // celebration haptic it fires in onAppear — is never inserted for even one frame while the
+        // replay should be covering it.
+        let wantsPreWinReplay = s.phase == .gameOver && replayBeforeWin
+            && !vm.scoreLog.isEmpty && !preWinReplayShown
+        if s.phase == .gameOver && !wantsPreWinReplay { winnerOverlay(s) }
+        if wantsPreWinReplay || showManualReplay { replayOverlay(s, isPreWin: wantsPreWinReplay) }
         if showCheck { checkOverlay(s) }
         if vm.opponentLeft { opponentLeftOverlay }
     }
 
     /// Routes a phase change to the right feedback / replay trigger.
     private func handlePhaseChange(_ old: GamePhase, _ new: GamePhase) {
-        if new == .discardToCrib { GameFeedback.shared.play(.deal) }
+        if new == .discardToCrib {
+            GameFeedback.shared.play(.deal)
+            // Fresh hand / rematch — re-arm the pre-win replay for the next game-over.
+            preWinReplayShown = false
+            showManualReplay = false
+        }
         else if old == .cutStarter && new == .pegging { GameFeedback.shared.play(.starterReveal) }
         else if new == .gameOver && replayBeforeWin && !vm.scoreLog.isEmpty {
-            // Auto-play the scoring replay first; the win screen shows when it finishes.
-            replayIsPreWin = true
-            showReplay = true
+            // The pre-win replay shows via `fullScreenOverlays` (computed from state); arm a watchdog
+            // so the win screen still appears if the replay's async self-dismiss gets interrupted.
             startReplayWatchdog(eventCount: vm.scoreLog.count)
         }
     }
@@ -204,8 +216,8 @@ struct GameTableView: View {
         replayWatchdog = Task { @MainActor in
             try? await Task.sleep(for: .seconds(timeout))
             guard !Task.isCancelled else { return }
-            if showReplay && replayIsPreWin {
-                withAnimation { showReplay = false; replayIsPreWin = false }
+            if !preWinReplayShown {
+                withAnimation { preWinReplayShown = true }
             }
         }
     }
@@ -914,7 +926,7 @@ struct GameTableView: View {
                     winnerName: vm.name(of: info.winner),
                     canReplay: !vm.scoreLog.isEmpty,
                     onPlayAgain: { vm.playAgain() },
-                    onReplay: { replayIsPreWin = false; withAnimation { showReplay = true } },
+                    onReplay: { withAnimation { showManualReplay = true } },
                     onExit: { vm.quit() }
                 )
             } else {
@@ -923,7 +935,7 @@ struct GameTableView: View {
                     skunk: info.skunk,
                     canReplay: !vm.scoreLog.isEmpty,
                     onPlayAgain: { vm.playAgain() },
-                    onReplay: { replayIsPreWin = false; withAnimation { showReplay = true } },
+                    onReplay: { withAnimation { showManualReplay = true } },
                     onExit: { vm.quit() }
                 )
             }
@@ -932,14 +944,19 @@ struct GameTableView: View {
 
     /// The scoring replay — steps through every score of the game. Shown before the win screen (auto
     /// option) or from the win screen's "Replay scoring" button.
-    @ViewBuilder private func replayOverlay(_ s: PlayerSnapshot) -> some View {
+    @ViewBuilder private func replayOverlay(_ s: PlayerSnapshot, isPreWin: Bool) -> some View {
         ScoringReplayView(
             events: vm.scoreLog,
             p1Name: vm.name(of: .one), p2Name: vm.name(of: .two),
             p1Theme: vm.theme(for: .one), p2Theme: vm.theme(for: .two),
             onFinish: {
                 replayWatchdog?.cancel()
-                withAnimation { showReplay = false; replayIsPreWin = false }
+                withAnimation {
+                    // Pre-win: reveal the win screen (which now fires its celebration). Manual: just
+                    // dismiss back to the already-visible win screen.
+                    if isPreWin { preWinReplayShown = true }
+                    showManualReplay = false
+                }
             }
         )
         .transition(.opacity)
