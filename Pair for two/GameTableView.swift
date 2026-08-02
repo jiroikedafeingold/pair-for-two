@@ -666,12 +666,18 @@ struct GameTableView: View {
                 PlayPileView(snapshot: s, vm: vm, cardWidth: pileWidth)
                     .frame(maxHeight: .infinity)
 
-                if !vm.peggingComplete {
-                    HandView(cards: s.yourHand.sortedForDisplay(),
-                             isEnabled: { vm.isLegalPlay($0) },
-                             onTap: { vm.play($0) },
-                             cardWidth: handWidth)
+                // Always reserve the hand row's height — even once you've played all your cards
+                // (or pegging is complete) — so the play pile above doesn't jump down before the
+                // count begins.
+                ZStack {
+                    if !vm.peggingComplete && !s.yourHand.isEmpty {
+                        HandView(cards: s.yourHand.sortedForDisplay(),
+                                 isEnabled: { vm.isLegalPlay($0) },
+                                 onTap: { vm.play($0) },
+                                 cardWidth: handWidth)
+                    }
                 }
+                .frame(height: handWidth * 1.45)
             }
         } action: {
             if vm.peggingComplete {
