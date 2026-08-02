@@ -138,7 +138,10 @@ struct GameTableView: View {
             // The show row is: cut card + 16pt gap + a 4-card hand (8pt spacing) = 5 cards + ~44pt,
             // so /5 keeps it inside the play column instead of spilling into the rail.
             let showWidth: CGFloat = min((playWidth - 44) / 5.0, (playHeight - 40) / 1.45)
-            let cutWidth: CGFloat = min((playWidth - 50) / 2.2, (playHeight - 76) / 1.45)
+            // The cut screens (cut for deal + the starter cut) are just two cards, so they'd balloon on
+            // iPad — halve them there. iPhone keeps the fitted size.
+            let cutBase: CGFloat = min((playWidth - 50) / 2.2, (playHeight - 76) / 1.45)
+            let cutWidth: CGFloat = hSizeClass == .regular ? cutBase * 0.5 : cutBase
 
             tableLayout(topBandHeight: topBandHeight, railWidth: railWidth, handWidth: handWidth,
                         peggingHandWidth: peggingHandWidth, pileWidth: pileWidth,
@@ -714,12 +717,13 @@ struct GameTableView: View {
         playScene(s, railWidth: railWidth) {
             VStack(spacing: 8) {
                 // The running count lives inside the play pile, freeing this space for bigger cards.
+                // The pile sits at the top of the play area (just under the scoreboard).
                 PlayPileView(snapshot: s, vm: vm, cardWidth: pileWidth)
-                    .frame(maxHeight: .infinity)
 
-                // Always reserve the hand row's height — even once you've played all your cards
-                // (or pegging is complete) — so the play pile above doesn't jump down before the
-                // count begins.
+                // Center your hand in the space between the pile and the bottom of the screen (rather
+                // than pinning it to the very bottom). The equal spacers around a fixed-height slot keep
+                // the layout put even once you've played your last card, right up until the count.
+                Spacer(minLength: 0)
                 ZStack {
                     if !vm.peggingComplete && !s.yourHand.isEmpty {
                         HandView(cards: s.yourHand.sortedForDisplay(),
@@ -729,6 +733,7 @@ struct GameTableView: View {
                     }
                 }
                 .frame(height: handWidth * 1.45)
+                Spacer(minLength: 0)
             }
         } action: {
             if vm.peggingComplete {
