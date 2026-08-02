@@ -65,13 +65,14 @@ struct PlayPileView: View {
         }
     }
 
-    /// A run of played cards (overlapping fan), each with a colour bar showing who played it.
+    /// A run of played cards as simplified rank+suit tiles (readable at this small size), lightly
+    /// overlapped so each rank stays visible, each with a colour bar showing who played it.
     private func laneRow(_ cards: [PlayedCard]) -> some View {
-        HStack(spacing: -cardWidth * 0.55) {
+        HStack(spacing: -cardWidth * 0.28) {
             ForEach(cards) { pc in
-                CardView(card: pc.card,
-                         isHighlighted: pc == snapshot.playSequence.last,
-                         width: cardWidth)
+                RankSuitTile(card: pc.card,
+                             width: cardWidth,
+                             isHighlighted: pc == snapshot.playSequence.last)
                     .overlay(alignment: .bottom) {
                         RoundedRectangle(cornerRadius: 2, style: .continuous)
                             .fill(vm.theme(for: pc.player).primary)

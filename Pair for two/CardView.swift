@@ -115,6 +115,8 @@ struct CardView: View {
 struct RankSuitTile: View {
     let card: Card
     var width: CGFloat = 74
+    /// Brighten/thicken the rim for the most-recent play (matches `CardView`'s highlight).
+    var isHighlighted: Bool = false
 
     private var ink: Color { card.suit.isRed ? .cardRed : .cardInk }
 
@@ -137,7 +139,8 @@ struct RankSuitTile: View {
         )
         .overlay(
             RoundedRectangle(cornerRadius: width * 0.15, style: .continuous)
-                .strokeBorder(Color.cribGold.opacity(0.7), lineWidth: 1.2)
+                .strokeBorder(Color.cribGold.opacity(isHighlighted ? 1 : 0.7),
+                              lineWidth: isHighlighted ? 2.4 : 1.2)
         )
         .accessibilityLabel(card.accessibleName)
     }
