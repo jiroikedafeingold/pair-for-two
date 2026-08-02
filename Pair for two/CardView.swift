@@ -107,6 +107,42 @@ struct CardView: View {
     }
 }
 
+// MARK: - Rank + suit tile (readable "card" for counting)
+
+/// A compact, high-legibility stand-in for a card used while counting a hand: a big rank over a
+/// suit glyph on a clean cream tile — not a full pip card, so it reads at a glance even when small.
+/// Red suits are red, black suits near-black, on a light tile so both stay legible on the felt.
+struct RankSuitTile: View {
+    let card: Card
+    var width: CGFloat = 74
+
+    private var ink: Color { card.suit.isRed ? .cardRed : .cardInk }
+
+    var body: some View {
+        VStack(spacing: -width * 0.06) {
+            Text(card.rank.label)
+                .font(.system(size: width * 0.72, weight: .heavy, design: .rounded))
+                .minimumScaleFactor(0.5)
+                .lineLimit(1)
+            Text(card.suit.symbol)
+                .font(.system(size: width * 0.5, weight: .bold))
+        }
+        .foregroundStyle(ink)
+        .padding(.vertical, width * 0.08)
+        .frame(width: width, height: width * 1.34)
+        .background(
+            RoundedRectangle(cornerRadius: width * 0.15, style: .continuous)
+                .fill(Color.cardFace)
+                .shadow(color: .black.opacity(0.35), radius: width * 0.05, y: width * 0.035)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: width * 0.15, style: .continuous)
+                .strokeBorder(Color.cribGold.opacity(0.7), lineWidth: 1.2)
+        )
+        .accessibilityLabel(card.accessibleName)
+    }
+}
+
 #Preview {
     HStack(spacing: 10) {
         CardView(card: Card(rank: .jack, suit: .spades))

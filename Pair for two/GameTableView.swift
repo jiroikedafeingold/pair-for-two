@@ -502,9 +502,12 @@ struct GameTableView: View {
         HStack(spacing: 12) {
             play()
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
-            VStack(spacing: 10) {
+            // The prompt/button is centred so it lines up horizontally with the (also centred) cards;
+            // the scoring flags float at the top of the rail above it, rather than pushing it down.
+            ZStack(alignment: .top) {
                 railFlags(s)
-                action()
+                VStack(spacing: 10) { action() }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
             .frame(width: railWidth)
             .frame(maxHeight: .infinity)
@@ -513,15 +516,15 @@ struct GameTableView: View {
         .padding(.horizontal, 4)
     }
 
-    /// The scoring flags for the current context, as a vertical column for the action rail. Bounded
-    /// in height and scrollable, so a big hand's list never crowds out the button below it.
+    /// The scoring flags for the current context, as a vertical column pinned to the top of the rail.
+    /// Bounded in height and scrollable, so a big hand's list never reaches the centred button.
     @ViewBuilder private func railFlags(_ s: PlayerSnapshot) -> some View {
         if !s.flags.isEmpty {
             ScoreFlagsView(flags: s.flags,
                            accent: vm.scoringPlayer.map { vm.theme(for: $0).primary } ?? .cribGold,
                            playerName: vm.scoringPlayer.map { vm.name(of: $0) },
                            vertical: true)
-                .frame(maxHeight: 150)
+                .frame(maxWidth: .infinity, maxHeight: 96, alignment: .top)
         }
     }
 
@@ -709,7 +712,7 @@ struct GameTableView: View {
             HStack(alignment: .top, spacing: 16) {
                 VStack(spacing: 4) {
                     Text("The Cut").font(.caption2).foregroundStyle(.white.opacity(0.7))
-                    if let starter = s.starter { CardView(card: starter, width: cardW) }
+                    if let starter = s.starter { RankSuitTile(card: starter, width: cardW) }
                 }
                 VStack(spacing: 6) {
                     // The crib gets a distinct gold badge + backing so it's obvious it's the crib
@@ -930,7 +933,7 @@ private struct DealtCardsRow: View {
         HStack(spacing: 8) {
             ForEach(Array(cards.enumerated()), id: \.element.id) { idx, card in
                 let shown = idx < revealed
-                CardView(card: card, width: cardWidth)
+                RankSuitTile(card: card, width: cardWidth)
                     .opacity(shown ? 1 : 0)
                     .scaleEffect(shown ? 1 : 0.6, anchor: .top)
                     .offset(y: shown ? 0 : -60)
