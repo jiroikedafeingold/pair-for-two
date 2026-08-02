@@ -116,12 +116,12 @@ struct GameTableView: View {
             // Cap the scoreboard band so it doesn't leave a tall dead zone on iPad; the play area
             // takes the rest. 0.40 is enough for the (top-anchored) banner + flags + scoreboard/panel
             // while leaving the play area room for the show cards AND the Continue button below them.
-            let topBandHeight: CGFloat = min(height * 0.40, 200)
+            let topBandHeight: CGFloat = min(height * 0.37, 190)
             let playHeight: CGFloat = height - topBandHeight
             // Every phase reserves a fixed trailing "action rail" for its scoring flags + prompt +
             // button, so nothing stacks below the cards. iPad gets a much wider rail (it dwarfed the
             // big screen at the iPhone width); iPhone keeps it narrow so the cards get the space.
-            let railWidth: CGFloat = hSizeClass == .regular ? min(width * 0.30, 420) : 172
+            let railWidth: CGFloat = hSizeClass == .regular ? min(width * 0.30, 420) : 156
             let playWidth: CGFloat = width - railWidth
             // Card aspect is height = width * 1.45. Each phase's cards fill as much of the play area as
             // its layout allows, capped by the width the row needs. Discard: a 6-card hand. Pegging: a
@@ -129,7 +129,9 @@ struct GameTableView: View {
             let handWidth: CGFloat = min((playWidth - 34) / 7.0, (playHeight - 64) / 1.45)
             let peggingHandWidth: CGFloat = min(handWidth, (playHeight - 44) / 2.15)
             let pileWidth: CGFloat = peggingHandWidth * 0.5
-            let showWidth: CGFloat = min((playWidth - 30) / 4.8, (playHeight - 40) / 1.45)
+            // The show row is: cut card + 16pt gap + a 4-card hand (8pt spacing) = 5 cards + ~44pt,
+            // so /5 keeps it inside the play column instead of spilling into the rail.
+            let showWidth: CGFloat = min((playWidth - 44) / 5.0, (playHeight - 40) / 1.45)
             let cutWidth: CGFloat = min((playWidth - 50) / 2.2, (playHeight - 76) / 1.45)
 
             tableLayout(topBandHeight: topBandHeight, railWidth: railWidth, handWidth: handWidth,
@@ -378,13 +380,13 @@ struct GameTableView: View {
             Capsule()
                 .fill(LinearGradient(colors: [.white.opacity(0.06), .white.opacity(0.45), .white.opacity(0.06)],
                                      startPoint: .top, endPoint: .bottom))
-                .frame(width: 2.5, height: 64)
+                .frame(width: 2.5, height: 58)
             scoreColumn(for: opp, s: s)
         }
         .frame(maxWidth: 760)
         // An imagined oval around both names + scores, carrying each player's progress loop.
         .padding(.horizontal, 34)
-        .padding(.vertical, 13)
+        .padding(.vertical, 10)
         .overlay {
             if scoreTrackEnabled {
                 ScoreTrackOverlay(youFraction: loopFraction(vm.score(of: you)),
@@ -413,7 +415,7 @@ struct GameTableView: View {
                 .lineLimit(1).minimumScaleFactor(0.5)
             HStack(alignment: .center, spacing: 6) {   // "+X" centered vertically against the score
                 Text("\(value)")
-                    .font(.system(size: 48, weight: .heavy, design: .rounded))
+                    .font(.system(size: 44, weight: .heavy, design: .rounded))
                     .foregroundStyle(.white)
                     .monospacedDigit()
                     .minimumScaleFactor(0.7)
