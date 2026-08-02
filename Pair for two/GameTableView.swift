@@ -129,7 +129,7 @@ struct GameTableView: View {
             let handWidth: CGFloat = min((playWidth - 40) / 7.0, (playHeight - 70) / 1.45)
             let peggingHandWidth: CGFloat = min(handWidth, (playHeight - 44) / 2.15)
             let pileWidth: CGFloat = peggingHandWidth * 0.5
-            let showWidth: CGFloat = min((playWidth - 60) / 5.2, (playHeight - 70) / 1.45)
+            let showWidth: CGFloat = min((playWidth - 50) / 5.0, (playHeight - 58) / 1.45)
             let cutWidth: CGFloat = min((playWidth - 60) / 2.2, (playHeight - 84) / 1.45)
 
             tableLayout(topBandHeight: topBandHeight, railWidth: railWidth, handWidth: handWidth,
@@ -330,7 +330,7 @@ struct GameTableView: View {
     // MARK: Top band
 
     @ViewBuilder private func topBand(_ s: PlayerSnapshot) -> some View {
-        VStack(spacing: 6) {
+        VStack(spacing: 8) {
             Text(vm.coachBanner)
                 .font(.headline.weight(.bold))
                 .foregroundStyle(.white)
@@ -340,13 +340,8 @@ struct GameTableView: View {
                 .frame(maxWidth: .infinity)
                 .padding(.horizontal, 44)   // keep clear of the settings gear / screen edges
 
-            ScoreFlagsView(flags: s.flags,
-                           accent: vm.scoringPlayer.map { vm.theme(for: $0).primary } ?? .cribGold,
-                           playerName: vm.scoringPlayer.map { vm.name(of: $0) })
-                .padding(.horizontal, 16)
-                .frame(height: 30)   // reserve the flag row even when empty, so the scoreboard below
-                                     // stays locked in place as flags/messages come and go
-
+            // The scoring flags ("Fifteen 2 +2" …) live at the top of the felt now (see `bottomBand`),
+            // so the dark band holds only the coach line + the scoreboard — giving the scores room.
             if s.scoringMode == .auto {
                 // Auto mode: no manual controls — just a big names + scores scoreboard.
                 autoScoreboard(s)
@@ -383,13 +378,13 @@ struct GameTableView: View {
             Capsule()
                 .fill(LinearGradient(colors: [.white.opacity(0.06), .white.opacity(0.45), .white.opacity(0.06)],
                                      startPoint: .top, endPoint: .bottom))
-                .frame(width: 2.5, height: 56)
+                .frame(width: 2.5, height: 64)
             scoreColumn(for: opp, s: s)
         }
         .frame(maxWidth: 760)
         // An imagined oval around both names + scores, carrying each player's progress loop.
         .padding(.horizontal, 34)
-        .padding(.vertical, 8)
+        .padding(.vertical, 13)
         .overlay {
             if scoreTrackEnabled {
                 ScoreTrackOverlay(youFraction: loopFraction(vm.score(of: you)),
@@ -411,20 +406,20 @@ struct GameTableView: View {
         let theme = vm.theme(for: player)
         let isOpponent = player != s.you
         let value = isOpponent ? (displayedOppScore ?? vm.score(of: player)) : vm.score(of: player)
-        VStack(spacing: 3) {
+        VStack(spacing: 4) {
             Text(vm.name(of: player).uppercased())
-                .font(.subheadline.weight(.heavy))
+                .font(.title3.weight(.heavy))
                 .foregroundStyle(theme.primary)
                 .lineLimit(1).minimumScaleFactor(0.5)
             HStack(alignment: .center, spacing: 6) {   // "+X" centered vertically against the score
                 Text("\(value)")
-                    .font(.system(size: 36, weight: .heavy, design: .rounded))
+                    .font(.system(size: 48, weight: .heavy, design: .rounded))
                     .foregroundStyle(.white)
                     .monospacedDigit()
                     .minimumScaleFactor(0.7)
                 if isOpponent && oppPending > 0 {
                     Text("+\(oppPending)")
-                        .font(.system(size: 17, weight: .heavy, design: .rounded))
+                        .font(.system(size: 20, weight: .heavy, design: .rounded))
                         .monospacedDigit()
                         .foregroundStyle(.white)
                         .padding(.horizontal, 8).padding(.vertical, 2)
@@ -487,6 +482,15 @@ struct GameTableView: View {
         }
         .padding(.vertical, 14)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        // Scoring flags sit at the top of the felt (as an overlay, so they never shrink the cards),
+        // tinted in the scoring player's colour. Empty most of the time, so the felt stays clean.
+        .overlay(alignment: .top) {
+            ScoreFlagsView(flags: s.flags,
+                           accent: vm.scoringPlayer.map { vm.theme(for: $0).primary } ?? .cribGold,
+                           playerName: vm.scoringPlayer.map { vm.name(of: $0) })
+                .padding(.horizontal, 16)
+                .padding(.top, 2)
+        }
     }
 
     /// One consistent landscape layout for every play phase: the cards/primary visual fill and centre
@@ -689,8 +693,8 @@ struct GameTableView: View {
 
     @ViewBuilder private func showArea(_ s: PlayerSnapshot, pileWidth: CGFloat, railWidth: CGFloat) -> some View {
         let isCrib = s.phase == .showCrib
-        // The crib adds a badge + backing, so shrink its cards a touch.
-        let cardW = isCrib ? pileWidth * 0.8 : pileWidth
+        // The crib adds a badge + backing, so shrink its cards only a touch.
+        let cardW = isCrib ? pileWidth * 0.86 : pileWidth
         playScene(railWidth: railWidth) {
             HStack(alignment: .top, spacing: 24) {
                 VStack(spacing: 4) {
@@ -872,7 +876,8 @@ struct GameTableView: View {
                     winnerName: vm.name(of: info.winner),
                     canReplay: !vm.scoreLog.isEmpty,
                     onPlayAgain: { vm.playAgain() },
-                    onReplay: { replayIsPreWin = false; withAnimation { showReplay = true } }
+                    onReplay: { replayIsPreWin = false; withAnimation { showReplay = true } },
+                    onExit: { vm.quit() }
                 )
             } else {
                 LoserOverlay(
@@ -880,7 +885,8 @@ struct GameTableView: View {
                     skunk: info.skunk,
                     canReplay: !vm.scoreLog.isEmpty,
                     onPlayAgain: { vm.playAgain() },
-                    onReplay: { replayIsPreWin = false; withAnimation { showReplay = true } }
+                    onReplay: { replayIsPreWin = false; withAnimation { showReplay = true } },
+                    onExit: { vm.quit() }
                 )
             }
         }

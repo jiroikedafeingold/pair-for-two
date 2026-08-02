@@ -610,7 +610,11 @@ final class GameViewModel {
     /// A live scoring-mode change from Settings — applies to the running game (either device can set
     /// it; it governs both). Auto-scoring then takes effect for subsequent scores.
     func setScoringMode(_ mode: ScoringMode) {
-        guard mode != scoringMode else { return }
+        // Compare against the *game's* current mode, not this device's local var: a guest's local
+        // `scoringMode` was seeded from its own setting, so guarding on it would wrongly no-op when
+        // the guest tries to change a game the host started in a different mode (e.g. it kept showing
+        // Feedback flags after switching to Player responsibility).
+        guard mode != snapshot.scoringMode else { return }
         scoringMode = mode
         submit(.setScoringMode(mode.rawValue))
     }

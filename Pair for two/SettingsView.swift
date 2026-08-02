@@ -22,6 +22,14 @@ struct SettingsView: View {
 
     @State private var showOnboarding = false
 
+    /// App marketing version + build number, shown at the bottom of Settings.
+    private var appVersionBuild: String {
+        let info = Bundle.main.infoDictionary
+        let version = info?["CFBundleShortVersionString"] as? String ?? "?"
+        let build = info?["CFBundleVersion"] as? String ?? "?"
+        return "Pair for Two \(version) (build \(build))"
+    }
+
     var body: some View {
         NavigationStack {
             Form {
@@ -108,6 +116,12 @@ struct SettingsView: View {
                 } footer: {
                     Text("When someone wins, replay the whole game's scoring — score by score — before "
                          + "showing the win screen. You can also replay it any time from the win screen.")
+                }
+
+                Section {
+                } footer: {
+                    Text(appVersionBuild)
+                        .frame(maxWidth: .infinity, alignment: .center)
                 }
             }
             .navigationTitle("Settings")

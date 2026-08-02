@@ -115,7 +115,7 @@ struct ScoringReplayView: View {
                 try? await Task.sleep(for: .seconds(per))
                 guard !Task.isCancelled else { return }
                 withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) { step = i }
-                GameFeedback.shared.play(.score)
+                GameFeedback.shared.playScoreTick(points: events[i - 1].amount)   // scale by the score
             }
             try? await Task.sleep(for: .seconds(1.0))
             guard !Task.isCancelled else { return }

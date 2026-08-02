@@ -66,6 +66,40 @@ final class GameFeedback {
         playSound(for: action)
     }
 
+    /// A score "tick" whose strength scales with the points: a light tap for a small move (a peg or a
+    /// pair), a firmer and longer buzz for a big hand. Used by the scoring replay so each step feels
+    /// proportional instead of a constant string of identical taps.
+    func playScoreTick(points: Int) {
+        playSound(for: .score)
+        guard HapticsSetting.enabled else { return }
+        let p = max(1, points)
+        if supportsHaptics, let engine {
+            do {
+                let player = try engine.makePlayer(with: scaledScorePattern(points: p))
+                try player.start(atTime: CHHapticTimeImmediate)
+                return
+            } catch { /* fall through to the UIKit generators */ }
+        }
+        switch p {
+        case ...2:  lightImpact.impactOccurred(intensity: 0.55); lightImpact.prepare()
+        case 3...5: mediumImpact.impactOccurred(intensity: 0.9); mediumImpact.prepare()
+        default:    heavyImpact.impactOccurred(intensity: 1.0); heavyImpact.prepare()
+        }
+    }
+
+    /// A transient tap plus a short rumble, both scaling from a small score (1) to a big hand (12+),
+    /// so bigger moves feel firmer and last a little longer.
+    private func scaledScorePattern(points: Int) throws -> CHHapticPattern {
+        let t = min(1.0, max(0.0, Double(points - 1) / 11.0))
+        let intensity = Float(0.45 + 0.55 * t)
+        let sharpness = Float(0.75 - 0.25 * t)   // bigger scores a touch rounder / heavier
+        let duration = 0.02 + 0.16 * t           // and longer
+        return try CHHapticPattern(events: [
+            transient(0, intensity, sharpness),
+            continuous(0, duration, intensity * 0.75, sharpness)
+        ], parameters: [])
+    }
+
     /// Fire a volley of firework pops for the win celebration (sound only). Overlapping pops play
     /// through a small pool, each with a little pitch/volume variation so they don't sound identical.
     func playCelebration() {

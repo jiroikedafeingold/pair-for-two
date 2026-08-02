@@ -8,6 +8,7 @@ struct LoserOverlay: View {
     var canReplay: Bool = false
     let onPlayAgain: () -> Void
     var onReplay: () -> Void = {}
+    var onExit: () -> Void = {}
 
     @State private var animateIn = false
     @State private var droop = false
@@ -91,6 +92,13 @@ struct LoserOverlay: View {
                     }
                     .buttonStyle(.plain)
                 }
+
+                // Always a clean way home from the game-over screen — works even if the other player
+                // has already left (Play Again would just wait).
+                Button("Back to menu", action: onExit)
+                    .font(.system(size: 12, weight: .semibold, design: .rounded))
+                    .foregroundStyle(.white.opacity(0.55))
+                    .buttonStyle(.plain)
             }
             .padding(20)
             .frame(maxWidth: 320)
