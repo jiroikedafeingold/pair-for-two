@@ -716,8 +716,12 @@ struct GameTableView: View {
     @ViewBuilder private func peggingArea(_ s: PlayerSnapshot, handWidth: CGFloat, pileWidth: CGFloat, railWidth: CGFloat) -> some View {
         playScene(s, railWidth: railWidth) {
             VStack(spacing: 8) {
+                // On iPad, drop the pile down from the top of the play area (this top spacer balances the
+                // two below, so the hand still sits centered between the pile and the bottom). iPhone
+                // keeps the pile at the top.
+                if hSizeClass == .regular { Spacer(minLength: 0) }
+
                 // The running count lives inside the play pile, freeing this space for bigger cards.
-                // The pile sits at the top of the play area (just under the scoreboard).
                 PlayPileView(snapshot: s, vm: vm, cardWidth: pileWidth)
 
                 // Center your hand in the space between the pile and the bottom of the screen (rather
