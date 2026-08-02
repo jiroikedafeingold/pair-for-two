@@ -712,7 +712,7 @@ struct GameTableView: View {
             HStack(alignment: .top, spacing: 16) {
                 VStack(spacing: 4) {
                     Text("The Cut").font(.caption2).foregroundStyle(.white.opacity(0.7))
-                    if let starter = s.starter { RankSuitTile(card: starter, width: cardW) }
+                    if let starter = s.starter { CardView(card: starter, width: cardW) }
                 }
                 VStack(spacing: 6) {
                     // The crib gets a distinct gold badge + backing so it's obvious it's the crib
