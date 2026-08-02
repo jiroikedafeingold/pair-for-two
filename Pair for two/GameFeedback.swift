@@ -73,10 +73,7 @@ final class GameFeedback {
         playSound(for: .score)
         guard HapticsSetting.enabled else { return }
         let p = max(1, points)
-        // Only sizeable hands buzz. During the replay small scores land in quick succession, and even
-        // discrete taps that fast blur into one constant vibration — so anything under 8 points is
-        // sound-only, leaving just the big moments to land with a firm tap.
-        guard p >= 8 else { return }
+        // A small, soft tap for every score under 8; a firmer, harder tap for 8+ point hands.
         if supportsHaptics, let engine {
             do {
                 let player = try engine.makePlayer(with: scaledScorePattern(points: p))
