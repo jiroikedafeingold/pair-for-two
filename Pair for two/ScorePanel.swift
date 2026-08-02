@@ -271,9 +271,9 @@ struct ScoreTrackOverlay: View {
                           cornerRadius: cornerRadius, inset: 8.5, lineWidth: 1.75)
             }
             StartTick(long: opponentFraction != nil)
-            // The skunk (90) and double-skunk (60) lines, as small radial ticks across the track.
-            SkunkTick(fraction: 60.0 / 121.0, long: opponentFraction != nil, cornerRadius: cornerRadius)
-            SkunkTick(fraction: 90.0 / 121.0, long: opponentFraction != nil, cornerRadius: cornerRadius)
+            // The double-skunk (60) and skunk (90) marks: two little skunks and one, on the track.
+            SkunkMark(fraction: 60.0 / 121.0, count: 2, cornerRadius: cornerRadius)
+            SkunkMark(fraction: 90.0 / 121.0, count: 1, cornerRadius: cornerRadius)
         }
         .allowsHitTesting(false)
     }
@@ -318,47 +318,29 @@ private struct StartTick: View {
     }
 }
 
-/// A small tick drawn across the track at a given fraction — used for the skunk (90) and
-/// double-skunk (60) lines.
-private struct SkunkTick: View {
+/// A small, faint skunk placed on the track at `fraction` — two skunks for the double-skunk line
+/// (60) and one for the skunk line (90). The position is read off the same `TrackShape` the loops
+/// use, so each mark sits right on the ring.
+private struct SkunkMark: View {
     let fraction: Double
-    let long: Bool
+    let count: Int
     var cornerRadius: CGFloat = 22
+    var glyphSize: CGFloat = 13
 
     var body: some View {
-        SkunkTickShape(fraction: CGFloat(fraction), cornerRadius: cornerRadius,
-                       centerInset: 5.5, halfLength: long ? 5 : 3)
-            .stroke(.white.opacity(0.28), style: StrokeStyle(lineWidth: 1, lineCap: .round))
-    }
-}
-
-/// A short radial line crossing the track at `fraction` of the way around. The point and its
-/// normal are read off the same `TrackShape` the loops use, so the mark lines up with the fill.
-private struct SkunkTickShape: Shape {
-    var fraction: CGFloat
-    var cornerRadius: CGFloat
-    var centerInset: CGFloat
-    var halfLength: CGFloat
-
-    func path(in rect: CGRect) -> Path {
-        let base = TrackShape(cornerRadius: cornerRadius).inset(by: centerInset).path(in: rect)
-        let eps: CGFloat = 0.004
-        // Centre of a tiny slice of the path ≈ a point on it; two adjacent slices give the tangent.
-        func point(_ a: CGFloat, _ b: CGFloat) -> CGPoint {
-            let r = base.trimmedPath(from: max(0, a), to: min(1, b)).boundingRect
-            return CGPoint(x: r.midX, y: r.midY)
+        GeometryReader { geo in
+            let path = TrackShape(cornerRadius: cornerRadius).inset(by: 5.5)
+                .path(in: CGRect(origin: .zero, size: geo.size))
+            let r = path.trimmedPath(from: max(0, CGFloat(fraction) - 0.004),
+                                     to: min(1, CGFloat(fraction) + 0.004)).boundingRect
+            HStack(spacing: -glyphSize * 0.32) {
+                ForEach(0..<count, id: \.self) { _ in
+                    Text("🦨").font(.system(size: glyphSize))
+                }
+            }
+            .opacity(0.5)
+            .position(x: r.midX, y: r.midY)
         }
-        let before = point(fraction - eps, fraction)
-        let after = point(fraction, fraction + eps)
-        let pt = CGPoint(x: (before.x + after.x) / 2, y: (before.y + after.y) / 2)
-        var dx = after.x - before.x, dy = after.y - before.y
-        let len = max(hypot(dx, dy), 0.0001)
-        dx /= len; dy /= len
-        let nx = -dy, ny = dx   // unit normal (radial) — perpendicular to the track
-        var p = Path()
-        p.move(to: CGPoint(x: pt.x - nx * halfLength, y: pt.y - ny * halfLength))
-        p.addLine(to: CGPoint(x: pt.x + nx * halfLength, y: pt.y + ny * halfLength))
-        return p
     }
 }
 

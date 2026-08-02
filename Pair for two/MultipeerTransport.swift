@@ -68,19 +68,22 @@ final class MultipeerSession: NSObject, NearbyTransport {
         rendezvousActive = true
         phase = .connecting
         startBoth()
-        startRendezvousRetry()
+        startPairingRetry()
     }
 
-    /// Keep trying to pair while a "Rejoin" is in progress. The first invite can mistime (the other
-    /// phone's advertiser may not be up yet); rather than giving up, the smaller-named peer re-invites
-    /// every few seconds, and if nothing's been discovered we refresh discovery. Runs until connected
-    /// (or the screen is dismissed).
-    private func startRendezvousRetry() {
+    /// Keep trying to pair while a "Rejoin" *or* an in-game reconnect is in progress. The first invite
+    /// can mistime (the other phone's advertiser may not be up yet — e.g. it foregrounded a moment
+    /// later); rather than giving up until MultipeerConnectivity happens to re-discover (slow),
+    /// the smaller-named peer re-invites every couple of seconds, and if nothing's been discovered we
+    /// refresh discovery. Runs until connected (or the screen is dismissed).
+    private func startPairingRetry() {
         rendezvousTask?.cancel()
         rendezvousTask = Task { @MainActor [weak self] in
             while true {
-                try? await Task.sleep(for: .seconds(4))
-                guard let self, self.rendezvousActive, self.session.connectedPeers.isEmpty else { return }
+                try? await Task.sleep(for: .seconds(2))
+                guard let self,
+                      self.rendezvousActive || self.phase == .reconnecting,
+                      self.session.connectedPeers.isEmpty else { return }
                 if let peer = self.discoveredPeers.last(where: { self.shouldInvite($0) }) {
                     self.browser?.invitePeer(peer, to: self.session, withContext: nil, timeout: 10)
                 } else if self.discoveredPeers.isEmpty {
@@ -153,6 +156,7 @@ final class MultipeerSession: NSObject, NearbyTransport {
         continuation.yield(.reconnecting)
         rebuildSession()
         startBoth()
+        startPairingRetry()   // keep re-inviting until paired, instead of hoping the first invite lands
     }
 
     /// Tear down the current MCSession and stand up a fresh one (MCSession can't reliably re-add a peer

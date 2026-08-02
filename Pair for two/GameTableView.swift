@@ -117,17 +117,22 @@ struct GameTableView: View {
             // while leaving the play area room for the show cards AND the Continue button below them.
             let topBandHeight: CGFloat = min(height * 0.40, 200)
             let playHeight: CGFloat = height - topBandHeight
-            // Discard shows a full 6-card hand and nothing else, so those cards can be large (fill the
-            // width, leave room for one button). Pegging must stack a pile ABOVE the hand, so its cards
-            // are clamped to the shorter vertical budget. Show cards sit in a single row.
-            let handWidth: CGFloat = min((width - 40) / 7.0, (playHeight - 60) / 1.55)
+            // Every phase reserves a fixed trailing "action rail" for its prompt + status + button, so
+            // nothing stacks below the cards and runs off the bottom. Cards size to the width that's
+            // left after the rail.
+            let railWidth: CGFloat = min(196, width * 0.26)
+            let playWidth: CGFloat = width - railWidth
+            // Card aspect is height = width * 1.45. Each phase's cards fill as much of the play height
+            // as its layout allows (they have room now that the rail holds the buttons), capped by the
+            // width the row needs. Discard: a 6-card hand. Pegging: a pile ABOVE the hand, so shorter.
+            // Show: the cut + a 4-card row. Cut: just two big cards.
+            let handWidth: CGFloat = min((playWidth - 40) / 7.0, (playHeight - 70) / 1.45)
             let peggingHandWidth: CGFloat = min(handWidth, (playHeight - 44) / 2.15)
             let pileWidth: CGFloat = peggingHandWidth * 0.5
-            let showWidth: CGFloat = handWidth * 0.66
-            // Cut-for-deal stacks two cards vertically, so size them to the band height to avoid spill.
-            let cutWidth: CGFloat = min(handWidth * 0.6, playHeight * 0.24)
+            let showWidth: CGFloat = min((playWidth - 60) / 5.2, (playHeight - 70) / 1.45)
+            let cutWidth: CGFloat = min((playWidth - 60) / 2.2, (playHeight - 84) / 1.45)
 
-            tableLayout(topBandHeight: topBandHeight, handWidth: handWidth,
+            tableLayout(topBandHeight: topBandHeight, railWidth: railWidth, handWidth: handWidth,
                         peggingHandWidth: peggingHandWidth, pileWidth: pileWidth,
                         showWidth: showWidth, cutWidth: cutWidth)
         }
@@ -135,7 +140,7 @@ struct GameTableView: View {
 
     /// The band-split layout + overlays. Extracted from the `GeometryReader` closure so that closure
     /// stays a few cheap bindings + one call — keeping the Swift type-checker fast.
-    @ViewBuilder private func tableLayout(topBandHeight: CGFloat, handWidth: CGFloat,
+    @ViewBuilder private func tableLayout(topBandHeight: CGFloat, railWidth: CGFloat, handWidth: CGFloat,
                                           peggingHandWidth: CGFloat, pileWidth: CGFloat,
                                           showWidth: CGFloat, cutWidth: CGFloat) -> some View {
         let s = vm.snapshot
@@ -151,7 +156,7 @@ struct GameTableView: View {
                     Color.black.opacity(0.22).ignoresSafeArea(edges: [.top, .horizontal])
                 }
 
-            bottomBand(s, handWidth: handWidth, peggingHandWidth: peggingHandWidth,
+            bottomBand(s, railWidth: railWidth, handWidth: handWidth, peggingHandWidth: peggingHandWidth,
                        pileWidth: pileWidth, showWidth: showWidth, cutWidth: cutWidth)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
@@ -339,6 +344,8 @@ struct GameTableView: View {
                            accent: vm.scoringPlayer.map { vm.theme(for: $0).primary } ?? .cribGold,
                            playerName: vm.scoringPlayer.map { vm.name(of: $0) })
                 .padding(.horizontal, 16)
+                .frame(height: 30)   // reserve the flag row even when empty, so the scoreboard below
+                                     // stays locked in place as flags/messages come and go
 
             if s.scoringMode == .auto {
                 // Auto mode: no manual controls — just a big names + scores scoreboard.
@@ -371,10 +378,15 @@ struct GameTableView: View {
         let oppValue = displayedOppScore ?? vm.score(of: opp)
         HStack(spacing: 0) {
             scoreColumn(for: you, s: s)
-            Rectangle().fill(.white.opacity(0.15)).frame(width: 1, height: 36)
+            // A clear centre divider between the two scores (a soft-capped vertical bar), distinct
+            // from the thin progress ring so the two aren't confused.
+            Capsule()
+                .fill(LinearGradient(colors: [.white.opacity(0.06), .white.opacity(0.45), .white.opacity(0.06)],
+                                     startPoint: .top, endPoint: .bottom))
+                .frame(width: 2.5, height: 56)
             scoreColumn(for: opp, s: s)
         }
-        .frame(maxWidth: 700)
+        .frame(maxWidth: 760)
         // An imagined oval around both names + scores, carrying each player's progress loop.
         .padding(.horizontal, 34)
         .padding(.vertical, 8)
@@ -399,20 +411,20 @@ struct GameTableView: View {
         let theme = vm.theme(for: player)
         let isOpponent = player != s.you
         let value = isOpponent ? (displayedOppScore ?? vm.score(of: player)) : vm.score(of: player)
-        VStack(spacing: 0) {
+        VStack(spacing: 3) {
             Text(vm.name(of: player).uppercased())
                 .font(.subheadline.weight(.heavy))
                 .foregroundStyle(theme.primary)
-                .lineLimit(1).minimumScaleFactor(0.6)
+                .lineLimit(1).minimumScaleFactor(0.5)
             HStack(alignment: .center, spacing: 6) {   // "+X" centered vertically against the score
                 Text("\(value)")
-                    .font(.system(size: 40, weight: .heavy, design: .rounded))
+                    .font(.system(size: 36, weight: .heavy, design: .rounded))
                     .foregroundStyle(.white)
                     .monospacedDigit()
                     .minimumScaleFactor(0.7)
                 if isOpponent && oppPending > 0 {
                     Text("+\(oppPending)")
-                        .font(.system(size: 18, weight: .heavy, design: .rounded))
+                        .font(.system(size: 17, weight: .heavy, design: .rounded))
                         .monospacedDigit()
                         .foregroundStyle(.white)
                         .padding(.horizontal, 8).padding(.vertical, 2)
@@ -422,6 +434,7 @@ struct GameTableView: View {
             }
         }
         .frame(maxWidth: .infinity)
+        .padding(.horizontal, 10)   // keep names/scores clear of the divider and the oval's ends
     }
 
     @ViewBuilder private func scorePanel(for player: PlayerID, s: PlayerSnapshot) -> some View {
@@ -453,21 +466,21 @@ struct GameTableView: View {
 
     // MARK: Bottom band
 
-    @ViewBuilder private func bottomBand(_ s: PlayerSnapshot, handWidth: CGFloat, peggingHandWidth: CGFloat, pileWidth: CGFloat, showWidth: CGFloat, cutWidth: CGFloat) -> some View {
+    @ViewBuilder private func bottomBand(_ s: PlayerSnapshot, railWidth: CGFloat, handWidth: CGFloat, peggingHandWidth: CGFloat, pileWidth: CGFloat, showWidth: CGFloat, cutWidth: CGFloat) -> some View {
         VStack(spacing: 12) {
             switch s.phase {
             case .cutForDeal:
-                cutForDealArea(s, width: cutWidth)
+                cutForDealArea(s, width: cutWidth, railWidth: railWidth)
             case .discardToCrib:
-                discardArea(s, width: handWidth)
+                discardArea(s, width: handWidth, railWidth: railWidth)
             case .cutStarter:
-                starterCutArea(s, width: cutWidth)
+                starterCutArea(s, width: cutWidth, railWidth: railWidth)
             case .pegging:
-                peggingArea(s, handWidth: peggingHandWidth, pileWidth: pileWidth)
+                peggingArea(s, handWidth: peggingHandWidth, pileWidth: pileWidth, railWidth: railWidth)
             case .showPone, .showDealer, .showCrib:
-                showArea(s, pileWidth: showWidth)
+                showArea(s, pileWidth: showWidth, railWidth: railWidth)
             case .handComplete:
-                handCompleteArea(s)
+                handCompleteArea(s, railWidth: railWidth)
             default:
                 Color.clear
             }
@@ -476,17 +489,39 @@ struct GameTableView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
+    /// One consistent landscape layout for every play phase: the cards/primary visual fill and centre
+    /// the space that's left, while the phase's prompt, status, and primary button sit in a fixed-width
+    /// column on the trailing side — the same place on every screen. Nothing stacks below the cards, so
+    /// the action never runs off the bottom on a short landscape phone.
+    @ViewBuilder private func playScene<Play: View, Action: View>(
+        railWidth: CGFloat,
+        @ViewBuilder play: () -> Play,
+        @ViewBuilder action: () -> Action
+    ) -> some View {
+        // The rail's width is ALWAYS reserved, whether or not it currently holds a prompt/button, so
+        // the cards keep a fixed centred position and never jump when a "Go" or message appears.
+        HStack(spacing: 12) {
+            play()
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            VStack(spacing: 12) { action() }
+                .frame(width: railWidth)
+                .frame(maxHeight: .infinity)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .padding(.horizontal, 4)
+    }
+
     // MARK: Cut for deal
 
     /// Each player cuts once. Their card is shown to both. Once both have cut, the lower card wins the
     /// deal (and the first crib); the dealer then taps "Deal".
-    @ViewBuilder private func cutForDealArea(_ s: PlayerSnapshot, width: CGFloat) -> some View {
-        VStack(spacing: 14) {
+    @ViewBuilder private func cutForDealArea(_ s: PlayerSnapshot, width: CGFloat, railWidth: CGFloat) -> some View {
+        playScene(railWidth: railWidth) {
             HStack(spacing: 34) {
                 cutResult(for: .one, s: s, width: width)
                 cutResult(for: .two, s: s, width: width)
             }
-
+        } action: {
             if vm.cutForDealDecided {
                 if vm.youDeal {
                     Button("Deal") { vm.advance() }
@@ -507,13 +542,14 @@ struct GameTableView: View {
                 waitingLabel("Waiting for \(s.opponentName) to cut…")
             }
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
+    /// A spinner-over-text status, laid out to sit comfortably in the narrow action rail.
     private func waitingLabel(_ text: String) -> some View {
-        HStack(spacing: 8) {
+        VStack(spacing: 8) {
             ProgressView().tint(.white)
             Text(text).font(.callout).foregroundStyle(.white.opacity(0.8))
+                .multilineTextAlignment(.center)
         }
     }
 
@@ -536,14 +572,14 @@ struct GameTableView: View {
 
     // MARK: Discard
 
-    @ViewBuilder private func discardArea(_ s: PlayerSnapshot, width: CGFloat) -> some View {
-        VStack(spacing: 16) {
-            Spacer(minLength: 0)
+    @ViewBuilder private func discardArea(_ s: PlayerSnapshot, width: CGFloat, railWidth: CGFloat) -> some View {
+        playScene(railWidth: railWidth) {
             HandView(cards: s.yourHand.sortedForDisplay(),
                      selected: vm.selectedForDiscard,
                      onTap: { GameFeedback.shared.play(.discardSelect); vm.toggleDiscard($0) },
                      cardWidth: width,
                      dealSignal: AnyHashable(s.yourHand.map(\.id)))   // deal cards in on a fresh hand
+        } action: {
             Button("Send 2 to \(s.yourSeat == .dealer ? "your crib" : "\(vm.name(of: s.dealer))'s crib")") {
                 GameFeedback.shared.play(.discardConfirm)
                 vm.confirmDiscard()
@@ -551,16 +587,14 @@ struct GameTableView: View {
             .buttonStyle(.borderedProminent)
             .tint(vm.theme(for: s.you).deep)
             .disabled(!vm.canConfirmDiscard)
-            Spacer(minLength: 0)
         }
     }
 
     // MARK: Starter cut (pone lifts the deck, dealer turns up the cut — like an in-person cut)
 
-    @ViewBuilder private func starterCutArea(_ s: PlayerSnapshot, width: CGFloat) -> some View {
+    @ViewBuilder private func starterCutArea(_ s: PlayerSnapshot, width: CGFloat, railWidth: CGFloat) -> some View {
         let lifted = vm.starterCutLifted
-        VStack(spacing: 18) {
-            Spacer(minLength: 0)
+        playScene(railWidth: railWidth) {
             HStack(alignment: .center, spacing: lifted ? 30 : 0) {
                 // The remaining ("bottom") deck. The dealer taps it to turn up the starter.
                 deckPile(width: width, highlighted: vm.youLiftCut || vm.youRevealStarter)
@@ -578,19 +612,18 @@ struct GameTableView: View {
                 }
             }
             .animation(.spring(response: 0.45, dampingFraction: 0.72), value: lifted)
-
-            // Instruction sits under the deck — the deck itself is the tap target.
+        } action: {
             if vm.youLiftCut {
                 Text("Tap the deck to cut").font(.callout.weight(.semibold)).foregroundStyle(.white)
+                    .multilineTextAlignment(.center)
             } else if vm.youRevealStarter {
                 Text("Tap the deck to turn up the cut").font(.callout.weight(.semibold)).foregroundStyle(.white)
+                    .multilineTextAlignment(.center)
             } else {
                 waitingLabel(lifted ? "Waiting for \(vm.name(of: s.dealer)) to turn up the cut…"
                                     : "Waiting for \(vm.name(of: s.pone)) to cut the deck…")
             }
-            Spacer(minLength: 0)
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
     /// A small stack of face-down cards drawn as a deck.
@@ -609,12 +642,21 @@ struct GameTableView: View {
 
     // MARK: Pegging
 
-    @ViewBuilder private func peggingArea(_ s: PlayerSnapshot, handWidth: CGFloat, pileWidth: CGFloat) -> some View {
-        VStack(spacing: 8) {
-            // The running count now lives inside the play pile, freeing this space for bigger cards.
-            PlayPileView(snapshot: s, vm: vm, cardWidth: pileWidth)
-                .frame(maxHeight: .infinity)
+    @ViewBuilder private func peggingArea(_ s: PlayerSnapshot, handWidth: CGFloat, pileWidth: CGFloat, railWidth: CGFloat) -> some View {
+        playScene(railWidth: railWidth) {
+            VStack(spacing: 8) {
+                // The running count lives inside the play pile, freeing this space for bigger cards.
+                PlayPileView(snapshot: s, vm: vm, cardWidth: pileWidth)
+                    .frame(maxHeight: .infinity)
 
+                if !vm.peggingComplete {
+                    HandView(cards: s.yourHand.sortedForDisplay(),
+                             isEnabled: { vm.isLegalPlay($0) },
+                             onTap: { vm.play($0) },
+                             cardWidth: handWidth)
+                }
+            }
+        } action: {
             if vm.peggingComplete {
                 if vm.youStartCount {
                     // Fold any pending slider points in before advancing (like the show's Continue),
@@ -634,31 +676,22 @@ struct GameTableView: View {
                 } else {
                     waitingLabel("Waiting for \(vm.name(of: vm.snapshot.lastToPlay ?? vm.snapshot.you))…")
                 }
-            } else {
-                HStack(spacing: 16) {
-                    HandView(cards: s.yourHand.sortedForDisplay(),
-                             isEnabled: { vm.isLegalPlay($0) },
-                             onTap: { vm.play($0) },
-                             cardWidth: handWidth)
-                    if vm.canSayGo {
-                        Button("Go") { GameFeedback.shared.play(.advance); vm.sayGo() }
-                            .buttonStyle(.borderedProminent)
-                            .tint(.orange)
-                            .controlSize(.large)
-                    }
-                }
+            } else if vm.canSayGo {
+                Button("Go") { GameFeedback.shared.play(.advance); vm.sayGo() }
+                    .buttonStyle(.borderedProminent)
+                    .tint(.orange)
+                    .controlSize(.large)
             }
         }
     }
 
     // MARK: Show
 
-    @ViewBuilder private func showArea(_ s: PlayerSnapshot, pileWidth: CGFloat) -> some View {
+    @ViewBuilder private func showArea(_ s: PlayerSnapshot, pileWidth: CGFloat, railWidth: CGFloat) -> some View {
         let isCrib = s.phase == .showCrib
-        // The crib adds a badge + backing, so shrink its cards a touch to keep the whole group (and the
-        // Continue button) on screen on a short landscape iPhone.
+        // The crib adds a badge + backing, so shrink its cards a touch.
         let cardW = isCrib ? pileWidth * 0.8 : pileWidth
-        VStack(spacing: 10) {
+        playScene(railWidth: railWidth) {
             HStack(alignment: .top, spacing: 24) {
                 VStack(spacing: 4) {
                     Text("The Cut").font(.caption2).foregroundStyle(.white.opacity(0.7))
@@ -689,69 +722,65 @@ struct GameTableView: View {
                         }
                 }
             }
-
-            // A little space under the cards, then the prompt + button. The whole group is centered
-            // vertically (below), so the button sits just under the cards — never pinned to the bottom.
-            VStack(spacing: 8) {
-                if vm.youAreCounting {
-                    Text(s.scoringMode == .auto ? "Scored automatically" : "Count it on your slider, then Continue")
-                        .font(.caption).foregroundStyle(.white.opacity(0.7))
-                    // With a pending slider value (confirm-after-release), the button adds it, then advances.
-                    // In manual modes a check button sits to the right to verify the count.
-                    HStack(spacing: 12) {
-                        Button(uncommittedLocal > 0 ? "Add \(uncommittedLocal) & continue" : "Continue") {
-                            if uncommittedLocal > 0 {
-                                GameFeedback.shared.play(.score)
-                                vm.claim(uncommittedLocal, for: vm.snapshot.you)
-                                clearScoreSignal += 1; uncommittedLocal = 0
-                            } else {
-                                GameFeedback.shared.play(.advance)
-                            }
-                            vm.advance()
-                        }
-                        .buttonStyle(.borderedProminent).tint(.cribGold).foregroundStyle(.black)
-
-                        if s.scoringMode != .auto {
-                            Button {
-                                GameFeedback.shared.play(.advance)
-                                withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) { showCheck = true }
-                            } label: {
-                                Image(systemName: "checkmark.circle.fill")
-                                    .font(.system(size: 22, weight: .bold))
-                                    .foregroundStyle(Color.cribGold)
-                                    .frame(width: 44, height: 44)
-                                    .background(Circle().fill(Color.white.opacity(0.12)))
-                                    .overlay(Circle().stroke(Color.cribGold.opacity(0.6), lineWidth: 1.2))
-                            }
-                            .buttonStyle(.plain)
-                            .accessibilityLabel("Check my count")
-                        }
+        } action: {
+            if vm.youAreCounting {
+                Text(s.scoringMode == .auto ? "Scored automatically" : "Count it on your slider, then Continue")
+                    .font(.caption).foregroundStyle(.white.opacity(0.7))
+                    .multilineTextAlignment(.center)
+                // With a pending slider value (confirm-after-release), the button adds it, then advances.
+                // In manual modes a check button sits below to verify the count.
+                Button(uncommittedLocal > 0 ? "Add \(uncommittedLocal) & continue" : "Continue") {
+                    if uncommittedLocal > 0 {
+                        GameFeedback.shared.play(.score)
+                        vm.claim(uncommittedLocal, for: vm.snapshot.you)
+                        clearScoreSignal += 1; uncommittedLocal = 0
+                    } else {
+                        GameFeedback.shared.play(.advance)
                     }
-                } else {
-                    waitingLabel("Waiting for \(vm.name(of: vm.showCountingPlayer ?? s.you)) to count…")
+                    vm.advance()
                 }
+                .buttonStyle(.borderedProminent).tint(.cribGold).foregroundStyle(.black)
+
+                if s.scoringMode != .auto {
+                    Button {
+                        GameFeedback.shared.play(.advance)
+                        withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) { showCheck = true }
+                    } label: {
+                        Label("Check", systemImage: "checkmark.circle.fill")
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(Color.cribGold)
+                            .padding(.horizontal, 12).padding(.vertical, 7)
+                            .background(Capsule().fill(Color.white.opacity(0.12)))
+                            .overlay(Capsule().stroke(Color.cribGold.opacity(0.6), lineWidth: 1.2))
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Check my count")
+                }
+            } else {
+                waitingLabel("Waiting for \(vm.name(of: vm.showCountingPlayer ?? s.you)) to count…")
             }
-            .padding(.top, 10)
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)   // centers the cards + button group
     }
 
     // MARK: Hand complete
 
-    @ViewBuilder private func handCompleteArea(_ s: PlayerSnapshot) -> some View {
-        VStack(spacing: 16) {
-            Spacer()
-            Text("Hand complete").font(.title3.weight(.bold)).foregroundStyle(.white)
-            Text("\(s.yourName) \(s.yourScore)  •  \(s.opponentName) \(s.opponentScore)")
-                .font(.headline).foregroundStyle(.white.opacity(0.85))
+    @ViewBuilder private func handCompleteArea(_ s: PlayerSnapshot, railWidth: CGFloat) -> some View {
+        playScene(railWidth: railWidth) {
+            VStack(spacing: 10) {
+                Text("Hand complete").font(.title2.weight(.bold)).foregroundStyle(.white)
+                Text("\(s.yourName) \(s.yourScore)  •  \(s.opponentName) \(s.opponentScore)")
+                    .font(.title3).foregroundStyle(.white.opacity(0.85))
+                    .multilineTextAlignment(.center)
+            }
+        } action: {
             // Only the next dealer starts the deal (the deal passes to the former pone).
             if vm.youStartNextDeal {
                 Button("Deal next hand") { vm.advance() }
                     .buttonStyle(.borderedProminent).tint(.cribGold).foregroundStyle(.black)
+                    .controlSize(.large)
             } else {
                 waitingLabel("Waiting for \(vm.name(of: vm.nextDealer)) to deal…")
             }
-            Spacer()
         }
     }
 
@@ -1117,3 +1146,4 @@ private struct CribShowPreview: View {
 #Preview("Crib show", traits: .landscapeLeft) {
     CribShowPreview()
 }
+
