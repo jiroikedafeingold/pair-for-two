@@ -412,6 +412,10 @@ final class GameViewModel {
     /// True when this device is waiting to act and should show the cut / go / play controls.
     var canActNow: Bool { connection == .connected }
 
+    /// The other player is reachable right now, so a networked command (e.g. Play Again) will actually
+    /// be delivered. Pass-and-play is always reachable; mirrors the guard in `submit`.
+    var opponentAvailable: Bool { isLoopback || connection == .connected }
+
     // MARK: The show (counting)
 
     /// Who is counting during the current show phase (pone counts first, then the dealer, then the

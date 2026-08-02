@@ -41,6 +41,8 @@ struct GameTableView: View {
     @State private var showManualReplay = false
     // Safety net so the pre-win replay can never strand the player short of the win screen.
     @State private var replayWatchdog: Task<Void, Never>?
+    // Shown when "Play again" is tapped but the other player is no longer reachable; auto-returns home.
+    @State private var playAgainUnavailable = false
     @AppStorage("replayBeforeWin") private var replayBeforeWin = true
     @AppStorage("scoreTrackEnabled") private var scoreTrackEnabled = true
 
@@ -190,6 +192,22 @@ struct GameTableView: View {
         // At game-over the win/lose overlay handles the "opponent gone" case itself (its primary button
         // becomes "Back to menu"); the standalone notice is only for a mid-game disconnect.
         if vm.opponentLeft && s.phase != .gameOver { opponentLeftOverlay }
+        if playAgainUnavailable { playAgainUnavailableOverlay }
+    }
+
+    /// Tapped "Play again": start the rematch if the other player is reachable, otherwise tell the
+    /// player they're gone and head back to the menu (the command would otherwise be silently dropped).
+    private func attemptPlayAgain() {
+        if vm.opponentAvailable {
+            vm.playAgain()
+        } else {
+            withAnimation { playAgainUnavailable = true }
+            Task { @MainActor in
+                try? await Task.sleep(for: .seconds(2.0))
+                guard !Task.isCancelled else { return }
+                vm.quit()
+            }
+        }
     }
 
     /// Routes a phase change to the right feedback / replay trigger.
@@ -860,6 +878,26 @@ struct GameTableView: View {
         .transition(.opacity)
     }
 
+    /// Shown when "Play again" is tapped but the other player is gone — briefly explains, then the
+    /// pending task returns to the menu (a "Back to menu" button skips the wait).
+    @ViewBuilder private var playAgainUnavailableOverlay: some View {
+        ZStack {
+            Color.black.opacity(0.65).ignoresSafeArea()
+            VStack(spacing: 16) {
+                Image(systemName: "person.slash").font(.system(size: 44)).foregroundStyle(.white)
+                Text("Opponent unavailable").font(.title2.weight(.bold)).foregroundStyle(.white)
+                Text("The other player isn't available for another game. Returning to the menu…")
+                    .font(.callout).foregroundStyle(.white.opacity(0.8))
+                    .multilineTextAlignment(.center).frame(maxWidth: 360)
+                Button("Back to menu") { vm.quit() }
+                    .buttonStyle(.borderedProminent).tint(.cribGold).foregroundStyle(.black)
+                    .controlSize(.large)
+            }
+            .padding(28)
+        }
+        .transition(.opacity)
+    }
+
     // MARK: Check-my-count overlay
 
     /// Shows the correct count for the hand/crib being counted, so a manual scorer can verify.
@@ -928,7 +966,7 @@ struct GameTableView: View {
                     winnerName: vm.name(of: info.winner),
                     canReplay: !vm.scoreLog.isEmpty,
                     opponentLeft: vm.opponentLeft,
-                    onPlayAgain: { vm.playAgain() },
+                    onPlayAgain: { attemptPlayAgain() },
                     onReplay: { withAnimation { showManualReplay = true } },
                     onExit: { vm.quit() }
                 )
@@ -938,7 +976,7 @@ struct GameTableView: View {
                     skunk: info.skunk,
                     canReplay: !vm.scoreLog.isEmpty,
                     opponentLeft: vm.opponentLeft,
-                    onPlayAgain: { vm.playAgain() },
+                    onPlayAgain: { attemptPlayAgain() },
                     onReplay: { withAnimation { showManualReplay = true } },
                     onExit: { vm.quit() }
                 )
