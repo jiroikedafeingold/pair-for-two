@@ -66,6 +66,7 @@ nonisolated enum CribbageEngine {
         s.hands[.two] = deck.deal(6)
         s.deck = deck
         s.crib = []
+        s.cribOwners = [:]
         s.discarded = []
         s.starter = nil
         s.starterCutIndex = nil
@@ -96,6 +97,10 @@ nonisolated enum CribbageEngine {
 
         s.hands[player]?.removeAll { cards.contains($0) }
         s.crib.append(contentsOf: cards)
+        // Remember whose cards these are — the show marks each crib card with its owner's colour.
+        var owners = s.cribOwners ?? [:]
+        for card in cards { owners[card] = player }
+        s.cribOwners = owners
         s.discarded.insert(player)
 
         if s.discarded.count == 2 {
@@ -169,6 +174,9 @@ nonisolated enum CribbageEngine {
         if done {
             flags.append(ScoreFlag(.lastCard, points: 1, detail: "Last card"))
             s.activeFlags = flags
+            // Tell BOTH devices the hand's last card is down: the player who laid it takes 1, and the
+            // other player learns why the play has stopped (they're now waiting on the count).
+            notePegEvent(&s, .init(kind: .lastCard, scorer: player, points: flags.totalPoints))
             finishPegging(&s)
             autoScore(&s, to: player)
             return true

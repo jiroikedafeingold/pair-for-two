@@ -278,6 +278,13 @@ struct GameTableView: View {
             GameFeedback.shared.play(.thirtyOne)
             pegAlert = auto ? "31 for \(event.points)!"
                             : (mine ? "31 — take \(event.points)" : "\(who) hits 31 for \(event.points)")
+        case .lastCard:
+            // The hand's final card is down — tell both players, so the one who laid it takes the
+            // point and the other knows the play is over and the count is next.
+            GameFeedback.shared.play(.go)
+            pegAlert = auto ? "Last card — \(who) pegs \(event.points)"
+                            : (mine ? "Last card — take \(event.points)"
+                                    : "Last card played — \(who) takes \(event.points)")
         }
         scheduleClearPegAlert()
     }
@@ -553,33 +560,58 @@ struct GameTableView: View {
         // The rail's width is ALWAYS reserved, whether or not it currently holds flags/a button, so
         // the cards keep a fixed centred position and never jump when a "Go" or message appears. The
         // scoring flags ("Fifteen 2 +2" …) live at the top of the rail, above the prompt/button.
+        // Built here, outside the rail's GeometryReader, because that closure escapes and so can't
+        // capture the `action` view builder itself.
+        let actionColumn = VStack(spacing: 10) { action() }
         HStack(spacing: 12) {
             play()
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
-            // The prompt/button is centred so it lines up horizontally with the (also centred) cards;
-            // the scoring flags float at the top of the rail above it, rather than pushing it down.
-            ZStack(alignment: .top) {
-                railFlags(s)
-                VStack(spacing: 10) { action() }
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+            // Two stacked slots rather than an overlay: the scoring flags get their own slot at the top
+            // (always reserved, so the prompt/button below never shifts as flags come and go — and a
+            // long list scrolls inside it instead of running over the button and swallowing its taps),
+            // then the prompt/button is centred in whatever height is left. The button's share is
+            // reserved first, so on a short landscape phone the flags column scrolls rather than the
+            // button being squeezed off the felt.
+            GeometryReader { rail in
+                VStack(spacing: 8) {
+                    railFlags(s)
+                        .frame(height: min(GameTableView.railFlagsHeight,
+                                           max(0, rail.size.height - GameTableView.railActionHeight)))
+                    actionColumn
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
             .frame(width: railWidth)
             .frame(maxHeight: .infinity)
+            // The rail is a fixed width, so its prompts and buttons ("Count it on your slider, then
+            // Continue", "Count the hands") get clipped at large accessibility text sizes. Pin this
+            // column to the default size — the game text elsewhere still scales.
+            .dynamicTypeSize(.large)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .padding(.horizontal, 4)
     }
 
+    /// Tallest the flags slot gets: enough for the usual name + two chips + total, with the (scrollable)
+    /// column carrying anything longer. Fixed rather than content-sized so the prompt/button below keeps
+    /// one position — the rail's text is pinned to the default Dynamic Type size, so this holds.
+    private static let railFlagsHeight: CGFloat = 104
+
+    /// Height the prompt + primary button need (a two-line prompt over a large button). The flags slot
+    /// gets whatever is left over, so on a short landscape phone the flags scroll rather than the
+    /// button being squeezed off the felt.
+    private static let railActionHeight: CGFloat = 96
+
     /// The scoring flags for the current context, as a vertical column pinned to the top of the rail.
-    /// Bounded in height and scrollable, so a big hand's list never reaches the centred button.
-    @ViewBuilder private func railFlags(_ s: PlayerSnapshot) -> some View {
-        if !s.flags.isEmpty {
-            ScoreFlagsView(flags: s.flags,
-                           accent: vm.scoringPlayer.map { vm.theme(for: $0).primary } ?? .cribGold,
-                           playerName: vm.scoringPlayer.map { vm.name(of: $0) },
-                           vertical: true)
-                .frame(maxWidth: .infinity, maxHeight: 96, alignment: .top)
-        }
+    /// Always rendered — the empty case is simply invisible — so the slot below it stays put.
+    private func railFlags(_ s: PlayerSnapshot) -> some View {
+        ScoreFlagsView(flags: s.flags,
+                       accent: vm.scoringPlayer.map { vm.theme(for: $0).primary } ?? .cribGold,
+                       playerName: vm.scoringPlayer.map { vm.name(of: $0) },
+                       vertical: true)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+            .allowsHitTesting(!s.flags.isEmpty)
     }
 
     // MARK: Cut for deal
@@ -793,7 +825,12 @@ struct GameTableView: View {
                         Text(vm.showLabel).font(.caption2).foregroundStyle(.white.opacity(0.7))
                     }
                     // Cards deal out one-by-one as they're shown (re-triggers each show sub-phase).
-                    DealtCardsRow(cards: vm.showCards.sortedForDisplay(), cardWidth: cardW, dealSignal: s.phase)
+                    // In the crib, each card carries a marker in the colour of whoever discarded it.
+                    DealtCardsRow(cards: vm.showCards.sortedForDisplay(), cardWidth: cardW, dealSignal: s.phase,
+                                  marker: { card in
+                                      guard isCrib, let owner = vm.cribOwner(of: card) else { return nil }
+                                      return (color: vm.theme(for: owner).primary, name: vm.name(of: owner))
+                                  })
                         .padding(isCrib ? 5 : 0)
                         .background {
                             if isCrib {
@@ -805,6 +842,9 @@ struct GameTableView: View {
                         }
                 }
             }
+            // These captions label cards whose size comes from the screen geometry, so there's no
+            // room for them to grow — they'd truncate ("The…", "ANN'S…") at accessibility sizes.
+            .dynamicTypeSize(.large)
         } action: {
             if vm.youAreCounting {
                 Text(s.scoringMode == .auto ? "Scored automatically" : "Count it on your slider, then Continue")
@@ -1023,18 +1063,31 @@ private struct DealtCardsRow: View {
     let cards: [Card]
     let cardWidth: CGFloat
     let dealSignal: GamePhase
+    /// Optional per-card marker drawn just below the card — used by the crib to show, in each
+    /// player's colour, who put that card in. Returns nil for cards that shouldn't be marked.
+    var marker: (Card) -> (color: Color, name: String)? = { _ in nil }
     @State private var revealed = 0
 
     var body: some View {
         HStack(spacing: 8) {
             ForEach(Array(cards.enumerated()), id: \.element.id) { idx, card in
                 let shown = idx < revealed
-                CardView(card: card, width: cardWidth)
-                    .opacity(shown ? 1 : 0)
-                    .scaleEffect(shown ? 1 : 0.6, anchor: .top)
-                    .offset(y: shown ? 0 : -60)
-                    .rotationEffect(.degrees(shown ? 0 : (idx.isMultiple(of: 2) ? -10 : 10)))
-                    .animation(.spring(response: 0.45, dampingFraction: 0.68), value: revealed)
+                VStack(spacing: 4) {
+                    CardView(card: card, width: cardWidth)
+                    if let marker = marker(card) {
+                        Capsule()
+                            .fill(marker.color)
+                            .frame(width: cardWidth * 0.55, height: 4)
+                            .overlay(Capsule().stroke(.black.opacity(0.25), lineWidth: 0.5))
+                            .accessibilityElement()
+                            .accessibilityLabel("From \(marker.name)")
+                    }
+                }
+                .opacity(shown ? 1 : 0)
+                .scaleEffect(shown ? 1 : 0.6, anchor: .top)
+                .offset(y: shown ? 0 : -60)
+                .rotationEffect(.degrees(shown ? 0 : (idx.isMultiple(of: 2) ? -10 : 10)))
+                .animation(.spring(response: 0.45, dampingFraction: 0.68), value: revealed)
             }
         }
         .task(id: dealSignal) {

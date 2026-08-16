@@ -19,13 +19,13 @@ nonisolated struct Claim: Codable, Hashable, Sendable {
     let phase: GamePhase
 }
 
-// MARK: - Pegging event (go / 31 notification)
+// MARK: - Pegging event (go / 31 / last card notification)
 
-/// A notable pegging moment the *other* device should be nudged about, so the player who earns the
-/// point knows to take it. Carried on the snapshot with a monotonically-increasing tick so a repeat
-/// (heartbeat) broadcast never re-fires the alert.
+/// A notable pegging moment *both* devices are nudged about, so the player who earns the point knows
+/// to take it — and the other player knows why the play stopped. Carried on the snapshot with a
+/// monotonically-increasing tick so a repeat (heartbeat) broadcast never re-fires the alert.
 nonisolated struct PegEvent: Codable, Hashable, Sendable {
-    enum Kind: String, Codable, Sendable { case go, thirtyOne }
+    enum Kind: String, Codable, Sendable { case go, thirtyOne, lastCard }
     let kind: Kind
     let scorer: PlayerID   // who earns the point(s)
     let points: Int
@@ -53,6 +53,9 @@ nonisolated struct GameState: Codable, Sendable {
     var deck: Deck
     var hands: [PlayerID: [Card]] = [.one: [], .two: []]
     var crib: [Card] = []
+    /// Who discarded each crib card, so the crib can be marked up at the show. Optional so a game
+    /// saved by an older build still decodes (it simply shows no markers).
+    var cribOwners: [Card: PlayerID]? = [:]
     var starter: Card?
     var discarded: Set<PlayerID> = []
 
@@ -167,6 +170,7 @@ extension GameState {
             opponentHand: reveal ? hands[opponent] : nil,
             crib: phase.revealsCrib ? crib : nil,
             cribCount: crib.count,
+            cribOwners: phase.revealsCrib ? cribOwners : nil,
             starter: starter,
             starterCutLifted: starterCutLifted,
             playSequence: playSequence,
@@ -212,6 +216,9 @@ nonisolated struct PlayerSnapshot: Codable, Hashable, Sendable {
     let opponentHand: [Card]?      // non-nil only at the show
     let crib: [Card]?              // non-nil only once counting reaches the crib
     let cribCount: Int
+    /// Who put each crib card in, so the crib row can show a colour marker under each card. Non-nil
+    /// only alongside `crib` (and absent from a game that started on a build predating it).
+    let cribOwners: [Card: PlayerID]?
     let starter: Card?
     /// During the manual starter cut, true once the pone has lifted the deck (so both devices can show
     /// the lifted portion set aside, awaiting the dealer's reveal).

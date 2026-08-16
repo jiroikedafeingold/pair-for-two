@@ -69,7 +69,8 @@ The first message each side sends is `hello`, carrying `"protocol": 1`.
 | `UUID` | **Lowercase** canonical string, e.g. `"6ba7b810-9dad-11d1-80b4-00c04fd430c8"` |
 | Absent optional | **Omit the key.** Never emit `null`. |
 | `ScoreFlag.Kind` | `"fifteen"`, `"pair"`, `"run"`, `"flush"`, `"nobs"`, `"hisHeels"`, `"thirtyOne"`, `"go"`, `"lastCard"` |
-| `PegEvent.Kind` | `"go"` \| `"thirtyOne"` |
+| `PegEvent.Kind` | `"go"` \| `"thirtyOne"` \| `"lastCard"` |
+| `Map<Card, PlayerID>` | JSON **array** of `{"card":Card,"player":PlayerID}` — a `Card` can't be an object key — **sorted** by rank then suit (spades, hearts, diamonds, clubs) |
 
 Arrays preserve order; `playSequence` order is meaningful.
 
@@ -143,6 +144,7 @@ only in that player's own snapshot until a reveal phase.
 | `opponentHand` | [Card] | omitted before the show |
 | `crib` | [Card] | omitted before counting reaches the crib |
 | `cribCount` | Int | |
+| `cribOwners` | Map<Card, PlayerID> | who discarded each crib card; omitted whenever `crib` is |
 | `starter` | Card | omitted before the cut |
 | `starterCutLifted` | Bool | |
 | `playSequence` | [PlayedCard] | `{"card":Card,"player":PlayerID}` |

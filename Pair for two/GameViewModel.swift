@@ -150,6 +150,7 @@ final class GameViewModel {
     static func placeholderSnapshot(you: PlayerID, name: String, colorID: Int) -> PlayerSnapshot {
         PlayerSnapshot(matchID: UUID(), you: you, phase: .connecting, yourSeat: .pone, dealer: .one,
                        yourHand: [], opponentHandCount: 0, opponentHand: nil, crib: nil, cribCount: 0,
+                       cribOwners: nil,
                        starter: nil, starterCutLifted: false,
                        playSequence: [], runningCount: 0, lapCardCount: 0, whoseTurn: nil, lastToPlay: nil,
                        yourScore: 0, opponentScore: 0, flags: [], scoringMode: .feedback,
@@ -465,6 +466,10 @@ final class GameViewModel {
             return []
         }
     }
+
+    /// Which player discarded a given crib card, so the crib row can mark each card with its owner's
+    /// colour. Nil when unknown (a game resumed from a build that didn't record it).
+    func cribOwner(of card: Card) -> PlayerID? { snapshot.cribOwners?[card] }
 
     /// Name-based label for what's being counted (never the "pone/dealer" jargon).
     var showLabel: String {

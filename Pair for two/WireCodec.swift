@@ -247,6 +247,23 @@ nonisolated enum WireCodec {
         return PlayedCard(card: c, player: p)
     }
 
+    /// `[Card: PlayerID]` as an array of `{card, player}` — a `Card` can't be a JSON object key.
+    /// Sorted by the display order so the bytes don't depend on dictionary iteration order.
+    private static func cardOwners(_ dict: [Card: PlayerID]) -> [[String: Any]] {
+        dict.sorted { $0.key.displaySortKey < $1.key.displaySortKey }
+            .map { ["card": cardObject($0.key), "player": $0.value.rawValue] }
+    }
+
+    private static func cardOwnerMap(_ raw: [[String: Any]]) -> [Card: PlayerID] {
+        var out: [Card: PlayerID] = [:]
+        for entry in raw {
+            guard let c = (entry["card"] as? [String: Any]).flatMap(card),
+                  let p = player(entry["player"]) else { continue }
+            out[c] = p
+        }
+        return out
+    }
+
     private static func claimObject(_ c: Claim) -> [String: Any] {
         ["player": c.player.rawValue, "amount": c.amount, "phase": c.phase.rawValue]
     }
@@ -302,6 +319,7 @@ nonisolated enum WireCodec {
         // Optionals: omit the key entirely rather than emitting null.
         if let v = s.opponentHand   { o["opponentHand"] = v.map(cardObject) }
         if let v = s.crib           { o["crib"] = v.map(cardObject) }
+        if let v = s.cribOwners     { o["cribOwners"] = cardOwners(v) }
         if let v = s.starter        { o["starter"] = cardObject(v) }
         if let v = s.whoseTurn      { o["whoseTurn"] = v.rawValue }
         if let v = s.lastToPlay     { o["lastToPlay"] = v.rawValue }
@@ -356,6 +374,7 @@ nonisolated enum WireCodec {
             opponentHand: (o["opponentHand"] as? [[String: Any]])?.compactMap(card),
             crib: (o["crib"] as? [[String: Any]])?.compactMap(card),
             cribCount: cribCount,
+            cribOwners: (o["cribOwners"] as? [[String: Any]]).map(cardOwnerMap),
             starter: (o["starter"] as? [String: Any]).flatMap(card),
             starterCutLifted: starterCutLifted,
             playSequence: playRaw.compactMap(played),

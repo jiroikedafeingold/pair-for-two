@@ -17,7 +17,7 @@ let snap = PlayerSnapshot(
     you: .one, phase: .pegging, yourSeat: .pone, dealer: .two,
     yourHand: [Card(rank: .five, suit: .clubs), Card(rank: .king, suit: .hearts)],
     opponentHandCount: 3,
-    opponentHand: nil, crib: nil, cribCount: 4,
+    opponentHand: nil, crib: nil, cribCount: 4, cribOwners: nil,
     starter: Card(rank: .jack, suit: .spades), starterCutLifted: true,
     playSequence: [PlayedCard(card: Card(rank: .ace, suit: .diamonds), player: .two)],
     runningCount: 1, lapCardCount: 1, whoseTurn: .one, lastToPlay: .two,
@@ -95,6 +95,36 @@ guard s["scoringMode"] as? Int == 1 else { fail("scoringMode must be its Int raw
 guard let c = (s["yourHand"] as? [[String: Any]])?.first,
       c["rank"] as? Int == 5, c["suit"] as? String == "clubs" else { fail("card encoding wrong") }
 print("✓ PROTOCOL.md encoding rules")
+
+// 5b. The crib's ownership map: an array of {card, player} in display order, present only with the
+// revealed crib (a Card can't be a JSON object key, so it is not a Map like cutForDeal).
+let cribCards = [Card(rank: .ten, suit: .hearts), Card(rank: .four, suit: .spades)]
+let cribSnap = PlayerSnapshot(
+    matchID: snap.matchID, you: .one, phase: .showCrib, yourSeat: .pone, dealer: .two,
+    yourHand: snap.yourHand, opponentHandCount: 4, opponentHand: snap.yourHand,
+    crib: cribCards, cribCount: cribCards.count,
+    cribOwners: [cribCards[0]: .one, cribCards[1]: .two],
+    starter: snap.starter, starterCutLifted: true,
+    playSequence: snap.playSequence, runningCount: 0, lapCardCount: 0,
+    whoseTurn: nil, lastToPlay: .two, yourScore: 61, opponentScore: 58,
+    flags: [], scoringMode: .feedback, cutForDeal: snap.cutForDeal, winner: nil,
+    yourName: "Jiro", opponentName: "Sam", yourColorID: 2, opponentColorID: 7,
+    playersWithClaims: [.one, .two], claimTick: 4, lastClaimPlayer: .two, lastClaimAmount: 3,
+    pegEventTick: 3, lastPegEvent: PegEvent(kind: .lastCard, scorer: .two, points: 1),
+    scoreLog: []
+)
+guard case let .snapshot(cribRT)? = WireCodec.decode(try WireCodec.encode(.snapshot(cribSnap), as: .v1)),
+      cribRT == cribSnap else { fail("crib snapshot changed across round-trip") }
+let cs = (try JSONSerialization.jsonObject(with: try WireCodec.encode(.snapshot(cribSnap), as: .v1))
+          as! [String: Any])["snapshot"] as! [String: Any]
+guard let owners = cs["cribOwners"] as? [[String: Any]], owners.count == 2,
+      (owners[0]["card"] as? [String: Any])?["rank"] as? Int == 4, owners[0]["player"] as? String == "two",
+      (owners[1]["card"] as? [String: Any])?["rank"] as? Int == 10, owners[1]["player"] as? String == "one"
+else { fail("cribOwners must be [{card,player}] sorted by display order") }
+guard (cs["lastPegEvent"] as? [String: Any])?["kind"] as? String == "lastCard" else {
+    fail("PegEvent kind lastCard must encode by name")
+}
+print("✓ cribOwners + lastCard peg event")
 
 // 6. Robustness: junk and unknown tags must not crash or misdecode.
 guard WireCodec.decode(Data("not json".utf8)) == nil else { fail("junk decoded") }
