@@ -149,6 +149,15 @@ extension GamePhase {
 
     /// The crib is only exposed once counting reaches it.
     var revealsCrib: Bool { revealRank >= GamePhase.showCrib.revealRank }
+
+    /// Whether this phase can put scoring flags on the table (his heels at the cut, the pegging scores,
+    /// each hand and the crib at the show). Drives how much room the UI keeps for them.
+    var surfacesScoreFlags: Bool {
+        switch self {
+        case .cutStarter, .pegging, .showPone, .showDealer, .showCrib: return true
+        default:                                                       return false
+        }
+    }
 }
 
 extension GameState {

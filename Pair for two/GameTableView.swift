@@ -575,8 +575,7 @@ struct GameTableView: View {
             GeometryReader { rail in
                 VStack(spacing: 8) {
                     railFlags(s)
-                        .frame(height: min(GameTableView.railFlagsHeight,
-                                           max(0, rail.size.height - GameTableView.railActionHeight)))
+                        .frame(height: flagsSlotHeight(for: s, railHeight: rail.size.height))
                     actionColumn
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
@@ -602,6 +601,17 @@ struct GameTableView: View {
     /// gets whatever is left over, so on a short landscape phone the flags scroll rather than the
     /// button being squeezed off the felt.
     private static let railActionHeight: CGFloat = 96
+
+    /// Height to give the rail's flags slot. Only the phases that actually surface scoring flags reserve
+    /// it — reserving it everywhere pushed the tall "tap to cut" card down off the bottom of the felt.
+    /// Within one of those phases the height is constant, so the prompt/button below never shifts as
+    /// flags come and go. The button's own share is subtracted first, so a short landscape phone scrolls
+    /// the flags column rather than squeezing the button.
+    private func flagsSlotHeight(for s: PlayerSnapshot, railHeight: CGFloat) -> CGFloat {
+        guard s.phase.surfacesScoreFlags || !s.flags.isEmpty else { return 0 }
+        return min(GameTableView.railFlagsHeight,
+                   max(0, railHeight - GameTableView.railActionHeight))
+    }
 
     /// The scoring flags for the current context, as a vertical column pinned to the top of the rail.
     /// Always rendered — the empty case is simply invisible — so the slot below it stays put.
@@ -647,12 +657,15 @@ struct GameTableView: View {
         }
     }
 
-    /// A spinner-over-text status, laid out to sit comfortably in the narrow action rail.
+    /// A spinner-over-text status, laid out to sit comfortably in the narrow action rail. The label keeps
+    /// its full wrapped height (player names make these long) rather than being squeezed to one truncated
+    /// line by the space that's left in the rail.
     private func waitingLabel(_ text: String) -> some View {
         VStack(spacing: 8) {
             ProgressView().tint(.white)
             Text(text).font(.callout).foregroundStyle(.white.opacity(0.8))
                 .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
         }
     }
 
@@ -683,13 +696,14 @@ struct GameTableView: View {
                      cardWidth: width,
                      dealSignal: AnyHashable(s.yourHand.map(\.id)))   // deal cards in on a fresh hand
         } action: {
-            Button("Send 2 to \(s.yourSeat == .dealer ? "your crib" : "\(vm.name(of: s.dealer))'s crib")") {
+            RailButton(title: "Send 2 to \(s.yourSeat == .dealer ? "your crib" : "\(vm.name(of: s.dealer))'s crib")",
+                       railWidth: railWidth,
+                       tint: vm.theme(for: s.you).deep,
+                       textColor: .white,
+                       disabled: !vm.canConfirmDiscard) {
                 GameFeedback.shared.play(.discardConfirm)
                 vm.confirmDiscard()
             }
-            .buttonStyle(.borderedProminent)
-            .tint(vm.theme(for: s.you).deep)
-            .disabled(!vm.canConfirmDiscard)
         }
     }
 
@@ -776,7 +790,8 @@ struct GameTableView: View {
                 if vm.youStartCount {
                     // Fold any pending slider points in before advancing (like the show's Continue),
                     // so last-card / go / 31 points aren't stranded when moving to the count.
-                    Button(uncommittedLocal > 0 ? "Add \(uncommittedLocal) & count the hands" : "Count the hands") {
+                    RailButton(title: uncommittedLocal > 0 ? "Add \(uncommittedLocal) & count the hands" : "Count the hands",
+                               railWidth: railWidth, tint: .cribGold, large: true) {
                         if uncommittedLocal > 0 {
                             GameFeedback.shared.play(.score)
                             vm.claim(uncommittedLocal, for: vm.snapshot.you)
@@ -786,8 +801,6 @@ struct GameTableView: View {
                         }
                         vm.advance()
                     }
-                    .buttonStyle(.borderedProminent).tint(.cribGold).foregroundStyle(.black)
-                    .controlSize(.large)
                 } else {
                     waitingLabel("Waiting for \(vm.name(of: vm.snapshot.lastToPlay ?? vm.snapshot.you))…")
                 }
@@ -847,12 +860,19 @@ struct GameTableView: View {
             .dynamicTypeSize(.large)
         } action: {
             if vm.youAreCounting {
-                Text(s.scoringMode == .auto ? "Scored automatically" : "Count it on your slider, then Continue")
-                    .font(.caption).foregroundStyle(.white.opacity(0.7))
-                    .multilineTextAlignment(.center)
+                // Once points are pending the button itself says what will happen ("Add 15 & continue"),
+                // so the standing instruction is dropped — it would only crowd the narrow rail, where
+                // the taller two-line button needs the room.
+                if uncommittedLocal == 0 {
+                    Text(s.scoringMode == .auto ? "Scored automatically" : "Count it on your slider, then Continue")
+                        .font(.caption).foregroundStyle(.white.opacity(0.7))
+                        .multilineTextAlignment(.center)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
                 // With a pending slider value (confirm-after-release), the button adds it, then advances.
                 // In manual modes a check button sits below to verify the count.
-                Button(uncommittedLocal > 0 ? "Add \(uncommittedLocal) & continue" : "Continue") {
+                RailButton(title: uncommittedLocal > 0 ? "Add \(uncommittedLocal) & continue" : "Continue",
+                           railWidth: railWidth, tint: .cribGold) {
                     if uncommittedLocal > 0 {
                         GameFeedback.shared.play(.score)
                         vm.claim(uncommittedLocal, for: vm.snapshot.you)
@@ -862,7 +882,6 @@ struct GameTableView: View {
                     }
                     vm.advance()
                 }
-                .buttonStyle(.borderedProminent).tint(.cribGold).foregroundStyle(.black)
 
                 if s.scoringMode != .auto {
                     Button {
@@ -898,9 +917,9 @@ struct GameTableView: View {
         } action: {
             // Only the next dealer starts the deal (the deal passes to the former pone).
             if vm.youStartNextDeal {
-                Button("Deal next hand") { vm.advance() }
-                    .buttonStyle(.borderedProminent).tint(.cribGold).foregroundStyle(.black)
-                    .controlSize(.large)
+                RailButton(title: "Deal next hand", railWidth: railWidth, tint: .cribGold, large: true) {
+                    vm.advance()
+                }
             } else {
                 waitingLabel("Waiting for \(vm.name(of: vm.nextDealer)) to deal…")
             }
@@ -1054,6 +1073,51 @@ struct GameTableView: View {
     }
 }
 
+// MARK: - Rail button
+
+/// A primary button for the action rail. The rail is narrow (156pt on iPhone) while the labels can get
+/// long — "Add 15 & continue", "Add 15 & count the hands", "Send 2 to Ann's crib" — so the label wraps
+/// to two lines and shrinks a little instead of running off the end of the rail, which spills over the
+/// screen edge and reads as the text being cut off.
+///
+/// `railWidth` is the hard bound: the button is only ever as wide as the rail it sits in, less a little
+/// breathing room, and never wider than `maxWidth` so it doesn't stretch across a roomy iPad rail.
+///
+/// A concrete view (rather than a method on `GameTableView` returning `some View`) so its modifier chain
+/// and width arithmetic are type-checked once here instead of at every call site — the phase functions
+/// are already close to what the Swift type-checker will do quickly.
+private struct RailButton: View {
+    let title: String
+    let railWidth: CGFloat
+    let tint: Color
+    var textColor: Color = .black
+    var large: Bool = false
+    var disabled: Bool = false
+    let action: () -> Void
+
+    private static let maxWidth: CGFloat = 240
+
+    var body: some View {
+        let width: CGFloat = min(railWidth - 8, RailButton.maxWidth)
+        Button(action: action) {
+            Text(title)
+                .lineLimit(2)
+                .minimumScaleFactor(0.7)
+                .multilineTextAlignment(.center)
+                // Without this the bordered style hands the label a single line's height, so a long
+                // title truncates ("Add 15 & count the…") instead of wrapping onto a second line.
+                .fixedSize(horizontal: false, vertical: true)
+                .frame(maxWidth: .infinity)
+        }
+        .buttonStyle(.borderedProminent)
+        .tint(tint)
+        .foregroundStyle(textColor)
+        .controlSize(large ? .large : .regular)
+        .disabled(disabled)
+        .frame(maxWidth: width)
+    }
+}
+
 // MARK: - Dealt cards row (show phase)
 
 /// Renders the counted cards dealing out one at a time — each drops in from above with a spring —
@@ -1165,6 +1229,17 @@ private struct GameTablePreview: View {
 
 #Preview(traits: .landscapeLeft) {
     GameTablePreview()
+}
+
+// The opening screen: nobody has cut yet, so the rail holds the tall "tap to cut" card.
+private struct CutForDealPreview: View {
+    @State private var vm: GameViewModel = GameViewModel.loopback(
+        names: [.one: "Ann", .two: "Ben"], colorIDs: [.one: 1, .two: 7], seed: 42, scoringMode: .feedback)
+    var body: some View { GameTableView(vm: vm) }
+}
+
+#Preview("Cut for deal", traits: .landscapeLeft) {
+    CutForDealPreview()
 }
 
 private struct AutoScoreboardPreview: View {
