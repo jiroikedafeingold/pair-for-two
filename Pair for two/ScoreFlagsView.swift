@@ -10,10 +10,18 @@ struct ScoreFlagsView: View {
     /// Lay the chips out in a column (for the narrow action rail) instead of a horizontal row.
     var vertical: Bool = false
 
+    /// The column in the action rail shares its height with the prompt and buttons, so its chips are a
+    /// size down and tighter than the row layout's — that keeps a hand's chips *and* its total visible
+    /// in a short slot, instead of the total being pushed out of sight.
+    private var chipFont: Font { vertical ? .caption2.weight(.semibold) : .caption.weight(.semibold) }
+    private var totalFont: Font { vertical ? .caption2.weight(.heavy) : .caption.weight(.heavy) }
+    private var chipHPad: CGFloat { vertical ? 8 : 10 }
+    private var chipVPad: CGFloat { vertical ? 4 : 5 }
+
     var body: some View {
         if vertical {
             ScrollView(.vertical, showsIndicators: false) {
-                VStack(spacing: 5) { chips }
+                VStack(spacing: 4) { chips }
                     .frame(maxWidth: .infinity)
             }
             .opacity(flags.isEmpty ? 0 : 1)
@@ -42,10 +50,10 @@ struct ScoreFlagsView: View {
                     Text("+\(flag.points)").fontWeight(.heavy)
                 }
             }
-            .font(.caption.weight(.semibold))
+            .font(chipFont)
             .lineLimit(1).minimumScaleFactor(0.75)
-            .padding(.horizontal, 10)
-            .padding(.vertical, 5)
+            .padding(.horizontal, chipHPad)
+            .padding(.vertical, chipVPad)
             .background(Capsule().fill(accent))
             .foregroundStyle(.black.opacity(0.85))
         }
@@ -53,9 +61,9 @@ struct ScoreFlagsView: View {
         // Running total of the detected points.
         if flags.count > 1 {
             Text("= \(flags.totalPoints)")
-                .font(.caption.weight(.heavy))
+                .font(totalFont)
                 .padding(.horizontal, 12)
-                .padding(.vertical, 5)
+                .padding(.vertical, chipVPad)
                 .background(Capsule().fill(.white))
                 .foregroundStyle(.black)
         }

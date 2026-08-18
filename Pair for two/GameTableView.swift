@@ -569,15 +569,15 @@ struct GameTableView: View {
             // Two stacked slots rather than an overlay: the scoring flags get their own slot at the top
             // (always reserved, so the prompt/button below never shifts as flags come and go — and a
             // long list scrolls inside it instead of running over the button and swallowing its taps),
-            // then the prompt/button is centred in whatever height is left. The button's share is
-            // reserved first, so on a short landscape phone the flags column scrolls rather than the
-            // button being squeezed off the felt.
+            // then the prompt/button sits directly beneath it. Top-aligned, not centred in the leftover
+            // space: centring pushed the prompt and buttons a long way below the cards they belong to,
+            // and this lands them close to level with the (centred) cards instead.
             GeometryReader { rail in
                 VStack(spacing: 8) {
                     railFlags(s)
                         .frame(height: flagsSlotHeight(for: s, railHeight: rail.size.height))
                     actionColumn
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
@@ -592,10 +592,12 @@ struct GameTableView: View {
         .padding(.horizontal, 4)
     }
 
-    /// Tallest the flags slot gets: enough for the usual name + two chips + total, with the (scrollable)
-    /// column carrying anything longer. Fixed rather than content-sized so the prompt/button below keeps
-    /// one position — the rail's text is pinned to the default Dynamic Type size, so this holds.
-    private static let railFlagsHeight: CGFloat = 104
+    /// Tallest the flags slot gets: enough for a hand's usual two chips plus its total, with the
+    /// (scrollable) column carrying anything longer. Deliberately short — every point it grows pushes the
+    /// prompt and buttons further below the cards being counted. Fixed rather than content-sized so the
+    /// prompt/button keeps one position; the rail's text is pinned to the default Dynamic Type size, so
+    /// this height holds whatever the reader's text setting is.
+    private static let railFlagsHeight: CGFloat = 76
 
     /// Height the prompt + primary button need (a two-line prompt over a large button). The flags slot
     /// gets whatever is left over, so on a short landscape phone the flags scroll rather than the
@@ -615,10 +617,13 @@ struct GameTableView: View {
 
     /// The scoring flags for the current context, as a vertical column pinned to the top of the rail.
     /// Always rendered — the empty case is simply invisible — so the slot below it stays put.
+    ///
+    /// No name above the chips: the coach banner already says whose count this is ("Ann counts the crib",
+    /// "Ben's play") and the chips carry that player's colour, so the row was only costing the slot the
+    /// height its total needs.
     private func railFlags(_ s: PlayerSnapshot) -> some View {
         ScoreFlagsView(flags: s.flags,
                        accent: vm.scoringPlayer.map { vm.theme(for: $0).primary } ?? .cribGold,
-                       playerName: vm.scoringPlayer.map { vm.name(of: $0) },
                        vertical: true)
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
             .allowsHitTesting(!s.flags.isEmpty)
