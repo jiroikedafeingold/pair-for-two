@@ -10,8 +10,8 @@ enum ConnectionState: Sendable {
 /// no SwiftUI — views stay thin and read this model.
 ///
 /// Three roles, all behind one type:
-/// - **Loopback host** (pass-and-play): owns the state, applies intents for the rotating `viewer`,
-///   renders whoever is at the table.
+/// - **Loopback host** (pass-and-play, `#if DEBUG` only — a shipping build is two-phone): owns the
+///   state, applies intents for the rotating `viewer`, renders whoever is at the table.
 /// - **Networked host**: owns the state, is a fixed player, applies its own + the guest's intents,
 ///   and broadcasts the guest's redacted snapshot.
 /// - **Guest**: holds no state; sends intents to the host and renders the snapshots it receives.
@@ -86,7 +86,12 @@ final class GameViewModel {
         if isHost, state != nil, !isLoopback { startHeartbeat() }
     }
 
+#if DEBUG
     /// Single-device pass-and-play. Host owns state immediately for both players.
+    ///
+    /// Debug-only: this is for previews, the LAN harness, and poking at a game on one device. Shipping
+    /// builds are two-phone only, so this factory — and `LoopbackTransport` with it — is compiled out of
+    /// release, which is what keeps `isLoopback` false for every game a real player can start.
     static func loopback(names: [PlayerID: String],
                          colorIDs: [PlayerID: Int],
                          seed: UInt64 = UInt64.random(in: 0...UInt64.max),
@@ -99,6 +104,7 @@ final class GameViewModel {
                              seed: seed, scoringMode: scoringMode,
                              state: s, snapshot: s.snapshot(for: .one), connection: .connected)
     }
+#endif
 
     /// Two-device play over a real transport (Multipeer). The host builds state once the guest's
     /// `.hello` arrives; the guest renders incoming snapshots. The host's `scoringMode` governs.

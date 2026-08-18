@@ -1,6 +1,12 @@
 import Foundation
 
-/// Single-process transport for development, tests, and "pass-and-play on one phone."
+#if DEBUG
+
+/// Single-process transport for development, previews, and tests — the "pass-and-play on one phone"
+/// path. **Debug-only on purpose:** Pair for Two is a two-phone game (each player needs a private
+/// hand), so single-device play must never be reachable in a shipping build. The `#if DEBUG` is the
+/// guarantee: `GameViewModel.loopback` is the only thing that builds one, and it's compiled out of
+/// release alongside this type, so a release binary can't start a pass-and-play game even by mistake.
 ///
 /// There is no real peer: the local device is the host and both players act on it. The host
 /// `GameViewModel` applies intents straight to the engine and renders snapshots locally, so `send`
@@ -34,3 +40,5 @@ nonisolated final class LoopbackTransport: GameTransport, Sendable {
         continuation.finish()
     }
 }
+
+#endif

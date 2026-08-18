@@ -1207,7 +1207,12 @@ private struct FeedbackHandlers: ViewModifier {
     }
 }
 
-// MARK: - Preview
+// MARK: - Previews
+
+// Every preview below drives a real game through `GameViewModel.loopback`, which is debug-only (a
+// shipping build is two-phone, so single-device play is compiled out) — hence the `#if DEBUG` around
+// the whole preview section.
+#if DEBUG
 
 private struct GameTablePreview: View {
     @State private var vm: GameViewModel = {
@@ -1394,4 +1399,6 @@ private struct CribShowPreview: View {
 #Preview("Crib show", traits: .landscapeLeft) {
     CribShowPreview()
 }
+
+#endif
 
