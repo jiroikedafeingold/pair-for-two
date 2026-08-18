@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Pair for Two — Privacy &amp; Support</title>
-<meta name="description" content="Privacy policy, support, and contact for Pair for Two, a two-phone cribbage game.">
+<meta name="description" content="Privacy policy, support, and contact for Pair for Two, a two-phone cribbage game for iPhone, iPad, and Android.">
 <style>
   :root { --felt:#14432f; --felt2:#0d2c20; --gold:#e7c463; --ink:#f3efe4; --muted:#b9c4bb; }
   * { box-sizing: border-box; }
@@ -20,6 +20,7 @@
   h1 { font-size: 2.2rem; margin: 0 0 6px; font-weight: 800; }
   .tag { color: var(--gold); font-weight: 600; letter-spacing: .3px; }
   h2 { color: var(--gold); font-size: 1.15rem; margin: 34px 0 8px; }
+  h3 { font-size: 1rem; margin: 20px 0 4px; }
   p, li { color: var(--ink); }
   .muted { color: var(--muted); font-size: .92rem; }
   a { color: var(--gold); }
@@ -42,32 +43,67 @@
   <div class="wrap">
     <header>
       <h1>Pair for Two</h1>
-      <div class="tag">Two-phone cribbage</div>
+      <div class="tag">Two-phone cribbage — iPhone, iPad &amp; Android</div>
     </header>
 
     <section class="card">
       <h2 style="margin-top:0">Privacy Policy</h2>
-      <p class="muted">Last updated: July 8, 2026</p>
+      <p class="muted">Last updated: August 18, 2026</p>
+
+      <p>This policy covers both versions of Pair for Two: the <strong>iPhone and iPad app</strong>
+         (App Store) and the <strong>Android app</strong> (Google Play). They are built from the same
+         game and behave the same way here; the few differences are called out below.</p>
 
       <p><strong>Pair for Two does not collect, store, or share any personal data.</strong>
-         There are no accounts to create for local play, no analytics, no advertising, and no
-         third‑party tracking of any kind.</p>
+         There are no accounts to create for local play, no analytics, no advertising, no
+         third‑party tracking of any kind, and no servers operated by us.</p>
 
       <h2>What stays on your device</h2>
       <ul>
         <li>Your chosen display name, colour, and preferences are saved only on your device.</li>
         <li>Game progress (so you can resume an interrupted match) is stored only on your device.</li>
       </ul>
+      <p class="muted">If you use your platform's device backup — iCloud or a computer backup on
+         iPhone and iPad, Auto Backup on Android — those files can be included in it, like any other
+         app's data. That backup is handled by Apple or Google under their own policies, and you can
+         exclude the app in your device's backup settings.</p>
 
-      <h2>Playing nearby</h2>
-      <p>“Play nearby” connects two phones directly using Apple’s MultipeerConnectivity
-         (Bluetooth and peer‑to‑peer Wi‑Fi). Game messages travel encrypted, device to device.
-         There is no server, and nothing is sent over the internet or stored by us.</p>
+      <h2>How the two devices talk to each other</h2>
+      <p>Pair for Two is a two‑device game: each player holds their own hand. Connecting the two
+         devices is the only thing the app sends anywhere, and what travels is gameplay only — the
+         cards, the count, the scores, and the display name you chose.</p>
 
-      <h2>Playing online</h2>
+      <h3>Playing nearby, iPhone to iPhone</h3>
+      <p>“Play nearby” between two Apple devices uses Apple’s MultipeerConnectivity (Bluetooth and
+         peer‑to‑peer Wi‑Fi). Those messages are encrypted in transit by the system, device to
+         device. There is no server, and nothing is sent over the internet or stored by us.</p>
+
+      <h3>Playing nearby over Wi‑Fi (including iPhone ↔ Android)</h3>
+      <p>Android cannot join an Apple‑only connection, so when the two devices aren’t both using the
+         path above, they pair over your <strong>local Wi‑Fi network</strong>: the app announces and
+         finds the other device with mDNS (Bonjour/NSD) and then opens a direct connection to it.
+         Both devices must be on the same network — no traffic leaves it, and none of it reaches a
+         server of ours.</p>
+      <p class="muted">To be straightforward about it: this local connection is a plain one, not an
+         encrypted one, so in principle another device on the same network could observe it. It
+         carries nothing but the gameplay described above. Prefer the Apple‑to‑Apple path, or a
+         network you trust, if that matters to you.</p>
+
+      <h3>Playing online (iPhone and iPad only)</h3>
       <p>“Play online” uses Apple’s Game Center to match you with a friend. That connection is
-         handled by Apple under <a href="https://www.apple.com/legal/privacy/">Apple’s Privacy Policy</a>.
-         Pair for Two itself does not collect or retain any of that information.</p>
+         handled by Apple under <a href="https://www.apple.com/legal/privacy/">Apple’s Privacy
+         Policy</a>. Pair for Two itself does not collect or retain any of that information. The
+         Android app has no online mode — it plays over the local network only.</p>
+
+      <h2>Permissions the Android app asks for</h2>
+      <ul>
+        <li><strong>Network and Wi‑Fi access</strong> — to find the other device on your local
+            network and connect to it. This includes holding a multicast lock, without which many
+            phones quietly drop the discovery traffic and find nothing.</li>
+        <li><strong>Vibration</strong> — for the haptics as cards are played and points are pegged.</li>
+      </ul>
+      <p>It does <strong>not</strong> ask for location, Bluetooth, contacts, storage, the camera, or
+         the microphone, and it contains no advertising or analytics libraries.</p>
 
       <h2>Children’s privacy</h2>
       <p>The app is suitable for all ages and collects no data from anyone, including children.</p>
@@ -78,7 +114,7 @@
 
     <section class="card">
       <h2 style="margin-top:0">Support &amp; Contact</h2>
-      <p>Questions, bugs, or feedback? We’d love to hear from you.</p>
+      <p>Questions, bugs, or feedback about either version? We’d love to hear from you.</p>
       <p><a class="pill" href="mailto:apps@feingold5.com">apps@feingold5.com</a></p>
       <p class="muted">We typically reply within a few days.</p>
     </section>

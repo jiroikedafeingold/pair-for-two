@@ -4,7 +4,7 @@ Everything for submitting **Pair for Two**.
 
 ## Contents
 - **`APP_STORE.md`** — copy/paste metadata: name, subtitle, promo text, description, keywords, what's‑new, category, age rating, privacy answers, export compliance, and **App Review notes** (important: it's a two‑device game).
-- **Website** — the single‑page **privacy policy + contact/support** (apps@feingold5.com) lives at **`docs/index.html`** (repo root) and is published via **GitHub Pages** at **https://jiroikedafeingold.github.io/pair-for-two/**. Use that URL for the Support URL, Marketing URL, and Privacy Policy URL fields.
+- **Website** — the single‑page **privacy policy + contact/support** (apps@feingold5.com) lives at **`docs/index.html`** (repo root) and is published via **GitHub Pages** at **https://jiroikedafeingold.github.io/pair-for-two/**. Use that URL for the Support URL, Marketing URL, and Privacy Policy URL fields. It covers **both apps** — iOS/iPadOS and the Android build in `~/Projects/PairForTwoAndroid` — so it also serves Play's privacy‑policy requirement and its data‑safety answers. Keep it that way: anything that changes what either app sends over the wire (a new transport, an online mode on Android) needs a matching edit here.
 - **`screenshots/iphone-6.9/`** — 4 screenshots, **2868 × 1320** (iPhone 6.9", landscape). One 6.9" set covers all iPhone sizes.
 - **`screenshots/ipad-13/`** — 4 screenshots, **2752 × 2064** (iPad 13", landscape).
 - **`screenshots/raw/`** — the source renders before upscaling (safe to delete).
