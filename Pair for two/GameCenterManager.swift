@@ -79,6 +79,16 @@ final class GameCenterManager: NSObject {
         }
     }
 
+    /// Find a specific player again by the id stored in a resume marker, so a force-quit online game
+    /// can re-invite exactly the person it was being played against.
+    ///
+    /// Looked up in the recents/friends list rather than through `loadPlayers(forIdentifiers:)`: the
+    /// person you were just mid-game with is by definition a recent player, and this reuses the same
+    /// call the invite list is already built from.
+    func recentPlayer(withGamePlayerID id: String) async -> GKPlayer? {
+        await loadInvitablePlayers().first { $0.gamePlayerID == id }
+    }
+
     private func players(_ load: (@escaping @Sendable ([GKPlayer]?, (any Error)?) -> Void) -> Void) async -> [GKPlayer] {
         await withCheckedContinuation { continuation in
             load { fetched, _ in continuation.resume(returning: fetched ?? []) }

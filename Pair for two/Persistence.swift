@@ -12,8 +12,23 @@ enum GamePersistence {
     private static let kActive = "resume.active"
     private static let kIsHost = "resume.isHost"
     private static let kSummary = "resume.summary"
+    private static let kOnline = "resume.online"
+    private static let kOpponentID = "resume.opponentGamePlayerID"
+    private static let kOpponentName = "resume.opponentName"
 
-    struct ResumeMarker { let isHost: Bool; let summary: String }
+    /// What a device knows about the game it was in the middle of when it last closed.
+    ///
+    /// `isOnline` decides which rejoin route the menu offers: a nearby game re-pairs over
+    /// Bluetooth/Wi-Fi, while an online one has to find the same Game Center player again — which is
+    /// what `opponentGamePlayerID` is for. Both are absent for markers written before online games
+    /// were resumable, so an old marker simply reads as a nearby game.
+    struct ResumeMarker {
+        let isHost: Bool
+        let summary: String
+        var isOnline = false
+        var opponentGamePlayerID: String?
+        var opponentName: String?
+    }
 
     private static var url: URL? {
         let fm = FileManager.default
@@ -24,11 +39,17 @@ enum GamePersistence {
 
     // MARK: Host — full state
 
-    static func save(_ state: GameState) {
+    static func save(_ state: GameState,
+                     online: Bool = false,
+                     opponentGamePlayerID: String? = nil,
+                     opponentName: String? = nil) {
         guard let url else { return }
         do {
             try JSONEncoder().encode(state).write(to: url, options: .atomic)
-            saveMarker(isHost: true, summary: summary(of: state))
+            saveMarker(isHost: true, summary: summary(of: state),
+                       online: online,
+                       opponentGamePlayerID: opponentGamePlayerID,
+                       opponentName: opponentName)
         } catch {
             // Best-effort; a failed write just means no rejoin is offered.
         }
@@ -48,11 +69,21 @@ enum GamePersistence {
 
     // MARK: Marker — both roles
 
-    static func saveMarker(isHost: Bool, summary: String) {
+    /// `online` + `opponentGamePlayerID` are what let an online game be picked up after the app has
+    /// been force-quit: the id is the only durable handle on the other player once both matches are
+    /// gone, and it's matched against Game Center's recent-players list at rejoin time.
+    static func saveMarker(isHost: Bool,
+                           summary: String,
+                           online: Bool = false,
+                           opponentGamePlayerID: String? = nil,
+                           opponentName: String? = nil) {
         let d = UserDefaults.standard
         d.set(true, forKey: kActive)
         d.set(isHost, forKey: kIsHost)
         d.set(summary, forKey: kSummary)
+        d.set(online, forKey: kOnline)
+        if let opponentGamePlayerID { d.set(opponentGamePlayerID, forKey: kOpponentID) }
+        if let opponentName { d.set(opponentName, forKey: kOpponentName) }
         // A guest never holds full state — drop any stale file left over from a game it once hosted,
         // so `hasSavedState` reliably identifies the one true host when resuming.
         if !isHost, let url { try? FileManager.default.removeItem(at: url) }
@@ -61,7 +92,11 @@ enum GamePersistence {
     static func loadMarker() -> ResumeMarker? {
         let d = UserDefaults.standard
         guard d.bool(forKey: kActive) else { return nil }
-        return ResumeMarker(isHost: d.bool(forKey: kIsHost), summary: d.string(forKey: kSummary) ?? "")
+        return ResumeMarker(isHost: d.bool(forKey: kIsHost),
+                            summary: d.string(forKey: kSummary) ?? "",
+                            isOnline: d.bool(forKey: kOnline),
+                            opponentGamePlayerID: d.string(forKey: kOpponentID),
+                            opponentName: d.string(forKey: kOpponentName))
     }
 
     // MARK: Clear
@@ -69,9 +104,9 @@ enum GamePersistence {
     static func clear() {
         if let url { try? FileManager.default.removeItem(at: url) }
         let d = UserDefaults.standard
-        d.removeObject(forKey: kActive)
-        d.removeObject(forKey: kIsHost)
-        d.removeObject(forKey: kSummary)
+        for key in [kActive, kIsHost, kSummary, kOnline, kOpponentID, kOpponentName] {
+            d.removeObject(forKey: key)
+        }
     }
 
     private static func summary(of s: GameState) -> String {
