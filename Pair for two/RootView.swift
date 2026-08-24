@@ -18,6 +18,10 @@ struct RootView: View {
     @State private var wasBackgrounded = false                // distinguish a real background from a transient inactive
     @State private var showingHelp = false
     @State private var showingStats = false
+    /// The live online transport, if the current game is an online one. Held so a Game Center match
+    /// that arrives *during* a game (the other player re-inviting us after a drop) can be handed to it
+    /// rather than starting a new game over the top of the one in progress.
+    @State private var onlineTransport: GameCenterTransport?
     @State private var showOnboarding = false
     @AppStorage("hasOnboarded") private var hasOnboarded = false
     @Environment(\.scenePhase) private var scenePhase
@@ -62,8 +66,15 @@ struct RootView: View {
             }
             // A match connected (a friend accepted our invite, or we accepted theirs) — start it with
             // the host role the manager elected once both players were actually connected.
+            //
+            // Unless a game is already running on this device: then the match is a *rejoin* of it (the
+            // other phone dropped and re-invited us), so it's handed to the live transport instead.
+            // Starting a new game here would throw away the position we're mid-way through.
             .onChange(of: gameCenter.matchTick) { _, _ in
-                if let ready = gameCenter.takePendingMatch() {
+                guard let ready = gameCenter.takePendingMatch() else { return }
+                if screen == .game, let transport = onlineTransport {
+                    transport.adopt(ready.match)
+                } else {
                     startOnlineGame(ready.match, isHost: ready.isHost)
                 }
             }
@@ -109,6 +120,7 @@ struct RootView: View {
         GamePersistence.clear()
         resumeMarker = nil
         let transport = GameCenterTransport(match: match, isHost: isHost)
+        onlineTransport = transport   // kept so a rejoin can be handed to the running game
         resumeRole = nil
         vm = GameViewModel.networked(transport: transport,
                                      localName: playerName, localColorID: colorID,
@@ -156,6 +168,7 @@ struct RootView: View {
             if let vm {
                 GameTableView(vm: vm, onExit: {
                     self.vm = nil
+                    onlineTransport = nil
                     resumeRole = nil
                     resumeMarker = nil    // the game was cleared on quit — no "Rejoin" to offer
                     screen = .menu

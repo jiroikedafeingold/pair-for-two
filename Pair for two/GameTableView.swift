@@ -325,9 +325,17 @@ struct GameTableView: View {
         if !vm.opponentLeft, vm.connection == .reconnecting || vm.connection == .disconnected {
             HStack(spacing: 8) {
                 ProgressView().tint(.white)
-                Text(vm.connection == .reconnecting ? "Reconnecting…" : "Disconnected")
+                // Online recovery needs the other player to accept a Game Center invitation — GameKit
+                // has no way to rebuild a real-time match without them agreeing — so say so rather
+                // than spinning on "Reconnecting…" while they wonder what to do.
+                Text(vm.connection == .reconnecting
+                     ? (vm.isOnline ? "Reconnecting… accept the Game Center invite to rejoin" : "Reconnecting…")
+                     : "Disconnected")
                     .font(.caption.weight(.semibold)).foregroundStyle(.white)
+                    .multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
             }
+            .frame(maxWidth: 420)
             .padding(.horizontal, 14).padding(.vertical, 7)
             .background(Capsule().fill(Color.black.opacity(0.7)))
             .transition(.move(edge: .top).combined(with: .opacity))
@@ -939,7 +947,11 @@ struct GameTableView: View {
             VStack(spacing: 16) {
                 Image(systemName: "wifi.slash").font(.system(size: 44)).foregroundStyle(.white)
                 Text("Opponent left").font(.title2.weight(.bold)).foregroundStyle(.white)
-                Text("The connection to your opponent was lost. Online games can't be resumed.")
+                // Online now retries before giving up (re-inviting them back into the match), so this
+                // is the end of that attempt rather than the first sign of trouble — say so.
+                Text(vm.isOnline
+                     ? "We kept trying to get them back, but they didn't rejoin. This game can't be picked up from here."
+                     : "The connection to your opponent was lost.")
                     .font(.callout).foregroundStyle(.white.opacity(0.8))
                     .multilineTextAlignment(.center).frame(maxWidth: 360)
                 Button("Back to menu") { onExit() }

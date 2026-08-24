@@ -17,6 +17,10 @@ platform :ios do
       skip_binary_upload: true,         # binary is delivered by Xcode Cloud
       skip_metadata: false,
       skip_screenshots: options[:skip_screenshots] || false,
+      # Screenshots REPLACE what's on App Store Connect, never add to it: every set for each
+      # uploaded locale is deleted first. Don't turn this off — an additive push leaves stale shots
+      # beside the new ones and orphans device families we no longer supply (the old 6.7" set would
+      # have kept showing pre-1.7 UI). Look for "Successfully deleted all screenshots" in the log.
       overwrite_screenshots: true,
       submit_for_review: false,         # you press submit in App Store Connect
       run_precheck_before_submit: false,
