@@ -32,6 +32,33 @@ Generated from SwiftUI previews (landscape) and scaled to Apple's exact required
   preview lands on the **pre-win scoring replay** unless `replayBeforeWin` is temporarily defaulted
   off.
 
+## Game Center (achievements + leaderboard)
+
+Configured in App Store Connect via the API (see the "Achievements & leaderboard" commit), with
+artwork generated into `Marketing/gamecenter/` — 1024×1024, felt + gold, no alpha.
+
+The **vendor identifiers are a shipped contract**: rename one and every player's earned achievement
+is orphaned. They're mirrored in `GameCenterAwards.ID`.
+
+| Identifier | Name | Points | Earned when |
+| --- | --- | --- | --- |
+| `first_win` | First Win | 50 | first game won |
+| `skunk` | Skunk | 100 | win with the loser under 91 |
+| `double_skunk` | Double Skunk | 100 | win with the loser under 61 |
+| `big_hand_24` | Big Hand | 100 | claim 24+ for one hand or crib |
+| `perfect_29` | Perfect 29 | 100 | claim 29 |
+| `comeback_30` | Comeback | 100 | win after trailing by 30+ |
+| `streak_5` | Five in a Row | 100 | five straight wins |
+| `hands_100` | Hundred Hands | 100 | 100 hands played (reports partial progress) |
+
+Leaderboard: `lifetime_wins` ("Lifetime Wins"), best-score, integer, descending.
+
+Note the limit that bit during setup: **each achievement caps at 100 points**, not just the 1000
+total — 150 and 200 were rejected with "You must provide points between 0 and 100".
+
+Everything is derived from the local history in `StatsStore`, so deleting the app resets *progress*
+toward what hasn't been earned yet; Game Center keeps what already has been.
+
 ## Order of operations in App Store Connect
 1. Create the app record (bundle ID, name, primary language).
 2. Fill **App Privacy** → Data Not Collected.

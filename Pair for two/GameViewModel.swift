@@ -75,6 +75,9 @@ final class GameViewModel {
     private var handsObserved = 0
     /// One record per game, however many times `.gameOver` is re-broadcast (the host heartbeats it).
     private var recordedResult = false
+    /// The furthest this device fell behind during the game. Nothing persists it — a comeback is only
+    /// knowable while it's being played — so it's tracked as the scores move and handed to Game Center.
+    private var worstDeficit = 0
 
     /// When anything last arrived from the peer. The host re-broadcasts its snapshot every couple of
     /// seconds, so on a guest this doubles as a liveness signal — see `startInboundWatchdog`.
@@ -260,6 +263,7 @@ final class GameViewModel {
     /// Watch the phases go past so a finished game can be written to this device's history. Called on
     /// every snapshot change, host and guest alike.
     private func trackProgress(from old: GamePhase, to new: GamePhase) {
+        worstDeficit = max(worstDeficit, snapshot.opponentScore - snapshot.yourScore)
         guard old != new else { return }
         if new == .discardToCrib {
             handsObserved += 1
@@ -273,6 +277,7 @@ final class GameViewModel {
             firstDealAt = Date()
             firstDealer = snapshot.dealer
             handsObserved = 1
+            worstDeficit = 0
         }
     }
 
@@ -288,16 +293,20 @@ final class GameViewModel {
         let best = s.scoreLog
             .filter { $0.player == s.you && showPhases.contains($0.phase) }
             .map(\.amount).max() ?? 0
-        StatsStore.record(GameRecord(id: UUID(),
-                                     finishedAt: Date(),
-                                     yourName: s.yourName,
-                                     opponentName: s.opponentName,
-                                     yourScore: s.yourScore,
-                                     opponentScore: s.opponentScore,
-                                     youDealtFirst: firstDealer == s.you,
-                                     duration: Date().timeIntervalSince(firstDealAt ?? Date()),
-                                     hands: max(handsObserved, 1),
-                                     yourBestHand: best))
+        let record = GameRecord(id: UUID(),
+                                finishedAt: Date(),
+                                yourName: s.yourName,
+                                opponentName: s.opponentName,
+                                yourScore: s.yourScore,
+                                opponentScore: s.opponentScore,
+                                youDealtFirst: firstDealer == s.you,
+                                duration: Date().timeIntervalSince(firstDealAt ?? Date()),
+                                hands: max(handsObserved, 1),
+                                yourBestHand: best)
+        StatsStore.record(record)
+        // Achievements and the wins leaderboard are derived from the same history, so they're reported
+        // once it includes this game.
+        GameCenterAwards.report(game: record, summary: StatsStore.summary(), worstDeficit: worstDeficit)
     }
 
     /// A guest can't tell a quiet link from a dead one by itself: it sends only when the player acts,

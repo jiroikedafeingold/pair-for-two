@@ -1,4 +1,5 @@
 import SwiftUI
+import GameKit
 
 /// This device's game history: lifetime totals over a list of finished games. Presented as a sheet from
 /// the menu, in the same `Form` idiom as Settings and Help, so it scrolls, scales with Dynamic Type and
@@ -13,6 +14,7 @@ struct StatsView: View {
     @State private var summary = StatsSummary()
     @State private var games: [GameRecord] = []
     @State private var confirmingClear = false
+    @State private var showingGameCenter = false
 
     var body: some View {
         NavigationStack {
@@ -54,6 +56,22 @@ struct StatsView: View {
                         Button("Clear history", role: .destructive) { confirmingClear = true }
                     }
                 }
+
+                // Achievements and the wins leaderboard live in Game Center, reported from the same
+                // history above. Shown whether or not anything has been played yet — it's also where
+                // you find out what there is to earn.
+                Section {
+                    Button {
+                        showingGameCenter = true
+                    } label: {
+                        Label("Achievements & leaderboard", systemImage: "trophy.fill")
+                    }
+                    .disabled(!GKLocalPlayer.local.isAuthenticated)
+                } footer: {
+                    Text(GKLocalPlayer.local.isAuthenticated
+                         ? "Earned from the games above and reported to Game Center."
+                         : "Sign in to Game Center in the Settings app to collect achievements.")
+                }
             }
             .navigationTitle("Stats")
             .toolbar {
@@ -70,6 +88,10 @@ struct StatsView: View {
             } message: {
                 Text("This erases every recorded game on this phone. It can't be undone.")
             }
+        }
+        .fullScreenCover(isPresented: $showingGameCenter) {
+            GameCenterDashboardView(state: .achievements) { showingGameCenter = false }
+                .ignoresSafeArea()
         }
         .onAppear(perform: reload)
     }
