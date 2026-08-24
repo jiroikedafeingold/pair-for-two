@@ -17,6 +17,21 @@ Everything for submitting **Pair for Two**.
 
 Generated from SwiftUI previews (landscape) and scaled to Apple's exact required pixel sizes. To regenerate crisper shots later, capture on a real 6.9" iPhone and 13" iPad at native resolution.
 
+### Rules for regenerating (not optional)
+
+- **Player responsibility scoring** (`ScoringMode.off`) in every shot — it's the app's default, so
+  it's what a new player sees. `.feedback` puts scoring flag chips on the rail that most people
+  never see.
+- **Never capture through the debug pass-and-play (loopback) path.** It's `#if DEBUG` only and
+  compiled out of release, so it isn't the shipping experience. Reach the screens by pushing
+  fixture data in instead — a DEBUG-only preview transport that delivers a hand-built
+  `PlayerSnapshot` renders through the ordinary guest path.
+- Capture gotchas, both of which cost time before: the preview snapshot is taken on the **first
+  frame**, so any deal-in animation renders invisible (and Xcode preserves `@State` across edits,
+  so bumping an initial value won't fix it — the row has to be static for the shot); and the winner
+  preview lands on the **pre-win scoring replay** unless `replayBeforeWin` is temporarily defaulted
+  off.
+
 ## Order of operations in App Store Connect
 1. Create the app record (bundle ID, name, primary language).
 2. Fill **App Privacy** → Data Not Collected.
