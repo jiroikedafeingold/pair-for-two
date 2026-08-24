@@ -8,6 +8,43 @@ enum SoundSetting {
     static var enabled: Bool { (UserDefaults.standard.object(forKey: "soundEnabled") as? Bool) ?? true }
 }
 
+/// One sound effect, played entirely off the main thread.
+///
+/// Every call into `AVAudioPlayer` goes through one serial queue: `play()`, the rewind before it, and the
+/// initial `prepareToPlay()`. None of them is reliably fast, and on the main thread they cost taps —
+/// rapid `+1` presses were being swallowed while the main thread sat in audio code. (This file already
+/// documented the same class of problem for haptics during the deal-out.)
+///
+/// `@unchecked Sendable`: the player is built here and then only ever touched inside `queue`.
+private final class SoundEffect: @unchecked Sendable {
+    private let player: AVAudioPlayer
+    private let queue: DispatchQueue
+
+    init?(data: Data, queue: DispatchQueue, variableRate: Bool = false) {
+        guard let player = try? AVAudioPlayer(data: data) else { return nil }
+        player.enableRate = variableRate
+        self.player = player
+        self.queue = queue
+        queue.async { [self] in self.player.prepareToPlay() }
+    }
+
+    /// Restart from the top. `rate`/`volume` are only varied by the celebration pool.
+    func play(rate: Float? = nil, volume: Float? = nil) {
+        queue.async { [self] in
+            player.currentTime = 0
+            if let rate { player.rate = rate }
+            if let volume { player.volume = volume }
+            player.play()
+        }
+    }
+}
+
+/// A `CHHapticPatternPlayer` isn't `Sendable`, but starting one off the main thread is exactly what we
+/// want; this box carries it across without weakening anything else.
+private struct HapticStart: @unchecked Sendable {
+    let player: CHHapticPatternPlayer
+}
+
 /// Unified tactile + audio feedback for in-game actions. One call — `GameFeedback.shared.play(.cardPlay)`
 /// — fires a rich Core Haptics pattern (with a graceful UIKit fallback) and a matching sound effect.
 ///
@@ -19,7 +56,7 @@ final class GameFeedback {
     static let shared = GameFeedback()
 
     /// Every discrete moment the game gives feedback for.
-    enum Action {
+    enum Action: CaseIterable {
         case cardPlay        // a card lands on the pegging pile
         case discardSelect   // toggling a card for the crib
         case discardConfirm  // sending 2 to the crib
@@ -47,12 +84,17 @@ final class GameFeedback {
     private let rigidImpact = UIImpactFeedbackGenerator(style: .rigid)
     private let notify = UINotificationFeedbackGenerator()
 
-    private var players: [String: AVAudioPlayer] = [:]
+    private var players: [String: SoundEffect] = [:]
     private var audioReady = false
 
     // A small pool of firework players so celebration pops can overlap; driven by `playCelebration()`.
-    private var celebrationPool: [AVAudioPlayer] = []
+    private var celebrationPool: [SoundEffect] = []
     private var celebrationTask: Task<Void, Never>?
+
+    /// Everything that touches AVFoundation runs here, never on the main thread.
+    private let audioQueue = DispatchQueue(label: "com.jirofeingold.pairfortwo.audio", qos: .userInitiated)
+    /// Core Haptics gets its own queue, so decoding a sound can never delay a buzz or vice versa.
+    private let hapticQueue = DispatchQueue(label: "com.jirofeingold.pairfortwo.haptics", qos: .userInteractive)
 
     private init() {
         startEngine()
@@ -76,8 +118,8 @@ final class GameFeedback {
         // A small, soft tap for every score under 8; a firmer, harder tap for 8+ point hands.
         if supportsHaptics, let engine {
             do {
-                let player = try engine.makePlayer(with: scaledScorePattern(points: p))
-                try player.start(atTime: CHHapticTimeImmediate)
+                let start = HapticStart(player: try engine.makePlayer(with: scaledScorePattern(points: p)))
+                hapticQueue.async { try? start.player.start(atTime: CHHapticTimeImmediate) }
                 return
             } catch { /* fall through to the UIKit generators */ }
         }
@@ -113,21 +155,23 @@ final class GameFeedback {
         celebrationTask = Task { @MainActor [weak self] in
             for k in 0..<14 {
                 guard let self, !Task.isCancelled else { return }
-                let p = self.celebrationPool[k % self.celebrationPool.count]
-                p.currentTime = 0
-                p.rate = Float.random(in: 0.88...1.22)
-                p.volume = Float.random(in: 0.65...1.0)
-                p.play()
+                self.celebrationPool[k % self.celebrationPool.count]
+                    .play(rate: Float.random(in: 0.88...1.22), volume: Float.random(in: 0.65...1.0))
                 try? await Task.sleep(for: .seconds(Double.random(in: 0.26...0.6)))
             }
         }
     }
 
     /// Warm up the generators/engine ahead of a burst of actions (called when a game screen appears).
+    ///
+    /// Includes building every cached haptic pattern player up front. They're built lazily on first use
+    /// otherwise, and that first build costs a couple of milliseconds — landing on the first tap of a
+    /// score, which is exactly where a run of quick +1s starts.
     func prepare() {
         lightImpact.prepare(); mediumImpact.prepare(); heavyImpact.prepare(); rigidImpact.prepare()
         try? engine?.start()
         activateAudioSession()
+        if supportsHaptics { for action in Action.allCases { _ = hapticPlayer(for: action) } }
     }
 
     // MARK: Haptics
@@ -164,10 +208,17 @@ final class GameFeedback {
         guard supportsHaptics, engine != nil, let player = hapticPlayer(for: action) else {
             fallbackHaptic(action); return
         }
-        do {
-            try player.start(atTime: CHHapticTimeImmediate)
-        } catch {
-            fallbackHaptic(action)
+        // Starting a pattern is the other half of what was costing taps: this file already records a
+        // synchronous start() per card stalling the deal-out. Looking the cached player up stays here;
+        // only the start goes to the haptics queue. The UIKit fallbacks remain on the main thread —
+        // they're UIKit, and cheap.
+        let start = HapticStart(player: player)
+        hapticQueue.async { [weak self] in
+            do {
+                try start.player.start(atTime: CHHapticTimeImmediate)
+            } catch {
+                Task { @MainActor in self?.fallbackHaptic(action) }
+            }
         }
     }
 
@@ -290,10 +341,8 @@ final class GameFeedback {
     // MARK: Sound
 
     private func playSound(for action: Action) {
-        guard SoundSetting.enabled else { return }
-        guard audioReady, let player = players[soundKey(action)] else { return }
-        player.currentTime = 0
-        player.play()
+        guard SoundSetting.enabled, audioReady else { return }
+        players[soundKey(action)]?.play()   // hands off to the audio queue immediately
     }
 
     private func soundKey(_ action: Action) -> String {
@@ -313,35 +362,40 @@ final class GameFeedback {
     }
 
     private func activateAudioSession() {
-        let session = AVAudioSession.sharedInstance()
-        try? session.setCategory(.ambient, mode: .default, options: [.mixWithOthers])
-        try? session.setActive(true)
+        audioQueue.async {
+            let session = AVAudioSession.sharedInstance()
+            try? session.setCategory(.ambient, mode: .default, options: [.mixWithOthers])
+            try? session.setActive(true)
+        }
     }
 
+    /// Synthesise every effect and build its player off the main thread, adopting them once ready.
+    /// Sounds simply don't play until then, which is a beat after launch and inaudible — far better than
+    /// the alternative, which was synthesising a dozen WAVs on the main thread at first use.
     private func buildSounds() {
         activateAudioSession()
-        var ok = true
-        func register(_ key: String, _ samples: [Float]) {
-            guard let player = try? AVAudioPlayer(data: SoundSynthesis.wav(samples)) else { ok = false; return }
-            player.prepareToPlay()
-            players[key] = player
+        let queue = audioQueue
+        audioQueue.async { [weak self] in
+            // Driven by SoundSynthesis.allEffects so the app and the Android renderer can't drift
+            // apart on which sounds exist or how each is parameterised.
+            var built: [String: SoundEffect] = [:]
+            for effect in SoundSynthesis.allEffects where effect.key != "firework" {
+                if let sound = SoundEffect(data: SoundSynthesis.wav(effect.samples()), queue: queue) {
+                    built[effect.key] = sound
+                }
+            }
+            // Firework pool (whistle → boom → crackle), reused for the win celebration volley.
+            let fireworkData = SoundSynthesis.wav(SoundSynthesis.fireworkSamples())
+            let pool = (0..<4).compactMap {
+                _ in SoundEffect(data: fireworkData, queue: queue, variableRate: true)
+            }
+            Task { @MainActor in
+                guard let self else { return }
+                self.players = built
+                self.celebrationPool = pool
+                self.audioReady = !built.isEmpty
+            }
         }
-        // Driven by SoundSynthesis.allEffects so the app and the Android renderer can't drift
-        // apart on which sounds exist or how each is parameterised.
-        for effect in SoundSynthesis.allEffects where effect.key != "firework" {
-            register(effect.key, effect.samples())
-        }
-
-        // Firework pool (whistle → boom → crackle), reused for the win celebration volley.
-        let fireworkData = SoundSynthesis.wav(SoundSynthesis.fireworkSamples())
-        celebrationPool = (0..<4).compactMap { _ -> AVAudioPlayer? in
-            guard let p = try? AVAudioPlayer(data: fireworkData) else { return nil }
-            p.enableRate = true
-            p.prepareToPlay()
-            return p
-        }
-
-        audioReady = ok
     }
 
 }

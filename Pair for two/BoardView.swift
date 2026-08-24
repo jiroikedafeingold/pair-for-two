@@ -26,6 +26,7 @@ struct BoardView: View {
     @State private var topPending = 0
     @State private var editing: BoardSide?
     @State private var confirmingNewGame = false
+    @State private var saveTask: Task<Void, Never>?
 
     /// The near player is whoever set the app up; the far player is named on the board itself, since
     /// two people share this phone and only one of them owns it.
@@ -97,8 +98,8 @@ struct BoardView: View {
         }
         .task { await runFlipTimer() }
         .onAppear { if let saved = BoardGameStore.load() { game = saved } }
-        .onChange(of: game) { _, updated in BoardGameStore.save(updated) }
-        .onDisappear { BoardGameStore.save(game) }
+        .onChange(of: game) { _, updated in scheduleSave(updated) }
+        .onDisappear { saveTask?.cancel(); BoardGameStore.save(game) }
     }
 
     // MARK: One player's half
@@ -275,6 +276,21 @@ struct BoardView: View {
 
     /// Note an interaction, so the shared score doesn't turn under someone's finger.
     private func touch() { lastInteraction = Date() }
+
+    /// Persist a moment after the last change, off the main thread.
+    ///
+    /// This used to write on every change, synchronously, from `onChange` — so each `+1` tap encoded the
+    /// game and wrote a file before the next tap could be handled, which is precisely the kind of work
+    /// that swallows a quick run of taps. Nothing needs the file to be current mid-game: leaving the
+    /// screen and backgrounding both save directly.
+    private func scheduleSave(_ game: BoardGame) {
+        saveTask?.cancel()
+        saveTask = Task {
+            try? await Task.sleep(for: .milliseconds(600))
+            guard !Task.isCancelled else { return }
+            await Task.detached(priority: .utility) { BoardGameStore.save(game) }.value
+        }
+    }
 
     /// Turn the shared score to face a particular player, now. Used whenever someone changes their own
     /// score: they've just pegged, so the new total should be the right way up for them without waiting

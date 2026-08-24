@@ -7,7 +7,7 @@ import Foundation
 /// - Both devices also write a small **marker** (in `UserDefaults`) recording that a game is in
 ///   progress, this device's role, and a score summary — so *either* phone can show "Rejoin game".
 ///   The guest holds no state; it just reconnects and the host resyncs it.
-enum GamePersistence {
+nonisolated enum GamePersistence {
     private static let filename = "pairfortwo-game.json"
     private static let kActive = "resume.active"
     private static let kIsHost = "resume.isHost"
@@ -38,6 +38,24 @@ enum GamePersistence {
     }
 
     // MARK: Host — full state
+
+    /// Writes made *during play* run here rather than inline. Encoding the state and writing the file
+    /// was happening on the main thread on every intent — including every +1 — which is exactly the work
+    /// that swallows a quick run of taps. Serial, so writes can't interleave.
+    private static let writeQueue = DispatchQueue(label: "com.jirofeingold.pairfortwo.persistence",
+                                                 qos: .utility)
+
+    /// Save while the game is being played, off the main thread. Use `save` directly when the write has
+    /// to have completed before returning — going to the background, for instance.
+    static func saveInPlay(_ state: GameState,
+                           online: Bool = false,
+                           opponentGamePlayerID: String? = nil,
+                           opponentName: String? = nil) {
+        writeQueue.async {
+            save(state, online: online,
+                 opponentGamePlayerID: opponentGamePlayerID, opponentName: opponentName)
+        }
+    }
 
     static func save(_ state: GameState,
                      online: Bool = false,

@@ -459,9 +459,11 @@ final class GameViewModel {
             if state.phase == .gameOver {
                 GamePersistence.clear()
             } else {
-                GamePersistence.save(state, online: isOnline,
-                                     opponentGamePlayerID: onlineOpponentID,
-                                     opponentName: onlineOpponentName)
+                // Off the main thread: this runs on every intent, and a synchronous encode-and-write
+                // per tap is what makes a quick run of +1s drop presses.
+                GamePersistence.saveInPlay(state, online: isOnline,
+                                           opponentGamePlayerID: onlineOpponentID,
+                                           opponentName: onlineOpponentName)
             }
         }
     }
