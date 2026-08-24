@@ -17,6 +17,7 @@ struct RootView: View {
     @State private var activeMatchmaker: MatchmakerContext?   // Apple's matchmaking UI (fallback)
     @State private var wasBackgrounded = false                // distinguish a real background from a transient inactive
     @State private var showingHelp = false
+    @State private var showingStats = false
     @State private var showOnboarding = false
     @AppStorage("hasOnboarded") private var hasOnboarded = false
     @Environment(\.scenePhase) private var scenePhase
@@ -255,16 +256,29 @@ struct RootView: View {
             .padding(.horizontal, 28)
         }
         .overlay(alignment: .topTrailing) {
-            Button { showingHelp = true } label: {
-                Image(systemName: "questionmark.circle.fill")
-                    .font(.system(size: 24, weight: .semibold))
-                    .foregroundStyle(.white.opacity(0.85))
-                    .padding(.top, 8).padding(.trailing, 14)
+            HStack(spacing: 14) {
+                Button { showingStats = true } label: {
+                    Image(systemName: "chart.bar.fill")
+                        .font(.system(size: 21, weight: .semibold))
+                        .foregroundStyle(.white.opacity(0.85))
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Stats and game history")
+
+                Button { showingHelp = true } label: {
+                    Image(systemName: "questionmark.circle.fill")
+                        .font(.system(size: 24, weight: .semibold))
+                        .foregroundStyle(.white.opacity(0.85))
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("How to play")
             }
-            .buttonStyle(.plain)
-            .accessibilityLabel("How to play")
+            .padding(.top, 8).padding(.trailing, 14)
         }
         .onAppear { resumeMarker = GamePersistence.loadMarker() }
+        .sheet(isPresented: $showingStats) {
+            StatsView(onDone: { showingStats = false })
+        }
         .sheet(isPresented: $showingSettings) {
             SettingsView(onDone: { showingSettings = false })
         }

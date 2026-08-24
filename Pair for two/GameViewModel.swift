@@ -54,6 +54,21 @@ final class GameViewModel {
     nonisolated(unsafe) private var heartbeatTask: Task<Void, Never>?
     nonisolated(unsafe) private var watchdogTask: Task<Void, Never>?
 
+    // MARK: Stats bookkeeping
+    //
+    // Counted here, from the phases this device actually saw, rather than read off the snapshot: a guest
+    // holds no `GameState`, and `PlayerSnapshot` carries no hand number, so this is what both sides can
+    // agree on without widening the wire protocol.
+
+    /// When the first hand was dealt — the game's clock starts at the deal, not at the connect screen.
+    private var firstDealAt: Date?
+    /// Who dealt the opening hand (the deal alternates from there).
+    private var firstDealer: PlayerID?
+    /// Hands seen go by, counted on each entry into the discard phase.
+    private var handsObserved = 0
+    /// One record per game, however many times `.gameOver` is re-broadcast (the host heartbeats it).
+    private var recordedResult = false
+
     /// When anything last arrived from the peer. The host re-broadcasts its snapshot every couple of
     /// seconds, so on a guest this doubles as a liveness signal — see `startInboundWatchdog`.
     private var lastInboundAt = Date()
@@ -212,6 +227,49 @@ final class GameViewModel {
         }
     }
 
+    /// Watch the phases go past so a finished game can be written to this device's history. Called on
+    /// every snapshot change, host and guest alike.
+    private func trackProgress(from old: GamePhase, to new: GamePhase) {
+        guard old != new else { return }
+        if new == .discardToCrib {
+            handsObserved += 1
+            if firstDealAt == nil { firstDealAt = Date() }
+            if firstDealer == nil { firstDealer = snapshot.dealer }
+        }
+        if new == .gameOver { recordFinishedGame() }
+        // A rematch (Play again) deals straight into a fresh game, so re-arm for the next result.
+        if new == .discardToCrib, recordedResult {
+            recordedResult = false
+            firstDealAt = Date()
+            firstDealer = snapshot.dealer
+            handsObserved = 1
+        }
+    }
+
+    /// Write the finished game to this device's local history. Pass-and-play (debug) games aren't
+    /// recorded — a history is a record of games against a real opponent.
+    private func recordFinishedGame() {
+        guard !isLoopback, !recordedResult else { return }
+        recordedResult = true
+        let s = snapshot
+        // The biggest single count claimed for a hand or the crib. Pegging claims are excluded: they're
+        // points, not a hand's worth.
+        let showPhases: Set<GamePhase> = [.showPone, .showDealer, .showCrib]
+        let best = s.scoreLog
+            .filter { $0.player == s.you && showPhases.contains($0.phase) }
+            .map(\.amount).max() ?? 0
+        StatsStore.record(GameRecord(id: UUID(),
+                                     finishedAt: Date(),
+                                     yourName: s.yourName,
+                                     opponentName: s.opponentName,
+                                     yourScore: s.yourScore,
+                                     opponentScore: s.opponentScore,
+                                     youDealtFirst: firstDealer == s.you,
+                                     duration: Date().timeIntervalSince(firstDealAt ?? Date()),
+                                     hands: max(handsObserved, 1),
+                                     yourBestHand: best))
+    }
+
     /// A guest can't tell a quiet link from a dead one by itself: it sends only when the player acts,
     /// so nothing of its own ever fails, and MultipeerConnectivity will happily report a
     /// background/foreground-killed link as connected for its full keep-alive window (or, on the
@@ -272,6 +330,7 @@ final class GameViewModel {
                 snapshot = snap
                 fixedPlayer = snap.you
                 if snap.phase != previousPhase { selectedForDiscard.removeAll() }
+                trackProgress(from: previousPhase, to: snap.phase)
                 // Guest marker so this device can also offer "Rejoin game" (nearby games only).
                 if snap.phase == .gameOver { GamePersistence.clear() }
                 else if resumable, snap.phase != .connecting { GamePersistence.saveMarker(isHost: false, summary: snapshotSummary(snap)) }
@@ -342,7 +401,9 @@ final class GameViewModel {
             selectedForDiscard.removeAll()
             lastViewer = renderPlayer
         }
+        let previousPhase = snapshot.phase
         snapshot = state.snapshot(for: renderPlayer)
+        trackProgress(from: previousPhase, to: snapshot.phase)
         if isHost && !isLoopback {
             let guestSnapshot = state.snapshot(for: fixedPlayer.opponent)
             Task { await transport.send(.snapshot(guestSnapshot)) }
