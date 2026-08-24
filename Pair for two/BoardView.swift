@@ -7,7 +7,8 @@ import SwiftUI
 /// **The rotation is the whole design.** The far player's half is drawn upside down (`rotationEffect`
 /// of 180°), which also rotates its hit-testing — so their slider drags the way *they* see it, toward
 /// their own right. The shared readout between the halves can only face one player at a time, so it
-/// turns on a timer rather than picking a favourite.
+/// turns to whoever just changed their score, and otherwise alternates on a timer rather than picking a
+/// favourite. Pegging is the moment you most want to read the number, so that beats the timer.
 ///
 /// Deliberately just a pegboard: no hands, no crib, no cut, because the app can't see the cards. Games
 /// played here aren't recorded in Stats either — this is a utility, and lifetime "hands played" or
@@ -121,7 +122,7 @@ struct BoardView: View {
                    onPlusOne: { peg(1, to: side) },
                    onUndo: {
                        GameFeedback.shared.play(.advance)
-                       touch()
+                       face(side)   // correcting your own score counts too — face the person doing it
                        game.undo(side)
                    })
             .padding(.horizontal, 10)
@@ -260,7 +261,7 @@ struct BoardView: View {
 
     private func peg(_ amount: Int, to side: BoardSide) {
         GameFeedback.shared.play(.score)
-        touch()
+        face(side)
         game.add(amount, to: side)
     }
 
@@ -274,6 +275,15 @@ struct BoardView: View {
 
     /// Note an interaction, so the shared score doesn't turn under someone's finger.
     private func touch() { lastInteraction = Date() }
+
+    /// Turn the shared score to face a particular player, now. Used whenever someone changes their own
+    /// score: they've just pegged, so the new total should be the right way up for them without waiting
+    /// on the timer. The settle window then keeps it there for a moment before the timer resumes
+    /// alternating, so the other player still gets to read it.
+    private func face(_ side: BoardSide) {
+        touch()
+        flipped = (side == .top)
+    }
 
     /// Turn the shared score over on a timer, skipping any tick that lands while a peg is being staged
     /// or has just been made.
