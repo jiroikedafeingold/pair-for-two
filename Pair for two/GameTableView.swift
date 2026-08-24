@@ -96,7 +96,7 @@ struct GameTableView: View {
             .onChange(of: showingSettings) { _, isShowing in
                 if !isShowing {
                     vm.updateLocalIdentity(name: localName.trimmingCharacters(in: .whitespaces), colorID: localColorID)
-                    let newMode = ScoringMode(rawValue: scoringModeRaw) ?? .feedback
+                    let newMode = ScoringMode(rawValue: scoringModeRaw) ?? .off
                     // Note that WE changed it, so we don't toast ourselves when the shared state updates.
                     if newMode != vm.snapshot.scoringMode { initiatedScoringChange = true }
                     vm.setScoringMode(newMode)

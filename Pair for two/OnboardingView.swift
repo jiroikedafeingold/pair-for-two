@@ -41,7 +41,7 @@ struct OnboardingView: View {
               interactiveScoring: true),
         Slide(icon: "gearshape.fill",
               title: "Make it yours",
-              body: "Tap the gear in the top right for settings: name & colour, card back, scoring mode, and toggles for haptics, sound, and effects. Tap the ? anytime for the full how‑to.")
+              body: "Tap the gear in the top right for settings: name & colour, card back, haptics, sound — and Scoring, where “Automatic” hands the counting to the app if you'd rather not keep score yourself. Tap the ? anytime for the full how‑to.")
     ]
 
     var body: some View {
@@ -157,11 +157,14 @@ struct OnboardingView: View {
 
     /// Tappable scoring-mode chooser shown on the scoring slide. Each option is a single compact
     /// line so all three fit without scrolling. Writes straight to the shared `scoringMode` setting;
-    /// it starts on the default (Player responsibility — fully manual).
+    /// it starts on the default, Player responsibility — you count, like a physical board. The footnote
+    /// spells out that the app can do the counting instead, and where to turn that on, so nobody has to
+    /// discover automatic scoring by accident.
     private var scoringPicker: some View {
         VStack(spacing: 8) {
             ForEach(ScoringMode.allCases, id: \.rawValue) { mode in
                 let selected = scoringModeRaw == mode.rawValue
+                let isDefault = mode == .off
                 Button {
                     withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) { scoringModeRaw = mode.rawValue }
                 } label: {
@@ -171,6 +174,12 @@ struct OnboardingView: View {
                             .foregroundStyle(selected ? Color.cribGold : .white.opacity(0.5))
                         Text(mode.title).font(.callout.weight(.semibold)).foregroundStyle(.white)
                         Text("— \(scoringBlurb(mode))").font(.caption).foregroundStyle(.white.opacity(0.65))
+                        if isDefault {
+                            Text("default").font(.caption2.weight(.bold))
+                                .foregroundStyle(.black.opacity(0.8))
+                                .padding(.horizontal, 6).padding(.vertical, 2)
+                                .background(Capsule().fill(Color.cribGold.opacity(0.85)))
+                        }
                         Spacer(minLength: 0)
                     }
                     .lineLimit(1)
@@ -183,6 +192,12 @@ struct OnboardingView: View {
                 }
                 .buttonStyle(.plain)
             }
+            Text("You keep score by default, like a real board. Want the app to count and add every point for you? Pick **Automatic** here, or switch it on later in **Settings → Scoring**.")
+                .font(.caption2)
+                .foregroundStyle(.white.opacity(0.7))
+                .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
+                .padding(.top, 2)
         }
         .frame(maxWidth: 520)
         .padding(.top, 2)

@@ -167,7 +167,7 @@ final class GameViewModel {
                        cribOwners: nil,
                        starter: nil, starterCutLifted: false,
                        playSequence: [], runningCount: 0, lapCardCount: 0, whoseTurn: nil, lastToPlay: nil,
-                       yourScore: 0, opponentScore: 0, flags: [], scoringMode: .feedback,
+                       yourScore: 0, opponentScore: 0, flags: [], scoringMode: .off,
                        cutForDeal: [:], winner: nil,
                        yourName: name, opponentName: "Opponent",
                        yourColorID: colorID, opponentColorID: you == .one ? 7 : 1,

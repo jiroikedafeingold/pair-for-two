@@ -111,7 +111,7 @@ struct RootView: View {
         resumeRole = nil
         vm = GameViewModel.networked(transport: transport,
                                      localName: playerName, localColorID: colorID,
-                                     scoringMode: ScoringMode(rawValue: scoringModeRaw) ?? .feedback,
+                                     scoringMode: ScoringMode(rawValue: scoringModeRaw) ?? .off,
                                      resumable: false)
         screen = .game
     }
@@ -135,7 +135,7 @@ struct RootView: View {
                                 vm = GameViewModel.networked(transport: session,
                                                              localName: playerName,
                                                              localColorID: colorID,
-                                                             scoringMode: ScoringMode(rawValue: scoringModeRaw) ?? .feedback)
+                                                             scoringMode: ScoringMode(rawValue: scoringModeRaw) ?? .off)
                             } else {
                                 // Fresh game — isHost was already set by Host/Join. Starting a new game
                                 // forgets any other in-progress game on this device (the new game writes
@@ -145,7 +145,7 @@ struct RootView: View {
                                 vm = GameViewModel.networked(transport: session,
                                                              localName: playerName,
                                                              localColorID: colorID,
-                                                             scoringMode: ScoringMode(rawValue: scoringModeRaw) ?? .feedback)
+                                                             scoringMode: ScoringMode(rawValue: scoringModeRaw) ?? .off)
                             }
                             screen = .game
                         },
