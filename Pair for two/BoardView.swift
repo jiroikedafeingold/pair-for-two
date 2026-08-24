@@ -37,6 +37,9 @@ struct BoardView: View {
     @AppStorage("confirmRelease") private var confirmRelease = true
     @AppStorage("scoreTrackEnabled") private var trackEnabled = true
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    /// Compact height means a phone in landscape; regular means an iPad. Drives how much of the screen
+    /// the sliders keep versus the score — not a device check, a space check.
+    @Environment(\.verticalSizeClass) private var verticalSizeClass
 
     /// How much of the loop a score fills: nothing at the start, a closed ring at game point.
     private func loopFraction(_ points: Int) -> Double {
@@ -67,16 +70,23 @@ struct BoardView: View {
 
     var body: some View {
         GeometryReader { geo in
-            let bandHeight: CGFloat = min(96, geo.size.height * 0.24)
+            // The sliders take a fixed slice at each edge and the score gets everything else — it's the
+            // thing both players are actually reading, so it should dominate. A phone in landscape is
+            // tight, so its sliders go close to the edges to leave the middle as much room as possible;
+            // an iPad keeps them comfortably inset and still has hundreds of points to spare.
+            let sliderHeight: CGFloat = verticalSizeClass == .compact ? 86 : 250
+            let bandHeight = max(140, geo.size.height - 16 - sliderHeight * 2)
             VStack(spacing: 0) {
                 // The far player's half, turned to face them.
                 panel(for: .top)
+                    .frame(height: sliderHeight)
                     .rotationEffect(.degrees(180))
 
-                sharedBand
+                sharedBand(height: bandHeight)
                     .frame(height: bandHeight)
 
                 panel(for: .bottom)
+                    .frame(height: sliderHeight)
             }
             .padding(.vertical, 8)
             .frame(width: geo.size.width, height: geo.size.height)
@@ -104,7 +114,7 @@ struct BoardView: View {
 
     // MARK: One player's half
 
-    @ViewBuilder private func panel(for side: BoardSide) -> some View {
+    @ViewBuilder private func slider(for side: BoardSide) -> some View {
         let isNear = side == .bottom
         let theme = playerTheme(colorID: isNear ? nearColorID : farColorID)
         let otherTheme = playerTheme(colorID: isNear ? farColorID : nearColorID)
@@ -126,37 +136,46 @@ struct BoardView: View {
                        face(side)   // correcting your own score counts too — face the person doing it
                        game.undo(side)
                    })
-            .padding(.horizontal, 10)
-            .frame(maxHeight: .infinity)
-            // Tap your own name to change it (or your colour) without leaving the game.
-            .overlay(alignment: .bottomLeading) {
-                Button { editing = side } label: {
-                    Image(systemName: "pencil.circle.fill")
-                        .font(.system(size: 17, weight: .semibold))
-                        .foregroundStyle(.white.opacity(0.45))
-                        .padding(10)
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel("Edit \(isNear ? nearLabel : farLabel)'s name and colour")
+    }
+
+    /// A player's slider with the edit button beside it — to the right as that player sees it, since the
+    /// far half is rotated. Beside rather than below on purpose: under the slider it was eating the
+    /// vertical space the score wants.
+    @ViewBuilder private func panel(for side: BoardSide) -> some View {
+        let isNear = side == .bottom
+        HStack(spacing: 6) {
+            slider(for: side)
+            Button { editing = side } label: {
+                Image(systemName: "pencil.circle.fill")
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundStyle(.white.opacity(0.45))
+                    .frame(width: 34, height: 34)
             }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Edit \(isNear ? nearLabel : farLabel)'s name and colour")
+        }
+        .padding(.horizontal, 10)
     }
 
     // MARK: The shared middle
 
     /// Both scores, large, turning to face each player in turn. It sits between the two halves because
     /// that's the one place neither player owns.
-    private var sharedBand: some View {
-        ZStack {
+    private func sharedBand(height: CGFloat) -> some View {
+        // Everything in here scales with the space it's been given: a big region with small numbers in
+        // the middle of it would be a waste of the room.
+        let scoreSize = min(150, max(40, height * 0.42))
+        let nameSize = min(30, max(13, height * 0.085))
+        let inset = min(96, max(58, height * 0.16))
+        return ZStack {
             Rectangle().fill(Color.black.opacity(0.22))
             HStack(spacing: 0) {
                 exitButton
-                sharedScore(.bottom)
-                Capsule()
-                    .fill(LinearGradient(colors: [.white.opacity(0.05), .white.opacity(0.4), .white.opacity(0.05)],
-                                         startPoint: .top, endPoint: .bottom))
-                    .frame(width: 2, height: 44)
-                sharedScore(.top)
-                newGameButton
+                sharedScore(.bottom, scoreSize: scoreSize, nameSize: nameSize)
+                resetControl(lineHeight: height * 0.18)
+                sharedScore(.top, scoreSize: scoreSize, nameSize: nameSize)
+                // Balances the exit button on the other side so the scores stay centred.
+                Color.clear.frame(width: 34, height: 1)
             }
             .padding(.horizontal, 12)
 
@@ -167,10 +186,10 @@ struct BoardView: View {
                                   youColor: playerTheme(colorID: nearColorID).primary,
                                   opponentFraction: loopFraction(game.score(.top)),
                                   opponentColor: playerTheme(colorID: farColorID).primary,
-                                  cornerRadius: 26)
+                                  cornerRadius: min(60, height * 0.28))
                     // Clear of the buttons at either end of the band, so the loop doesn't run through them.
-                    .padding(.horizontal, 66)
-                    .padding(.vertical, 4)
+                    .padding(.horizontal, inset)
+                    .padding(.vertical, 6)
             }
         }
         // Tap it to turn it now rather than waiting for the timer.
@@ -184,17 +203,17 @@ struct BoardView: View {
         .accessibilityHint("Turns to face each player in turn. Double tap to turn it now.")
     }
 
-    @ViewBuilder private func sharedScore(_ side: BoardSide) -> some View {
+    @ViewBuilder private func sharedScore(_ side: BoardSide, scoreSize: CGFloat, nameSize: CGFloat) -> some View {
         // Only the scores turn; the buttons either side of them stay put.
         let isNear = side == .bottom
         let theme = playerTheme(colorID: isNear ? nearColorID : farColorID)
         VStack(spacing: 0) {
             Text((isNear ? nearLabel : farLabel).uppercased())
-                .font(.caption.weight(.heavy))
+                .font(.system(size: nameSize, weight: .heavy, design: .rounded))
                 .foregroundStyle(theme.primary)
                 .lineLimit(1).minimumScaleFactor(0.6)
             Text("\(game.score(side))")
-                .font(.system(size: 40, weight: .heavy, design: .rounded))
+                .font(.system(size: scoreSize, weight: .heavy, design: .rounded))
                 .foregroundStyle(.white)
                 .monospacedDigit()
                 .contentTransition(.numericText(value: Double(game.score(side))))
@@ -229,18 +248,35 @@ struct BoardView: View {
         .accessibilityLabel("Back to menu")
     }
 
-    private var newGameButton: some View {
-        Button {
-            if game.hasProgress { confirmingNewGame = true } else { newGame() }
-        } label: {
-            Image(systemName: "arrow.counterclockwise")
-                .font(.system(size: 15, weight: .semibold))
-                .foregroundStyle(.white.opacity(0.7))
-                .padding(9)
-                .background(Circle().fill(Color.black.opacity(0.3)))
+    /// The divider between the two scores, with the reset on it: the middle of the board belongs to
+    /// neither player, which is exactly right for the one control that affects them both. Circular, so it
+    /// reads the same from either side, and it always asks first once there's a game to lose.
+    private func resetControl(lineHeight: CGFloat) -> some View {
+        VStack(spacing: 10) {
+            dividerLine.frame(height: lineHeight)
+            Button {
+                if game.hasProgress { confirmingNewGame = true } else { newGame() }
+            } label: {
+                Image(systemName: "arrow.counterclockwise")
+                    .font(.system(size: 16, weight: .bold))
+                    .foregroundStyle(.white.opacity(0.75))
+                    .frame(width: 38, height: 38)
+                    .background(Circle().fill(Color.black.opacity(0.35)))
+                    .overlay(Circle().stroke(.white.opacity(0.15), lineWidth: 1))
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Reset the board")
+            .accessibilityHint("Clears both scores. Asks first.")
+            dividerLine.frame(height: lineHeight)
         }
-        .padding(.top, 6).padding(.trailing, 10)
-        .accessibilityLabel("New game")
+        .frame(width: 44)
+    }
+
+    private var dividerLine: some View {
+        Capsule()
+            .fill(LinearGradient(colors: [.white.opacity(0.05), .white.opacity(0.35), .white.opacity(0.05)],
+                                 startPoint: .top, endPoint: .bottom))
+            .frame(width: 2)
     }
 
     @ViewBuilder private var winner: some View {

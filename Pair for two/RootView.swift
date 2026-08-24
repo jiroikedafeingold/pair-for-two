@@ -38,6 +38,14 @@ struct RootView: View {
     @AppStorage("localColorID") private var colorID = 1
     @AppStorage("scoringMode") private var scoringModeRaw = ScoringMode.off.rawValue
 
+    /// What to call the device in copy that points at it ("use the iPad as the board").
+    ///
+    /// The one place an idiom check is right: this is naming the hardware in a sentence, not deciding a
+    /// layout. Size classes can't tell an iPad from a big iPhone in landscape, and they shouldn't have to.
+    private static var deviceWord: String {
+        UIDevice.current.userInterfaceIdiom == .pad ? "iPad" : "phone"
+    }
+
     /// Trimmed, non-empty player name.
     private var playerName: String {
         let trimmed = name.trimmingCharacters(in: .whitespaces)
@@ -431,7 +439,7 @@ struct RootView: View {
                         .tint(Color.white.opacity(0.22))
                         .foregroundStyle(.white)
 
-                        Text("Playing with real cards? Use the phone as the board.")
+                        Text("Playing with real cards? Use the \(Self.deviceWord) as the board.")
                             .font(.caption2).foregroundStyle(.white.opacity(0.55))
                             .multilineTextAlignment(.center)
                     }
