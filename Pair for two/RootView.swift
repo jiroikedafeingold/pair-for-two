@@ -4,7 +4,7 @@ import GameKit
 /// App entry. Two-phone play: set up your own name/colour, then Play nearby (Multipeer) or Play
 /// online (Game Center). Single-device pass-and-play was removed — this is a two-phone game.
 struct RootView: View {
-    private enum Screen { case menu, connect, rejoiningOnline, game }
+    private enum Screen { case menu, connect, rejoiningOnline, game, board }
 
     @State private var screen: Screen = .menu
     @State private var vm: GameViewModel?
@@ -27,6 +27,9 @@ struct RootView: View {
     @State private var rejoinOpponentName: String?
     @State private var rejoinIsHost = false
     @State private var rejoinFailure: String?
+    /// Whether the board has a game part-way through, so the menu can offer to go back to it. Held in
+    /// state rather than read per render — it's a file check.
+    @State private var boardResumeAvailable = BoardGameStore.load() != nil
     @State private var showOnboarding = false
     @AppStorage("hasOnboarded") private var hasOnboarded = false
     @Environment(\.scenePhase) private var scenePhase
@@ -241,6 +244,12 @@ struct RootView: View {
         case .rejoiningOnline:
             onlineRejoinWaiting
 
+        case .board:
+            BoardView(onExit: {
+                boardResumeAvailable = BoardGameStore.load() != nil
+                screen = .menu
+            })
+
         case .game:
             if let vm {
                 GameTableView(vm: vm, onExit: {
@@ -405,6 +414,28 @@ struct RootView: View {
                         }
                     }
 
+                    // The board on its own: one phone between two players, real cards in hand. Not the
+                    // pass-and-play mode that was removed — nothing is dealt here, it only keeps score.
+                    VStack(spacing: 4) {
+                        Button {
+                            screen = .board
+                        } label: {
+                            HStack(spacing: 8) {
+                                Image(systemName: "rectangle.split.2x1")
+                                Text(boardResumeAvailable ? "Back to your scoreboard" : "Keep score").fontWeight(.bold)
+                            }
+                            .font(.headline)
+                            .padding(.horizontal, 26).padding(.vertical, 11)
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .tint(Color.white.opacity(0.22))
+                        .foregroundStyle(.white)
+
+                        Text("Playing with real cards? Use the phone as the board.")
+                            .font(.caption2).foregroundStyle(.white.opacity(0.55))
+                            .multilineTextAlignment(.center)
+                    }
+
             }
             .frame(maxWidth: .infinity)
             .padding(.horizontal, 28)
@@ -429,7 +460,10 @@ struct RootView: View {
             }
             .padding(.top, 8).padding(.trailing, 14)
         }
-        .onAppear { resumeMarker = GamePersistence.loadMarker() }
+        .onAppear {
+            resumeMarker = GamePersistence.loadMarker()
+            boardResumeAvailable = BoardGameStore.load() != nil
+        }
         .sheet(isPresented: $showingStats) {
             StatsView(onDone: { showingStats = false })
         }

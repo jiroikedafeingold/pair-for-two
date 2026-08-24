@@ -23,6 +23,10 @@ struct ScorePanel: View {
     /// progress loops — your colour on the outer edge, the opponent's just inside it. When false
     /// (pass-and-play, one panel per player) only this player's own loop is drawn.
     var showOpponentTrack: Bool = false
+    /// Set false to drop this panel's own score readout and progress loop, for a screen that shows the
+    /// score elsewhere — the board mode puts both in a shared band between the two players, and having
+    /// them here as well says the same number three times.
+    var showsScore: Bool = true
     /// Reports this panel's currently-uncommitted amount (slider/​+1 staged in a confirm mode) so the
     /// screen can prompt before advancing. `clearSignal` (when it changes) tells the panel to drop its
     /// staged pending — used after the amount has been claimed elsewhere.
@@ -86,6 +90,7 @@ struct ScorePanel: View {
         ZStack {
             // Live score readout behind the controls (replaces Criboard's name watermark): your score
             // in your colour, the opponent's in theirs, with their pending "+X" right beside it.
+            if showsScore {
             HStack(spacing: 6) {
                 Text("\(score)").foregroundStyle(primary.opacity(0.85))
                 Text("/").foregroundStyle(.white.opacity(0.35))
@@ -110,6 +115,7 @@ struct ScorePanel: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .allowsHitTesting(false)
             .accessibilityLabel("\(name): \(score) points, opponent \(opponentScore)")
+            }
 
             HStack(spacing: 12) {
                 Button {
@@ -219,7 +225,7 @@ struct ScorePanel: View {
         // they climb toward 121, closing into a complete loop at game point. Overlaid (not clipped)
         // so the stroke rides the rounded edge.
         .overlay {
-            if scoreTrackEnabled {
+            if scoreTrackEnabled, showsScore {
                 ScoreTrackOverlay(youFraction: loopFraction(score), youColor: primary,
                                   opponentFraction: showOpponentTrack ? loopFraction(opponentScore) : nil,
                                   opponentColor: opponentColor)
