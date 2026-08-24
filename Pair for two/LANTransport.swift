@@ -167,6 +167,7 @@ final class LANTransport: NearbyTransport {
     }
 
     private func bind(_ conn: NWConnection) {
+        connection?.cancel()   // never leave a half-open attempt running alongside a new one
         connection = conn
         conn.stateUpdateHandler = { [weak self] state in
             Task { @MainActor in
@@ -176,6 +177,9 @@ final class LANTransport: NearbyTransport {
                     self.browser?.cancel(); self.browser = nil
                     self.markConnected()
                 case .failed, .cancelled:
+                    // Clear it only if it's still the live one, then recover. Dropping the reference
+                    // is what lets the reconnect loop start a fresh attempt.
+                    if self.connection === conn { self.connection = nil }
                     self.handleDrop()
                 case .waiting:
                     // Usually the local-network permission prompt, or the host not up yet.
@@ -276,17 +280,28 @@ final class LANTransport: NearbyTransport {
 
     /// While reconnecting, a guest re-invites the first host it rediscovers. The host may not
     /// be advertising again yet, so keep looking rather than giving up after one pass.
+    ///
+    /// The loop deliberately does *not* stop once it has opened a connection: if that attempt fails,
+    /// `handleDrop` sees we're already `.reconnecting` and (rightly) doesn't start a second recovery,
+    /// so returning here used to strand the guest in "reconnecting" forever after one bad attempt.
+    /// It keeps going until the connection actually reports `.ready`, which clears `.reconnecting`.
+    ///
+    /// Restarting the browser only when nothing has been discovered, and no more than every third
+    /// pass, so discovery isn't reset before Bonjour can finish.
     private func startRebrowseRetry() {
         reconnectTask?.cancel()
         reconnectTask = Task { @MainActor [weak self] in
+            var pass = 0
             while true {
                 try? await Task.sleep(for: .seconds(3))
                 guard let self, self.phase == .reconnecting else { return }
+                pass += 1
+                if self.connection != nil { continue }          // an attempt is still in progress
                 if let peer = self.discoveredPeers.first {
                     self.openConnection(to: peer.endpoint)
-                    return
+                } else if pass % 3 == 0 {
+                    self.startBrowser()
                 }
-                self.startBrowser()
             }
         }
     }

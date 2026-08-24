@@ -52,6 +52,13 @@ final class GameViewModel {
     private var lastViewer: PlayerID?
     nonisolated(unsafe) private var eventsTask: Task<Void, Never>?
     nonisolated(unsafe) private var heartbeatTask: Task<Void, Never>?
+    nonisolated(unsafe) private var watchdogTask: Task<Void, Never>?
+
+    /// When anything last arrived from the peer. The host re-broadcasts its snapshot every couple of
+    /// seconds, so on a guest this doubles as a liveness signal — see `startInboundWatchdog`.
+    private var lastInboundAt = Date()
+    /// How long a guest tolerates silence before assuming the link is dead. Four-ish missed heartbeats.
+    private static let inboundSilenceLimit: TimeInterval = 10
 
     // MARK: Init / factories
 
@@ -84,6 +91,7 @@ final class GameViewModel {
         // Resuming host: state is pre-loaded, so start the heartbeat now (normally started once the
         // guest joins). The guest resyncs on reconnect.
         if isHost, state != nil, !isLoopback { startHeartbeat() }
+        if !isHost, !isLoopback { startInboundWatchdog() }
     }
 
 #if DEBUG
@@ -184,6 +192,7 @@ final class GameViewModel {
         switch event {
         case .connected:
             connection = .connected
+            lastInboundAt = Date()
             onConnected()
             // On a *re*connect the game already exists — the host just replays the current snapshot.
             if isHost, state != nil { refreshAndBroadcast() }
@@ -198,7 +207,32 @@ final class GameViewModel {
                 heartbeatTask?.cancel()
             }
         case .received(let message):
+            lastInboundAt = Date()
             receive(message)
+        }
+    }
+
+    /// A guest can't tell a quiet link from a dead one by itself: it sends only when the player acts,
+    /// so nothing of its own ever fails, and MultipeerConnectivity will happily report a
+    /// background/foreground-killed link as connected for its full keep-alive window (or, on the
+    /// evidence, indefinitely). The host's snapshot heartbeat is the tell — it arrives every couple of
+    /// seconds, so silence past `inboundSilenceLimit` means the link is gone whatever the OS says.
+    ///
+    /// Forcing a re-pair from this side also wakes the host: tearing down the old session hands it a
+    /// disconnect, which starts its own recovery. Without this the pair could sit "connected" forever,
+    /// each phone waiting for the other.
+    private func startInboundWatchdog() {
+        watchdogTask?.cancel()
+        watchdogTask = Task { @MainActor [weak self] in
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .seconds(2))
+                guard let self else { return }
+                guard self.connection == .connected, !self.ended,
+                      self.snapshot.phase != .connecting, self.snapshot.phase != .gameOver else { continue }
+                guard Date().timeIntervalSince(self.lastInboundAt) > Self.inboundSilenceLimit else { continue }
+                self.lastInboundAt = Date()   // one nudge per silent window, not one per tick
+                self.transport.reconnect(force: true)
+            }
         }
     }
 
@@ -705,6 +739,7 @@ final class GameViewModel {
     private func endGame() {
         guard !ended else { return }
         heartbeatTask?.cancel()
+        watchdogTask?.cancel()
         GamePersistence.clear()
         ended = true
     }
@@ -712,5 +747,6 @@ final class GameViewModel {
     deinit {
         eventsTask?.cancel()
         heartbeatTask?.cancel()
+        watchdogTask?.cancel()
     }
 }

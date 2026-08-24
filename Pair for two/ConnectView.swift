@@ -23,7 +23,7 @@ struct ConnectView: View {
 
     @State private var mc: MultipeerSession
     @State private var lan: LANTransport
-    @State private var resumeStalled = false   // surfaced after a while so a stuck resume isn't a silent spinner
+    @State private var connectStalled = false  // surfaced after a while so a stuck connect isn't a silent spinner
     @State private var handedOff = false       // both transports can report .connected; only hand up once
 
     private var resuming: Bool { resumeRole != nil }
@@ -133,11 +133,17 @@ struct ConnectView: View {
             // who holds the saved state (in onConnected), not by who advertises.
             if resuming, mc.phase == .idle { mc.startRendezvous() }
         }
-        .task {
-            // If a resume hasn't paired after a while, stop pretending and offer a way out.
-            guard resuming else { return }
+        // Pairing now retries by itself rather than failing after one timed-out invitation, so
+        // "Connecting…" can legitimately last a while. Offer an escape hatch (and the likely fixes)
+        // once it has gone on long enough to feel stuck — for a fresh connect as much as a resume,
+        // which is all the old resume-only timer covered. Keyed on the phase, so it re-arms on each
+        // new attempt and clears the moment something else happens.
+        .task(id: uiPhase) {
+            connectStalled = false
+            guard uiPhase == .connecting else { return }
             try? await Task.sleep(for: .seconds(15))
-            if mc.phase != .connected { resumeStalled = true }
+            guard !Task.isCancelled else { return }
+            connectStalled = true
         }
     }
 
@@ -195,6 +201,7 @@ struct ConnectView: View {
                     .foregroundStyle(.white)
                 Text("Have the other player tap **\(resuming ? "Rejoin game" : "Join a game")** on their phone.")
                     .font(.caption).foregroundStyle(.white.opacity(0.6)).multilineTextAlignment(.center)
+                radioHint
             }
 
         case .browsing where resumeRole == .guest:
@@ -212,11 +219,12 @@ struct ConnectView: View {
                     Text("Looking for nearby games…").foregroundStyle(.white)
                 }
                 if rows.isEmpty {
-                    VStack(spacing: 4) {
+                    VStack(spacing: 6) {
                         Text("No hosts yet — make sure the other phone is hosting.")
                             .font(.caption).foregroundStyle(.white.opacity(0.6))
                         Text("For an Android phone, both devices must be on the same Wi-Fi network.")
                             .font(.caption2).foregroundStyle(.white.opacity(0.45))
+                        radioHint
                     }
                     .multilineTextAlignment(.center)
                 } else {
@@ -248,15 +256,18 @@ struct ConnectView: View {
                     Text("Make sure the other phone also tapped **Rejoin game**.")
                         .font(.caption).foregroundStyle(.white.opacity(0.6)).multilineTextAlignment(.center)
                 }
-                if resumeStalled {
+                if connectStalled {
                     VStack(spacing: 8) {
-                        Text("Still can't find the other phone. If it keeps failing, both players can go back and start a **New game** — or check that Local Network access is allowed in Settings (it can reset after reinstalling).")
+                        Text(resuming
+                             ? "Still trying. If it keeps failing, both players can go back and start a **New game** — or check that Local Network access is allowed in Settings (it can reset after reinstalling)."
+                             : "Still trying — it keeps retrying on its own. Bring the phones closer, and check that Local Network access is allowed in Settings (it can reset after reinstalling).")
                             .font(.caption).foregroundStyle(Color.cribGold).multilineTextAlignment(.center)
+                        radioHint
                         Button("Back to menu") { stopAll(); onCancel() }
                             .buttonStyle(.borderedProminent).tint(.cribGold).foregroundStyle(.black)
                     }
                     .padding(.top, 6)
-                    .frame(maxWidth: 360)
+                    .frame(maxWidth: 380)
                 }
             }
 
@@ -273,6 +284,18 @@ struct ConnectView: View {
                     .buttonStyle(.borderedProminent).tint(.cribGold).foregroundStyle(.black)
             }
         }
+    }
+
+    /// The single most useful thing to tell someone whose phones won't pair. MultipeerConnectivity
+    /// pairs over peer-to-peer Wi-Fi (AWDL) *or* Bluetooth; the Wi-Fi radio being switched on is what
+    /// makes the fast path available, and it does not need to be joined to any network. With Wi-Fi off
+    /// it's Bluetooth alone, which is dramatically slower to discover and to hand over — the case where
+    /// "it just spins" comes from.
+    private var radioHint: some View {
+        Text("Tip: leave **Wi-Fi switched on** on both phones — you don't have to join a network. With Wi-Fi off, pairing falls back to Bluetooth alone and is much slower.")
+            .font(.caption2).foregroundStyle(.white.opacity(0.5))
+            .multilineTextAlignment(.center)
+            .frame(maxWidth: 380)
     }
 
     private func bigButton(_ title: String, systemImage: String, action: @escaping () -> Void) -> some View {
