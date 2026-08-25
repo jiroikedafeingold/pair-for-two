@@ -7,6 +7,9 @@ PLAY NEARBY OR ONLINE
 • Nearby: connect two phones directly over Bluetooth and peer-to-peer Wi-Fi. No internet, no accounts, no sign-in.
 • Online: invite a friend through Game Center and play from anywhere.
 
+JUST KEEPING SCORE?
+Playing with real cards? Tap Scoreboard and lay the device between you. There's a slider at each end, so you add your own points, and the score in the middle turns to face whoever just pegged — readable from both sides of the table, on a phone or an iPad.
+
 A REAL CUT FOR THE STARTER
 Just like at the kitchen table: the non-dealer taps the deck to cut it, and the dealer turns up the starter card. Little rituals, done right.
 
@@ -14,9 +17,12 @@ SCORE YOUR WAY
 Pick the style that fits your table:
 • Automatic — the app counts and pegs every point for you.
 • Feedback — the app shows each score and the running total; you slide the points onto your own board.
-• Player responsibility — no hints. Count it yourself, just like the real thing.
+• Player responsibility — no hints. Count it yourself, just like the real thing. This is how new games start.
 
 You’re nudged when it matters — when a “Go” passes to you, or when someone hits 31 — so nobody misses a point.
+
+YOUR RECORD
+Every game is kept: wins, streaks, skunks, your best hand and time played. Game Center adds achievements — the perfect 29, a comeback from 30 behind, five in a row — and a lifetime wins leaderboard.
 
 BUILT TO FEEL GREAT
 • Rich haptics and sound for every card, cut, deal, and win.

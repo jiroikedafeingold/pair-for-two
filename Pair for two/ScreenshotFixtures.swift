@@ -18,6 +18,11 @@ import SwiftUI
 // Render each preview below at the required device and scale it to Apple's exact pixels:
 // iPhone 6.9" → 2868 × 1320, iPad 13" → 2752 × 2064.
 
+/// Set while the screenshot previews render, so `DealtCardsRow` starts fully dealt rather than
+/// animating cards in — a preview snapshot is taken on the first frame, where the animation has
+/// revealed nothing and the table photographs empty.
+nonisolated(unsafe) var dealsCardsInstantly = false
+
 /// Stands in for a host: delivers one prepared snapshot, then holds the line open.
 nonisolated final class PreviewSnapshotTransport: GameTransport, Sendable {
 
@@ -80,17 +85,28 @@ enum ScreenshotFixture {
         CribbageEngine.claim(&s, player: .two, amount: ben)
     }
 
-    /// Shot 1 — mid-play: cards on the pile, a running count worth reading, and the guest on turn.
+    /// Shot 1 — mid-play: cards on the pile, a running count worth reading, and the guest holding
+    /// cards they can actually play. Seeds are searched because the first position to hand is often
+    /// "no card to play — say Go", which shows a greyed-out hand and explains nothing.
     static func pegging() -> PlayerSnapshot {
-        var s = dealt(seed: 77)
+        for bump in 0..<400 {
+            var s = dealt(seed: 2000 &+ UInt64(bump))
+            cutStarter(&s)
+            score(&s, ann: 62, ben: 71)
+            var steps = 0
+            while s.whoseTurn != nil, steps < 12 {
+                if s.whoseTurn == .two, s.playSequence.count >= 2, (10...24).contains(s.runningCount),
+                   s.unplayed(of: .two).count >= 3,
+                   !CribbageScorer.legalPlays(hand: s.unplayed(of: .two), count: s.runningCount).isEmpty {
+                    return s.snapshot(for: .two)
+                }
+                playOne(&s)
+                steps += 1
+            }
+        }
+        var s = dealt(seed: 2000)
         cutStarter(&s)
         score(&s, ann: 62, ben: 71)
-        var steps = 0
-        while s.whoseTurn != nil, steps < 12 {
-            if s.whoseTurn == .two, s.runningCount >= 12, s.playSequence.count >= 3 { break }
-            playOne(&s)
-            steps += 1
-        }
         return s.snapshot(for: .two)
     }
 
@@ -128,7 +144,8 @@ enum ScreenshotFixture {
         CribbageEngine.advance(&s)
         // A believable path to 121 rather than one giant claim, so the win screen's scoring replay
         // has something to replay.
-        for amount in [12, 9, 16, 8, 14, 11, 7, 15, 6, 13] {
+        // Ann finishes on 77 — under 91, so the win screen is the skunk celebration.
+        for amount in [12, 9, 16, 8, 14, 11, 7] {
             CribbageEngine.claim(&s, player: .one, amount: amount)
         }
         for amount in [16, 21, 14, 19, 12, 17, 22] {
@@ -153,6 +170,10 @@ private struct GuestShot: View {
     @State private var vm: GameViewModel
 
     init(_ snapshot: PlayerSnapshot) {
+        dealsCardsInstantly = true
+        // A finished game otherwise opens on the pre-win scoring replay, which is what would get
+        // photographed instead of the win itself.
+        UserDefaults.standard.set(false, forKey: "replayBeforeWin")
         _vm = State(initialValue: GameViewModel.previewGuest(snapshot: snapshot))
     }
 
@@ -175,8 +196,22 @@ private struct GuestShot: View {
     GuestShot(ScreenshotFixture.winner())
 }
 
+/// The scoreboard shot, with both seats named and colored to match the play shots — the stored
+/// defaults are otherwise the unnamed "Player"/"Opponent" a fresh install starts with.
+private struct BoardShot: View {
+    init() {
+        let defaults = UserDefaults.standard
+        defaults.set("Ben", forKey: "localName")
+        defaults.set(7, forKey: "localColorID")
+        defaults.set("Ann", forKey: "boardFarName")
+        defaults.set(1, forKey: "boardFarColorID")
+    }
+
+    var body: some View { BoardView(onExit: {}, startGame: ScreenshotFixture.board()) }
+}
+
 #Preview("Shot 5 — scoreboard", traits: .landscapeLeft) {
-    BoardView(onExit: {}, startGame: ScreenshotFixture.board())
+    BoardShot()
 }
 
 #endif

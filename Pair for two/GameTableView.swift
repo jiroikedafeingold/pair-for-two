@@ -1171,7 +1171,18 @@ private struct DealtCardsRow: View {
     /// Optional per-card marker drawn just below the card — used by the crib to show, in each
     /// player's color, who put that card in. Returns nil for cards that shouldn't be marked.
     var marker: (Card) -> (color: Color, name: String)? = { _ in nil }
-    @State private var revealed = 0
+    @State private var revealed = DealtCardsRow.initialRevealed
+
+    /// Normally nothing is revealed until the deal-in animation runs. The App Store screenshot
+    /// previews start fully dealt instead: a preview snapshot is taken on the first frame, where the
+    /// animation has revealed no cards at all, leaving an empty table in the shot.
+    private static var initialRevealed: Int {
+#if DEBUG
+        dealsCardsInstantly ? Int.max : 0
+#else
+        0
+#endif
+    }
 
     var body: some View {
         HStack(spacing: 8) {
@@ -1196,6 +1207,9 @@ private struct DealtCardsRow: View {
             }
         }
         .task(id: dealSignal) {
+#if DEBUG
+            if dealsCardsInstantly { revealed = cards.count; return }
+#endif
             revealed = 0
             guard !cards.isEmpty else { return }
             // One riffle for the whole deal-out. Per-card feedback fired a synchronous Core Haptics

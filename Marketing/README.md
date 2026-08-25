@@ -5,8 +5,8 @@ Everything for submitting **Pair for Two**.
 ## Contents
 - **`APP_STORE.md`** — copy/paste metadata: name, subtitle, promo text, description, keywords, what's‑new, category, age rating, privacy answers, export compliance, and **App Review notes** (important: it's a two‑device game).
 - **Website** — the single‑page **privacy policy + contact/support** (apps@feingold5.com) lives at **`docs/index.html`** (repo root) and is published via **GitHub Pages** at **https://jiroikedafeingold.github.io/pair-for-two/**. Use that URL for the Support URL, Marketing URL, and Privacy Policy URL fields. It covers **both apps** — iOS/iPadOS and the Android build in `~/Projects/PairForTwoAndroid` — so it also serves Play's privacy‑policy requirement and its data‑safety answers. Keep it that way: anything that changes what either app sends over the wire (a new transport, an online mode on Android) needs a matching edit here.
-- **`screenshots/iphone-6.9/`** — 4 screenshots, **2868 × 1320** (iPhone 6.9", landscape). One 6.9" set covers all iPhone sizes.
-- **`screenshots/ipad-13/`** — 4 screenshots, **2752 × 2064** (iPad 13", landscape).
+- **`screenshots/iphone-6.9/`** — 5 screenshots, **2868 × 1320** (iPhone 6.9", landscape). One 6.9" set covers all iPhone sizes.
+- **`screenshots/ipad-13/`** — 5 screenshots, **2752 × 2064** (iPad 13", landscape).
 - **`screenshots/raw/`** — the source renders before upscaling (safe to delete).
 
 ## Screenshots
@@ -23,14 +23,17 @@ Generated from SwiftUI previews (landscape) and scaled to Apple's exact required
   it's what a new player sees. `.feedback` puts scoring flag chips on the rail that most people
   never see.
 - **Never capture through the debug pass-and-play (loopback) path.** It's `#if DEBUG` only and
-  compiled out of release, so it isn't the shipping experience. Reach the screens by pushing
-  fixture data in instead — a DEBUG-only preview transport that delivers a hand-built
-  `PlayerSnapshot` renders through the ordinary guest path.
-- Capture gotchas, both of which cost time before: the preview snapshot is taken on the **first
-  frame**, so any deal-in animation renders invisible (and Xcode preserves `@State` across edits,
-  so bumping an initial value won't fix it — the row has to be static for the shot); and the winner
-  preview lands on the **pre-win scoring replay** unless `replayBeforeWin` is temporarily defaulted
-  off.
+  compiled out of release, so it isn't the shipping experience — and the phone there rotates to
+  whoever is acting, which no real device does. `ScreenshotFixtures` instead drives the engine to a
+  legal position, redacts it into the snapshot a guest really receives, and renders it through the
+  ordinary guest path with the seat fixed (`GameViewModel.previewGuest`).
+- The capture gotchas are handled in `GuestShot.init`, and are why it exists: a preview snapshot is
+  taken on the **first frame**, where the deal-in animation has revealed nothing (`dealsCardsInstantly`
+  starts the row fully dealt), and a finished game opens on the **pre-win scoring replay** unless
+  `replayBeforeWin` is off. Xcode also preserves `@State` across edits, so bumping an initial value
+  by hand won't fix the first of those.
+- Fixtures search seeds rather than hard-coding a position: the first hand to hand is often "no card
+  to play — say Go" (a greyed-out hand) or a four-point show, neither of which sells anything.
 
 ## Game Center (achievements + leaderboard)
 
