@@ -32,6 +32,9 @@ struct OnboardingView: View {
         Slide(icon: "dot.radiowaves.left.and.right",
               title: "Two phones, one table",
               body: "Play nearby over Bluetooth and Wi‑Fi — no internet or account needed. One phone taps Host, the other taps Join. Or tap Play online to invite a friend through Game Center."),
+        Slide(icon: "rectangle.split.2x1",
+              title: "Or just keep score",
+              body: "Playing with real cards? Tap Scoreboard and lay this device between you — a slider each, the right way up for both of you, and the score in the middle turns to face whoever just pegged."),
         Slide(icon: "slider.horizontal.3",
               title: "Keep your own score",
               body: "Add your points at the top: drag the slider to and let go, or tap +1 to count up one at a time. Turn on “Confirm after release” in Settings to review before it counts."),
@@ -41,7 +44,7 @@ struct OnboardingView: View {
               interactiveScoring: true),
         Slide(icon: "gearshape.fill",
               title: "Make it yours",
-              body: "Tap the gear in the top right for settings: name & colour, card back, haptics, sound — and Scoring, where “Automatic” hands the counting to the app if you'd rather not keep score yourself. Tap the ? anytime for the full how‑to.")
+              body: "Tap You on the menu for settings: name & colour, card back, haptics, sound — and Scoring, where “Automatic” hands the counting to the app if you'd rather not keep score yourself. The chart button keeps your game history, wins and skunks, with achievements in Game Center. Tap ? anytime for the full how‑to.")
     ]
 
     var body: some View {

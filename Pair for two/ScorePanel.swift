@@ -35,6 +35,10 @@ struct ScorePanel: View {
     let onAdd: (Int) -> Void
     let onPlusOne: () -> Void
     let onUndo: () -> Void
+    /// Fired whenever this player touches the panel at all — dragging the slider, tapping +1, undoing.
+    /// The board uses it to turn the shared score to face whoever is using it, which has to happen the
+    /// moment they start, not when they finish. No-op everywhere else.
+    var onActivity: () -> Void = {}
 
     @State private var pending: Int = 0
     @State private var sliderIsDragging: Bool = false
@@ -71,6 +75,7 @@ struct ScorePanel: View {
 
     // +1 always adds immediately; `plusPending` is just a fading running count of the streak.
     private func handlePlusTap() {
+        onActivity()
         firePlusHaptic()
         onPlusOne()
         withAnimation(.spring(response: 0.3, dampingFraction: 0.78)) { plusPending += 1 }
@@ -172,6 +177,7 @@ struct ScorePanel: View {
                 .onAppear { plusHeavy.prepare(); plusRigid.prepare() }
 
                 PointsSlider(value: $pending, isDragging: $sliderIsDragging, primary: primary, deep: deep) { committed in
+                    onActivity()
                     if !requireConfirm {
                         onAdd(committed)
                         if HapticsSetting.enabled { UIImpactFeedbackGenerator(style: .medium).impactOccurred() }
@@ -183,6 +189,7 @@ struct ScorePanel: View {
                 .opacity(disabled ? 0.4 : 1.0)
 
                 Button {
+                    onActivity()
                     if pending > 0 {
                         withAnimation(.spring(response: 0.3, dampingFraction: 0.78)) { pending = 0 }
                     } else {
@@ -205,6 +212,8 @@ struct ScorePanel: View {
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 8)
+            .onChange(of: sliderIsDragging) { _, dragging in if dragging { onActivity() } }
+            .onChange(of: pending) { _, _ in onActivity() }
         }
         .background(
             RoundedRectangle(cornerRadius: 22, style: .continuous)

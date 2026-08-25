@@ -38,6 +38,56 @@ struct RootView: View {
     @AppStorage("localColorID") private var colorID = 1
     @AppStorage("scoringMode") private var scoringModeRaw = ScoringMode.off.rawValue
 
+    /// One menu button. Fixed width so the captions beside them line up into a column.
+    private func menuButton(_ title: String,
+                            systemImage: String,
+                            tint: Color,
+                            foreground: Color,
+                            swatch: Color? = nil,
+                            disabled: Bool = false,
+                            action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            HStack(spacing: 8) {
+                if let swatch {
+                    Circle().fill(swatch).frame(width: 16, height: 16)
+                        .overlay(Circle().stroke(.white.opacity(0.5), lineWidth: 1))
+                } else {
+                    Image(systemName: systemImage)
+                }
+                Text(title).fontWeight(.bold)
+                Spacer(minLength: 0)
+            }
+            .font(.headline)
+            .lineLimit(1)
+            .minimumScaleFactor(0.8)
+            .frame(width: 168, alignment: .leading)
+            .padding(.horizontal, 16).padding(.vertical, 10)
+        }
+        .buttonStyle(.borderedProminent)
+        .tint(tint)
+        .foregroundStyle(foreground)
+        .disabled(disabled)
+    }
+
+    /// The right-hand column: what the button beside it actually does. Literals, so **bold** works.
+    private func menuCaption(_ text: LocalizedStringKey) -> some View {
+        captionStyle(Text(text))
+    }
+
+    /// Same, for a caption that comes from a value (an error message) rather than a literal.
+    private func menuCaption(verbatim text: String) -> some View {
+        captionStyle(Text(text))
+    }
+
+    private func captionStyle(_ text: Text) -> some View {
+        text
+            .font(.caption)
+            .foregroundStyle(.white.opacity(0.62))
+            .multilineTextAlignment(.leading)
+            .fixedSize(horizontal: false, vertical: true)
+            .frame(maxWidth: 400, alignment: .leading)
+    }
+
     /// What to call the device in copy that points at it ("use the iPad as the board").
     ///
     /// The one place an idiom check is right: this is naming the hardware in a sentence, not deciding a
@@ -329,124 +379,102 @@ struct RootView: View {
             LinearGradient(colors: [.feltMid, .feltDark], startPoint: .top, endPoint: .bottom)
                 .ignoresSafeArea()
 
-            VStack(spacing: 14) {
-                    VStack(spacing: 4) {
+            // One row per thing you can do: the control on the left, what it does on the right. The
+            // buttons alone weren't self-explanatory — "Play nearby" versus "Play online" versus a
+            // scoreboard is a real choice, and the answer shouldn't be buried in the help.
+            ScrollView {
+                VStack(spacing: 16) {
+                    VStack(spacing: 2) {
                         Text("Pair for Two")
-                            .font(.system(size: 32, weight: .heavy, design: .serif))
+                            .font(.system(size: 30, weight: .heavy, design: .serif))
                             .foregroundStyle(.white)
                         Text("Two-phone cribbage")
                             .font(.subheadline).foregroundStyle(Color.cribGold)
                     }
+                    .padding(.bottom, 2)
 
-                    // Your identity, tap to edit in Settings.
-                    Button { showingSettings = true } label: {
-                        HStack(spacing: 10) {
-                            Circle().fill(playerTheme(colorID: colorID).primary).frame(width: 20, height: 20)
-                            Text(name.isEmpty ? "Player" : name).fontWeight(.semibold).foregroundStyle(.white)
-                            Image(systemName: "pencil.circle.fill").foregroundStyle(.white.opacity(0.6))
+                    Grid(alignment: .leading, horizontalSpacing: 18, verticalSpacing: 10) {
+                        GridRow {
+                            menuButton("You", systemImage: "person.crop.circle",
+                                       tint: Color.white.opacity(0.18), foreground: .white,
+                                       swatch: playerTheme(colorID: colorID).primary) {
+                                showingSettings = true
+                            }
+                            menuCaption("**\(playerName)** — your name, colour and all the app's settings.")
                         }
-                        .padding(.horizontal, 16).padding(.vertical, 8)
-                        .background(Capsule().fill(Color.white.opacity(0.10)))
-                    }
-                    .buttonStyle(.plain)
 
-                    if let resumeMarker {
-                        Button {
-                            // An online game can't be re-paired over Bluetooth — it has to find the
-                            // same Game Center player again, which is its own route.
-                            if resumeMarker.isOnline {
-                                rejoinOnlineGame(resumeMarker)
-                            } else {
-                                resumeRole = resumeMarker.isHost ? .host : .guest
+                        if let resumeMarker {
+                            GridRow {
+                                menuButton(resumeMarker.isOnline ? "Rejoin online" : "Rejoin game",
+                                           systemImage: resumeMarker.isOnline ? "globe" : "arrow.clockwise.circle.fill",
+                                           tint: .cribGold, foreground: .black,
+                                           disabled: resumeMarker.isOnline && !gameCenter.isAuthenticated) {
+                                    if resumeMarker.isOnline {
+                                        rejoinOnlineGame(resumeMarker)
+                                    } else {
+                                        resumeRole = resumeMarker.isHost ? .host : .guest
+                                        screen = .connect
+                                    }
+                                }
+                                menuCaption(resumeMarker.isOnline
+                                            ? "Pick up **\(resumeMarker.summary)** — we'll invite them back."
+                                            : "Pick up **\(resumeMarker.summary)** — both phones tap this.")
+                            }
+                        }
+
+                        GridRow {
+                            menuButton(resumeMarker == nil ? "Play nearby" : "New nearby",
+                                       systemImage: "dot.radiowaves.left.and.right",
+                                       tint: resumeMarker == nil ? .cribGold : Color.white.opacity(0.18),
+                                       foreground: resumeMarker == nil ? .black : .white) {
+                                resumeRole = nil
+                                GamePersistence.clear()   // fresh game supersedes any saved one
+                                resumeMarker = nil
                                 screen = .connect
                             }
-                        } label: {
-                            VStack(spacing: 2) {
-                                HStack(spacing: 8) {
-                                    Image(systemName: resumeMarker.isOnline ? "globe" : "arrow.clockwise.circle.fill")
-                                    Text(resumeMarker.isOnline ? "Rejoin online game" : "Rejoin game").fontWeight(.bold)
-                                }
-                                Text(resumeMarker.summary).font(.caption2).foregroundStyle(.black.opacity(0.6))
+                            menuCaption("Two phones in the same room, a hand each. No internet or account — leave Wi-Fi on and it pairs faster.")
+                        }
+
+                        GridRow {
+                            menuButton(resumeMarker?.isOnline == true ? "New online" : "Play online",
+                                       systemImage: "globe",
+                                       tint: Color.white.opacity(0.18), foreground: .white,
+                                       disabled: !gameCenter.isAuthenticated) {
+                                // Asking for a new online game supersedes any saved one, exactly like the
+                                // nearby button. It also has to clear the marker *before* a match arrives:
+                                // an online marker is what tells the match handler "this is a rejoin", so
+                                // leaving it would resume the old game instead of starting this one.
+                                GamePersistence.clear()
+                                resumeMarker = nil
+                                showingInvite = true
                             }
-                            .font(.headline)
-                            .padding(.horizontal, 22).padding(.vertical, 9)
-                        }
-                        .buttonStyle(.borderedProminent).tint(.cribGold).foregroundStyle(.black)
-                        .disabled(resumeMarker.isOnline && !gameCenter.isAuthenticated)
-                    }
-
-                    Button {
-                        resumeRole = nil
-                        GamePersistence.clear()   // fresh game supersedes any saved one
-                        resumeMarker = nil
-                        screen = .connect
-                    } label: {
-                        HStack(spacing: 8) {
-                            Image(systemName: "dot.radiowaves.left.and.right")
-                            Text(resumeMarker == nil ? "Play nearby" : "New nearby game").fontWeight(.bold)
-                        }
-                        .font(.headline)
-                        .padding(.horizontal, 26).padding(.vertical, 11)
-                    }
-                    .buttonStyle(.borderedProminent)
-                    .tint(resumeMarker == nil ? .cribGold : Color.white.opacity(0.22))
-                    .foregroundStyle(resumeMarker == nil ? .black : .white)
-
-                    // Online play over Game Center. Enabled once signed in.
-                    VStack(spacing: 5) {
-                        Button {
-                            // Asking for a new online game supersedes any saved one, exactly like the
-                            // nearby button. It also has to clear the marker *before* a match arrives:
-                            // an online marker is what tells the match handler "this is a rejoin", so
-                            // leaving it would resume the old game instead of starting this one.
-                            GamePersistence.clear()
-                            resumeMarker = nil
-                            showingInvite = true
-                        } label: {
-                            HStack(spacing: 8) {
-                                Image(systemName: "globe")
-                                Text(resumeMarker?.isOnline == true ? "New online game" : "Play online").fontWeight(.bold)
+                            if gameCenter.isAuthenticated {
+                                menuCaption("Invite a Game Center friend, wherever they are. A hand each, same as nearby.")
+                            } else {
+                                menuCaption(verbatim: gameCenter.unavailableReason
+                                            ?? "Sign in to Game Center to play online.")
                             }
-                            .font(.headline)
-                            .padding(.horizontal, 26).padding(.vertical, 11)
                         }
-                        .buttonStyle(.borderedProminent)
-                        .tint(Color.white.opacity(0.22))
-                        .foregroundStyle(.white)
-                        .disabled(!gameCenter.isAuthenticated)
 
-                        if !gameCenter.isAuthenticated {
-                            Text(gameCenter.unavailableReason ?? "Sign in to Game Center to play online.")
-                                .font(.caption2).foregroundStyle(.white.opacity(0.55))
-                                .multilineTextAlignment(.center)
-                        }
-                    }
-
-                    // The board on its own: one phone between two players, real cards in hand. Not the
-                    // pass-and-play mode that was removed — nothing is dealt here, it only keeps score.
-                    VStack(spacing: 4) {
-                        Button {
-                            screen = .board
-                        } label: {
-                            HStack(spacing: 8) {
-                                Image(systemName: "rectangle.split.2x1")
-                                Text(boardResumeAvailable ? "Back to your scoreboard" : "Keep score").fontWeight(.bold)
+                        GridRow {
+                            // The board on its own: one device between two players, real cards in hand.
+                            // Not the pass-and-play mode that was removed — nothing is dealt here.
+                            menuButton("Scoreboard", systemImage: "rectangle.split.2x1",
+                                       tint: Color.white.opacity(0.18), foreground: .white) {
+                                screen = .board
                             }
-                            .font(.headline)
-                            .padding(.horizontal, 26).padding(.vertical, 11)
+                            menuCaption(boardResumeAvailable
+                                        ? "Your board is part-way through. Real cards, this \(Self.deviceWord) between you as the board."
+                                        : "Playing with real cards? Lay this \(Self.deviceWord) between you and it keeps score.")
                         }
-                        .buttonStyle(.borderedProminent)
-                        .tint(Color.white.opacity(0.22))
-                        .foregroundStyle(.white)
-
-                        Text("Playing with real cards? Use the \(Self.deviceWord) as the board.")
-                            .font(.caption2).foregroundStyle(.white.opacity(0.55))
-                            .multilineTextAlignment(.center)
                     }
-
+                    .frame(maxWidth: 660)
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.horizontal, 24)
+                .padding(.vertical, 14)
             }
-            .frame(maxWidth: .infinity)
-            .padding(.horizontal, 28)
+            .scrollBounceBehavior(.basedOnSize)
         }
         .overlay(alignment: .topTrailing) {
             HStack(spacing: 14) {

@@ -18,6 +18,9 @@ struct BoardView: View {
 
     /// Preview seam: the shared readout's starting orientation, so both states can be rendered.
     var startFlipped = false
+    /// Preview seam: start from a given position. There's no other way to render a *finished* board — the
+    /// store deliberately refuses to keep one, so it can't be loaded back in.
+    var startGame: BoardGame?
 
     @State private var game = BoardGame()
     @State private var flipped: Bool
@@ -46,17 +49,20 @@ struct BoardView: View {
         min(1, max(0, Double(points) / Double(BoardGame.gamePoint)))
     }
 
-    init(onExit: @escaping () -> Void, startFlipped: Bool = false) {
+    init(onExit: @escaping () -> Void, startFlipped: Bool = false, startGame: BoardGame? = nil) {
         self.onExit = onExit
         self.startFlipped = startFlipped
+        self.startGame = startGame
         _flipped = State(initialValue: startFlipped)
+        _game = State(initialValue: startGame ?? BoardGame())
     }
 
     /// Display names, never blank: onboarding deliberately starts the local name empty, and a nameless
-    /// side would render as a gap where a name should be.
+    /// side would render as a gap where a name should be. "Player" rather than "You" because the same
+    /// string goes into the win screen, and "YOU WINS" is not a sentence.
     private var nearLabel: String {
         let trimmed = nearName.trimmingCharacters(in: .whitespaces)
-        return trimmed.isEmpty ? "You" : trimmed
+        return trimmed.isEmpty ? "Player" : trimmed
     }
     private var farLabel: String {
         let trimmed = farName.trimmingCharacters(in: .whitespaces)
@@ -67,6 +73,8 @@ struct BoardView: View {
     private static let flipInterval: TimeInterval = 5
     /// Don't turn it while someone is mid-peg, or in the moment just after one — they're looking at it.
     private static let settleTime: TimeInterval = 2
+    /// The win screen turns more slowly than the score: there's more of it to take in.
+    private static let winFlipInterval: TimeInterval = 6
 
     var body: some View {
         GeometryReader { geo in
@@ -92,7 +100,15 @@ struct BoardView: View {
             .frame(width: geo.size.width, height: geo.size.height)
         }
         .background(felt)
-        .overlay { if game.isFinished { winner } }
+        .overlay {
+            if game.isFinished {
+                // The whole celebration turns, not just the score: it's the one screen both players want
+                // to look at, and it belongs to neither side of the table.
+                winner
+                    .rotationEffect(.degrees(flipped ? 180 : 0))
+                    .animation(reduceMotion ? nil : .easeInOut(duration: 0.7), value: flipped)
+            }
+        }
         .sheet(item: $editing) { side in
             BoardPlayerSheet(side: side,
                              name: side == .bottom ? $nearName : $farName,
@@ -107,7 +123,10 @@ struct BoardView: View {
             Text("This clears both scores.")
         }
         .task { await runFlipTimer() }
-        .onAppear { if let saved = BoardGameStore.load() { game = saved } }
+        .onAppear {
+            guard startGame == nil else { return }   // a seeded preview keeps its own position
+            if let saved = BoardGameStore.load() { game = saved }
+        }
         .onChange(of: game) { _, updated in scheduleSave(updated) }
         .onDisappear { saveTask?.cancel(); BoardGameStore.save(game) }
     }
@@ -135,7 +154,8 @@ struct BoardView: View {
                        GameFeedback.shared.play(.advance)
                        face(side)   // correcting your own score counts too — face the person doing it
                        game.undo(side)
-                   })
+                   },
+                   onActivity: { face(side) })   // sliding, tapping, undoing: all of it turns the score
     }
 
     /// A player's slider with the edit button beside it — to the right as that player sees it, since the
@@ -145,7 +165,10 @@ struct BoardView: View {
         let isNear = side == .bottom
         HStack(spacing: 6) {
             slider(for: side)
-            Button { editing = side } label: {
+            Button {
+                face(side)
+                editing = side
+            } label: {
                 Image(systemName: "pencil.circle.fill")
                     .font(.system(size: 18, weight: .semibold))
                     .foregroundStyle(.white.opacity(0.45))
@@ -341,8 +364,14 @@ struct BoardView: View {
     /// or has just been made.
     private func runFlipTimer() async {
         while !Task.isCancelled {
-            try? await Task.sleep(for: .seconds(Self.flipInterval))
-            guard !Task.isCancelled, !game.isFinished else { continue }
+            // A finished game gets a longer beat: the celebration is worth reading, and it's bigger than
+            // a number, so it needs a moment before it turns away.
+            try? await Task.sleep(for: .seconds(game.isFinished ? Self.winFlipInterval : Self.flipInterval))
+            guard !Task.isCancelled else { continue }
+            if game.isFinished {
+                flipped.toggle()   // nobody is pegging any more, so nothing to wait for
+                continue
+            }
             let busy = bottomPending > 0 || topPending > 0
                 || Date().timeIntervalSince(lastInteraction) < Self.settleTime
             if busy { continue }
@@ -368,6 +397,15 @@ private struct BoardPlayerSheet: View {
     /// the board alone. Worth saying, so changing one here isn't a surprise elsewhere.
     let isShared: Bool
     var onDone: () -> Void
+
+    // The app-wide preferences that mean something on a scoreboard. Card back is left out (no cards
+    // here) along with the pre-win scoring replay (the board keeps no score log to replay) and the
+    // scoring mode, which only governs a game the app deals.
+    @AppStorage("confirmRelease") private var confirmRelease = true
+    @AppStorage("scoreTrackEnabled") private var scoreTrackEnabled = true
+    @AppStorage("hapticsEnabled") private var hapticsEnabled = true
+    @AppStorage("soundEnabled") private var soundEnabled = true
+    @AppStorage("celebrationEffects") private var celebrationEffects = true
 
     var body: some View {
         NavigationStack {
@@ -398,8 +436,39 @@ private struct BoardPlayerSheet: View {
                         .padding(.vertical, 2)
                     }
                 }
+
+                // The rest of the app's settings that actually apply to a scoreboard. Reachable from
+                // here because the board is a place you sit down and play from — walking back out to the
+                // menu to turn the sound off would be silly.
+                Section {
+                    Toggle("Confirm after release", isOn: $confirmRelease)
+                } header: {
+                    Text("Scoring slider")
+                } footer: {
+                    Text("Holds the slider value until you tap the +N button, instead of adding it the "
+                         + "moment you let go.")
+                }
+
+                Section {
+                    Toggle("Score track", isOn: $scoreTrackEnabled)
+                } footer: {
+                    Text("The loop around the score, tracing each player's progress to 121 with the "
+                         + "skunk lines marked on it.")
+                }
+
+                Section("Sound & feel") {
+                    Toggle("Haptics", isOn: $hapticsEnabled)
+                    Toggle("Sound effects", isOn: $soundEnabled)
+                    Toggle("Celebration effects", isOn: $celebrationEffects)
+                }
+
+                Section {
+                    Text("Scoring mode lives in the main Settings — it's for a game the app deals, and "
+                         + "on the board you're counting your own cards.")
+                        .font(.footnote).foregroundStyle(.secondary)
+                }
             }
-            .navigationTitle("Player")
+            .navigationTitle("Player & settings")
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Done", action: onDone).fontWeight(.semibold)
@@ -416,5 +485,13 @@ private struct BoardPlayerSheet: View {
 
 #Preview("Board — score flipped", traits: .landscapeLeft) {
     BoardView(onExit: {}, startFlipped: true)
+}
+
+/// A won game, so the celebration (which turns as a whole, to face each player in turn) can be seen.
+#Preview("Board — won", traits: .landscapeLeft) {
+    var finished = BoardGame()
+    finished.add(58, to: .top)
+    finished.add(121, to: .bottom)
+    return BoardView(onExit: {}, startGame: finished)
 }
 #endif

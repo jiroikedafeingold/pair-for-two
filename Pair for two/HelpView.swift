@@ -10,6 +10,12 @@ struct HelpView: View {
     /// A live, throwaway score so the help panel's slider actually works. Wraps back to 0 at 121.
     @State private var demoScore = 0
 
+    /// Naming the hardware in a sentence ("lay the iPad between you") — not a layout decision, so an
+    /// idiom check is the right tool.
+    private var deviceWord: String {
+        UIDevice.current.userInterfaceIdiom == .pad ? "iPad" : "phone"
+    }
+
     private func addDemo(_ points: Int) {
         demoScore += points
         if demoScore >= 121 { demoScore = 0 }   // hitting/passing 121 just resets the demo
@@ -39,6 +45,35 @@ struct HelpView: View {
                 Section("Play online") {
                     helpText("Tap **Play online** to invite a friend through **Game Center** and play from "
                              + "anywhere. Sign in to Game Center on both devices first.")
+                    bullet("**If someone drops out** — closing the app, losing signal — the game isn't over. "
+                           + "The other phone invites them back, and whoever left just accepts the Game "
+                           + "Center invitation to carry on from the same hand.")
+                    bullet("**Force-quit the app?** Tap **Rejoin online** on the menu. The phone holding the "
+                           + "position invites the other one back.")
+                }
+
+                Section("Scoreboard (playing with real cards)") {
+                    helpText("Dealing real cards? Tap **Scoreboard** and lay the \(deviceWord) between you. "
+                             + "The app keeps score and nothing else — no hands, no crib, no cut, because it "
+                             + "can't see your cards.")
+                    bullet("**A slider each**, at your own edge of the screen, the right way up for you.")
+                    bullet("**The score in the middle turns** to face whoever last pegged, then keeps turning "
+                           + "so you both get to read it. Tap it to turn it now.")
+                    bullet("**The pencil** beside your slider sets your name and colour, and the sound, "
+                           + "haptics and score-track settings.")
+                    bullet("**The circle on the divider** starts a new game. It asks first.")
+                    bullet("Scoreboard games aren't added to your stats — the app never sees the hands, so "
+                           + "there'd be nothing to record beyond the result.")
+                }
+
+                Section("Stats & achievements") {
+                    bullet("**Stats** (the chart on the menu) keeps every finished game on this device: wins, "
+                           + "skunks for and against, your best hand, streaks and time played.")
+                    bullet("It's **only on this phone** — no accounts, nothing synced — so a reinstall clears "
+                           + "it.")
+                    bullet("**Achievements and the wins leaderboard** are in Game Center, reached from the "
+                           + "bottom of Stats: first win, skunks, a 24-hand, the perfect 29, a comeback from "
+                           + "30 behind, five in a row, and a hundred hands.")
                 }
 
                 Section("A hand, step by step") {
@@ -81,9 +116,15 @@ struct HelpView: View {
 
                 Section("Settings") {
                     bullet("**Name & colour**, and your **card back**.")
-                    bullet("**Scoring mode** — either player can change it.")
+                    bullet("**Scoring mode** — either player can change it. New games start on **Player "
+                           + "responsibility**: you keep score, as you would on a wooden board.")
                     bullet("**Feel & effects:** toggle **Haptics**, **Sound effects**, and **Celebration effects**.")
                     bullet("**Scoring replay before win:** replay the game score‑by‑score before the win screen.")
+                    bullet("**Score track:** the loop around your score tracing the way to 121, with the skunk "
+                           + "lines marked.")
+                    helpText("The scoreboard has its own copy of most of these, behind the pencil beside your "
+                             + "slider — everything except the scoring mode, which only applies to a game the "
+                             + "app deals.")
                 }
 
                 if let onReplayOnboarding {
