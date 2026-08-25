@@ -1,0 +1,1 @@
+Cribbage de verdad en dos móviles: cada jugador con su mano. O deja uno entre los dos como marcador. Juega cerca o en línea.

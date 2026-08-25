@@ -1,0 +1,1 @@
+cribbage,2 kişilik,kart oyunu,yerel,bluetooth,crib,çift,aile,çevrimdışı,skor

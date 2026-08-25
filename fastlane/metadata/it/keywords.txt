@@ -1,0 +1,1 @@
+cribbage,2 giocatori,carte,locale,bluetooth,crib,coppia,famiglia,offline,tabellone

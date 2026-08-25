@@ -166,7 +166,7 @@ enum ScreenshotFixture {
 }
 
 /// One screenshot: the guest's own device, showing a prepared position.
-private struct GuestShot: View {
+struct GuestShot: View {
     @State private var vm: GameViewModel
 
     init(_ snapshot: PlayerSnapshot) {
@@ -178,6 +178,73 @@ private struct GuestShot: View {
     }
 
     var body: some View { GameTableView(vm: vm) }
+}
+
+/// The five shots, addressable from the command line: `-shot 1` … `-shot 5`.
+///
+/// Same views the previews below render, so there is one definition of each shot. Capturing through a
+/// real launch rather than a preview snapshot is what makes the localized sets practical — the language
+/// is just another launch argument, and simctl grabs the framebuffer at native resolution, so the
+/// images need no scaling to hit Apple's required sizes.
+struct ScreenshotStage: View {
+    let shot: Int
+
+    /// The `-shot N` argument, if the app was launched for a screenshot.
+    static var requested: Int? {
+        guard UserDefaults.standard.object(forKey: "shot") != nil else { return nil }
+        let shot = UserDefaults.standard.integer(forKey: "shot")
+        return (1...5).contains(shot) ? shot : nil
+    }
+
+    var body: some View {
+        Group {
+            switch shot {
+            case 1: GuestShot(ScreenshotFixture.pegging())
+            case 2: GuestShot(ScreenshotFixture.show())
+            case 3: GuestShot(ScreenshotFixture.starterCut())
+            case 4: BoardShot()
+            default: GuestShot(ScreenshotFixture.winner())
+            }
+        }
+        // No status bar in a store screenshot — the phone hides it in landscape anyway, and an iPad
+        // otherwise puts the simulator's clock and battery in the frame.
+        .statusBarHidden(true)
+    }
+}
+
+/// Holds the app in landscape while a screenshot is being taken.
+///
+/// A phone is locked to landscape by the Info.plist regardless, but an iPad supports portrait too and
+/// boots into it, so a store shot needs asking for. `requestGeometryUpdate` alone was ignored this
+/// early in the launch; reporting the orientation through the app delegate is what the system
+/// actually consults, so it rotates before the first frame.
+final class ScreenshotOrientationDelegate: NSObject, UIApplicationDelegate {
+    func application(_ application: UIApplication,
+                     supportedInterfaceOrientationsFor window: UIWindow?) -> UIInterfaceOrientationMask {
+        ScreenshotStage.requested == nil ? Self.declaredInInfoPlist : .landscapeRight
+    }
+
+    /// What the Info.plist allows, read rather than restated — a second copy of the list here would
+    /// silently override the real one the day they disagreed.
+    private static var declaredInInfoPlist: UIInterfaceOrientationMask {
+        let key = UIDevice.current.userInterfaceIdiom == .pad
+            ? "UISupportedInterfaceOrientations~ipad"
+            : "UISupportedInterfaceOrientations"
+        let names = Bundle.main.object(forInfoDictionaryKey: key) as? [String]
+            ?? Bundle.main.object(forInfoDictionaryKey: "UISupportedInterfaceOrientations") as? [String]
+            ?? []
+        var mask: UIInterfaceOrientationMask = []
+        for name in names {
+            switch name {
+            case "UIInterfaceOrientationPortrait":           mask.insert(.portrait)
+            case "UIInterfaceOrientationPortraitUpsideDown": mask.insert(.portraitUpsideDown)
+            case "UIInterfaceOrientationLandscapeLeft":      mask.insert(.landscapeLeft)
+            case "UIInterfaceOrientationLandscapeRight":     mask.insert(.landscapeRight)
+            default: break
+            }
+        }
+        return mask.isEmpty ? .all : mask
+    }
 }
 
 #Preview("Shot 1 — pegging", traits: .landscapeLeft) {
@@ -198,7 +265,7 @@ private struct GuestShot: View {
 
 /// The scoreboard shot, with both seats named and colored to match the play shots — the stored
 /// defaults are otherwise the unnamed "Player"/"Opponent" a fresh install starts with.
-private struct BoardShot: View {
+struct BoardShot: View {
     init() {
         let defaults = UserDefaults.standard
         defaults.set("Ben", forKey: "localName")

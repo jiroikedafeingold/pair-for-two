@@ -1,0 +1,11 @@
+• Skor tahtası modu: gerçek kartlarla mı oynuyorsunuz? iPhone'u ya da iPad'i aranıza koyup tahta olarak kullanın. Her oyuncuya bir sürgü, ikinize de doğru yönde, ortadaki puan da yeni puan alana döner. Eline aldığında tutan kişiye göre doğru yöne döner.
+• Başarımlar ve lider tablosu: ilk galibiyet, skunk'lar, 24'lük el, kusursuz 29, 30 puan geriden dönüş, üst üste beş ve toplam galibiyet — hepsi Game Center üzerinden.
+• Geçmişin: her oyun saklanır; galibiyetler, seriler, skunk'lar, en iyi el ve oynanan süre.
+• Daha sağlam bağlantı: iki cihazın eşleşmesi daha sabırlı ve güvenilir, özellikle Wi-Fi ağı yokken; bağlantı koptuğunda, cihaz uzun süre cepte kaldığında, hatta uygulama zorla kapatıldığında oyun kendini yeniden kuruyor.
+• O kart kimin? Crib sayılırken her oyuncunun renginde bir işaret, hangi kartları koyduğunu gösteriyor.
+• Son kart duyurusu: elin son kartı yere gelince iki cihaz da bunu söylüyor.
+• Büyük yazıya daha uyumlu: yazı boyutu büyütüldüğünde sayım uyarısı ve düğmeleri artık kırpılmıyor.
+• iPad'de daha ferah: iki oyuncunun arasına konan bir cihaza göre daha büyük düğmeler ve daha büyük tahta.
+• Ve artık Türkçe, dokuz dille birlikte.
+
+Oynadığın için teşekkürler! Soru ya da görüşlerin için: apps@feingold5.com
