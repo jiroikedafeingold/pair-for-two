@@ -35,6 +35,31 @@ Generated from SwiftUI previews (landscape) and scaled to Apple's exact required
 - Fixtures search seeds rather than hard-coding a position: the first hand to hand is often "no card
   to play — say Go" (a greyed-out hand) or a four-point show, neither of which sells anything.
 
+## Languages
+
+The app ships in **11 languages**: English (source) plus Spanish, French, German, Japanese, Simplified
+Chinese, Traditional Chinese, Brazilian Portuguese, Italian, Korean and Turkish. Everything on screen
+lives in `Pair for two/Localizable.xcstrings`, and the two permission prompts in `InfoPlist.xcstrings`.
+
+Chosen for App Store reach rather than for cribbage's own footprint (which is largely English-speaking):
+the biggest storefronts by users and spend, plus the two Chinese scripts — cheap together and covering
+mainland China, Taiwan and Hong Kong — and Turkish, where English proficiency is low enough for a
+translation to make a real difference. Next in line if the list ever grows: Dutch, Polish and Russian.
+
+Two deliberate exceptions, noted in code as well:
+- **The app name is never translated** — `CFBundleDisplayName` / `CFBundleName` stay English in
+  `InfoPlist.xcstrings`, and "Pair for Two" stays as it is inside translated sentences.
+- **Cribbage terms of art keep their English form** where a language has no settled equivalent —
+  *crib*, *Go*, *His Nobs*, *His Heels*, *skunk*. Everything around them is translated. Face-card
+  letters do follow the local deck, though: the Jack is B in German and V in French.
+
+`tools/merge-translations.py` merges a locale at a time and refuses to overwrite an existing
+translation, invent a key, or accept a value whose `%@`/`%lld` specifiers don't match the key's.
+
+The App Store listing itself is still English-only; `fastlane/metadata/` has just `en-US`. Adding a
+locale there means a `fastlane/metadata/<locale>/` directory with the same `.txt` files, and every
+locale you upload needs its own screenshots (deliver only replaces the sets it uploads).
+
 ## Game Center (achievements + leaderboard)
 
 Configured in App Store Connect via the API (see the "Achievements & leaderboard" commit), with

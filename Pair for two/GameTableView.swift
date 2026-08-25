@@ -522,13 +522,13 @@ struct GameTableView: View {
                 .foregroundStyle(theme.primary)
                 .lineLimit(1).minimumScaleFactor(0.5)
             HStack(alignment: .center, spacing: 6) {   // "+X" centered vertically against the score
-                Text("\(value)")
+                Text(verbatim: "\(value)")
                     .font(.system(size: 44, weight: .heavy, design: .rounded))
                     .foregroundStyle(.white)
                     .monospacedDigit()
                     .minimumScaleFactor(0.7)
                 if isOpponent && oppPending > 0 {
-                    Text("+\(oppPending)")
+                    Text(verbatim: "+\(oppPending)")
                         .font(.system(size: 20, weight: .heavy, design: .rounded))
                         .monospacedDigit()
                         .foregroundStyle(.white)
@@ -1000,7 +1000,7 @@ struct GameTableView: View {
         playScene(s, railWidth: railWidth) {
             VStack(spacing: 10) {
                 Text("Hand complete").font(.title2.weight(.bold)).foregroundStyle(.white)
-                Text("\(s.yourName) \(s.yourScore)  •  \(s.opponentName) \(s.opponentScore)")
+                Text(verbatim: "\(s.yourName) \(s.yourScore)  •  \(s.opponentName) \(s.opponentScore)")
                     .font(.title3).foregroundStyle(.white.opacity(0.85))
                     .multilineTextAlignment(.center)
             }
@@ -1083,7 +1083,7 @@ struct GameTableView: View {
                 Text(verbatim: vm.showLabel).font(.caption).foregroundStyle(.white.opacity(0.7))
 
                 if flags.isEmpty {
-                    Text("0").font(.system(size: 46, weight: .heavy, design: .rounded)).foregroundStyle(Color.cribGold)
+                    Text(verbatim: "0").font(.system(size: 46, weight: .heavy, design: .rounded)).foregroundStyle(Color.cribGold)
                     Text("Nothing scores in this hand.").font(.caption).foregroundStyle(.white.opacity(0.7))
                 } else {
                     ScrollView {
@@ -1092,7 +1092,7 @@ struct GameTableView: View {
                                 HStack {
                                     Text(f.localizedDetail).font(.callout).foregroundStyle(.white.opacity(0.9))
                                     Spacer(minLength: 16)
-                                    Text("+\(f.points)").font(.callout.weight(.heavy)).foregroundStyle(Color.cribGold)
+                                    Text(verbatim: "+\(f.points)").font(.callout.weight(.heavy)).foregroundStyle(Color.cribGold)
                                 }
                             }
                         }

@@ -231,7 +231,11 @@ struct OnboardingView: View {
                 .font(.system(size: 26, weight: .heavy, design: .rounded))
                 .foregroundStyle(.white)
 
-            TextField("", text: $name, prompt: Text("Your name").foregroundStyle(.white.opacity(0.45)))
+            // No label of its own — the heading above is the label, and an empty literal would
+            // otherwise land in the string catalog as a blank key.
+            TextField(text: $name,
+                      prompt: Text("Your name", comment: "Placeholder in the name field")
+                                .foregroundStyle(.white.opacity(0.45))) { EmptyView() }
                 .textInputAutocapitalization(.words)
                 .submitLabel(.go)
                 .focused($nameFocused)

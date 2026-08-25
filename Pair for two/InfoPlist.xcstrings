@@ -1,54 +1,174 @@
 {
-  "sourceLanguage" : "en",
-  "strings" : {
-    "CFBundleDisplayName" : {
-      "comment" : "Bundle display name",
-      "extractionState" : "extracted_with_value",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "Pair for two"
+  "sourceLanguage": "en",
+  "strings": {
+    "CFBundleDisplayName": {
+      "comment": "Bundle display name",
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Pair for two"
           }
         }
       }
     },
-    "CFBundleName" : {
-      "comment" : "Bundle name",
-      "extractionState" : "extracted_with_value",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "Pair for two"
+    "CFBundleName": {
+      "comment": "Bundle name",
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Pair for two"
           }
         }
       }
     },
-    "NSGKFriendListUsageDescription" : {
-      "comment" : "Permission prompt shown when the app reads your Game Center friends to offer them as opponents.",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Pair for Two shows your Game Center friends so you can invite one to a game."
+    "NSGKFriendListUsageDescription": {
+      "comment": "Permission prompt shown when the app reads your Game Center friends to offer them as opponents.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pair for Two shows your Game Center friends so you can invite one to a game."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pair for Two muestra tus amigos de Game Center para que puedas invitar a uno a jugar."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pair for Two affiche vos amis Game Center pour que vous puissiez en inviter un à jouer."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pair for Two zeigt deine Game-Center-Freunde, damit du einen davon zu einer Partie einladen kannst."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pair for Twoは、対戦に招待できるようGame Centerの友達を表示します。"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pair for Two 会显示你的Game Center好友，方便你邀请其中一位对战。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pair for Two 會顯示你的Game Center好友，方便你邀請其中一位對戰。"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O Pair for Two mostra seus amigos do Game Center para você convidar alguém para jogar."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pair for Two mostra i tuoi amici di Game Center così puoi invitarne uno a giocare."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pair for Two는 게임에 초대할 수 있도록 Game Center 친구 목록을 보여 줍니다."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pair for Two, birini oyuna davet edebilmen için Game Center arkadaşlarını gösterir."
           }
         }
       }
     },
-    "NSLocalNetworkUsageDescription" : {
-      "comment" : "Permission prompt shown when the app looks for another device on the local network.",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Pair for Two uses the local network to find and connect to a nearby phone for two-player cribbage. No internet or account is needed."
+    "NSLocalNetworkUsageDescription": {
+      "comment": "Permission prompt shown when the app looks for another device on the local network.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pair for Two uses the local network to find and connect to a nearby phone for two-player cribbage. No internet or account is needed."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pair for Two usa la red local para encontrar y conectarse a un teléfono cercano y jugar al cribbage entre dos. No hace falta internet ni cuenta."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pair for Two utilise le réseau local pour trouver un téléphone proche et s'y connecter pour une partie de cribbage à deux. Aucun compte ni internet n'est nécessaire."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pair for Two nutzt das lokale Netzwerk, um ein Gerät in der Nähe zu finden und sich für eine Cribbage-Partie zu zweit damit zu verbinden. Internet oder Konto sind nicht nötig."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pair for Twoは、2人でクリベッジを遊ぶために近くの端末を探して接続する目的でローカルネットワークを使用します。インターネット接続やアカウントは不要です。"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pair for Two 使用本地网络查找并连接附近的设备，以进行两人克里比奇对战。无需联网或账号。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pair for Two 使用區域網路尋找並連線附近的裝置，以進行兩人克里比奇對戰。不需網路或帳號。"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O Pair for Two usa a rede local para encontrar e se conectar a um aparelho próximo e jogar cribbage em dois. Não é preciso internet nem conta."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pair for Two usa la rete locale per trovare un dispositivo vicino e collegarsi per una partita a cribbage in due. Non servono internet né account."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pair for Two는 두 사람이 크리비지를 하기 위해 근처 기기를 찾아 연결하는 데 로컬 네트워크를 사용합니다. 인터넷이나 계정은 필요하지 않습니다."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pair for Two, iki kişilik cribbage için yakındaki bir cihazı bulup bağlanmak üzere yerel ağı kullanır. İnternet ya da hesap gerekmez."
           }
         }
       }
     }
   },
-  "version" : "1.0"
+  "version": "1.0"
 }

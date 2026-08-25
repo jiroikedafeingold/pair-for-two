@@ -97,11 +97,11 @@ struct ScorePanel: View {
             // in your color, the opponent's in theirs, with their pending "+X" right beside it.
             if showsScore {
             HStack(spacing: 6) {
-                Text("\(score)").foregroundStyle(primary.opacity(0.85))
-                Text("/").foregroundStyle(.white.opacity(0.35))
-                Text("\(opponentScore)").foregroundStyle(opponentColor.opacity(0.85))
+                Text(verbatim: "\(score)").foregroundStyle(primary.opacity(0.85))
+                Text(verbatim: "/").foregroundStyle(.white.opacity(0.35))
+                Text(verbatim: "\(opponentScore)").foregroundStyle(opponentColor.opacity(0.85))
                 if opponentPending > 0 {
-                    Text("+\(opponentPending)")
+                    Text(verbatim: "+\(opponentPending)")
                         .font(.system(size: 26, weight: .heavy, design: .rounded))
                         .monospacedDigit()
                         .foregroundStyle(.white)
@@ -133,7 +133,7 @@ struct ScorePanel: View {
                         handlePlusTap()
                     }
                 } label: {
-                    Text("+\(displayValue)")
+                    Text(verbatim: "+\(displayValue)")
                         .font(.system(size: 22, weight: .black, design: .rounded))
                         .foregroundStyle(
                             highlighted
@@ -350,7 +350,7 @@ private struct SkunkMark: View {
                                      to: min(1, CGFloat(fraction) + 0.004)).boundingRect
             HStack(spacing: -glyphSize * 0.32) {
                 ForEach(0..<count, id: \.self) { _ in
-                    Text("🦨").font(.system(size: glyphSize))
+                    Text(verbatim: "🦨").font(.system(size: glyphSize))
                 }
             }
             .opacity(0.5)
