@@ -97,7 +97,7 @@ nonisolated enum CribbageEngine {
 
         s.hands[player]?.removeAll { cards.contains($0) }
         s.crib.append(contentsOf: cards)
-        // Remember whose cards these are — the show marks each crib card with its owner's colour.
+        // Remember whose cards these are — the show marks each crib card with its owner's color.
         var owners = s.cribOwners ?? [:]
         for card in cards { owners[card] = player }
         s.cribOwners = owners
@@ -340,7 +340,7 @@ nonisolated enum CribbageEngine {
 
     // MARK: Play again
 
-    /// Reset scores and start a fresh game (keeps names/colours/scoring mode). No cut for deal — the
+    /// Reset scores and start a fresh game (keeps names/colors/scoring mode). No cut for deal — the
     /// player who was NOT the dealer last game deals first, and we go straight to the deal.
     static func playAgain(_ s: inout GameState) {
         let nextDealer = s.dealer.opponent

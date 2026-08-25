@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Your player settings: name, colour, the scoring mode, and the two scoring-slider confirm options.
+/// Your player settings: name, color, the scoring mode, and the two scoring-slider confirm options.
 /// Backed by `@AppStorage`, so the same screen works from the start menu and from inside a game, and
 /// changes persist. Only the current player is configured (this is a two-phone game — the other
 /// player sets their own on their device). The scoring mode is set by whoever hosts the game.
@@ -106,7 +106,7 @@ struct SettingsView: View {
                     Text("Haptics are the vibrations during play and on a win. Sound effects are the "
                          + "in-game sounds. Celebration effects are the fireworks and flash on the win "
                          + "screen (the win screen itself still shows). Score progress rings trace each "
-                         + "player's colour around the scores, closing the loop at 121.")
+                         + "player's color around the scores, closing the loop at 121.")
                 }
 
                 Section {
@@ -169,7 +169,7 @@ struct SettingsView: View {
 
     private var colorRow: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("Colour").font(.subheadline).foregroundStyle(.secondary)
+            Text("Color").font(.subheadline).foregroundStyle(.secondary)
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 12) {
                     ForEach(Array(playerThemes.enumerated()), id: \.offset) { index, theme in

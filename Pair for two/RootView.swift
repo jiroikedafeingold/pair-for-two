@@ -1,7 +1,7 @@
 import SwiftUI
 import GameKit
 
-/// App entry. Two-phone play: set up your own name/colour, then Play nearby (Multipeer) or Play
+/// App entry. Two-phone play: set up your own name/color, then Play nearby (Multipeer) or Play
 /// online (Game Center). Single-device pass-and-play was removed — this is a two-phone game.
 struct RootView: View {
     private enum Screen { case menu, connect, rejoiningOnline, game, board }
@@ -118,7 +118,7 @@ struct RootView: View {
                 case .active:
                     // After a real background the link is almost certainly dead but the OS may still
                     // report it connected — force a rebuild so we re-pair in seconds, not ~30s. A mere
-                    // transient inactive (control centre, a banner) does a plain, non-destructive nudge.
+                    // transient inactive (control center, a banner) does a plain, non-destructive nudge.
                     vm?.reconnect(force: wasBackgrounded)
                     wasBackgrounded = false
                 case .background:
@@ -395,12 +395,12 @@ struct RootView: View {
 
                     Grid(alignment: .leading, horizontalSpacing: 18, verticalSpacing: 10) {
                         GridRow {
-                            menuButton("You", systemImage: "person.crop.circle",
+                            menuButton(playerName, systemImage: "person.crop.circle",
                                        tint: Color.white.opacity(0.18), foreground: .white,
                                        swatch: playerTheme(colorID: colorID).primary) {
                                 showingSettings = true
                             }
-                            menuCaption("**\(playerName)** — your name, colour and all the app's settings.")
+                            menuCaption("Your name, color and all the app's settings.")
                         }
 
                         if let resumeMarker {

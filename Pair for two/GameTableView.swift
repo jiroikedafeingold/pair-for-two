@@ -91,8 +91,8 @@ struct GameTableView: View {
             }
             // The game was quit (by you or the other player) — return to the menu.
             .onChange(of: vm.ended) { _, ended in if ended { onExit() } }
-            // Push name/colour changes into the running game when Settings closes, so the highlight,
-            // slider and score colours update live (for this device and the opponent).
+            // Push name/color changes into the running game when Settings closes, so the highlight,
+            // slider and score colors update live (for this device and the opponent).
             .onChange(of: showingSettings) { _, isShowing in
                 if !isShowing {
                     vm.updateLocalIdentity(name: localName.trimmingCharacters(in: .whitespaces), colorID: localColorID)
@@ -437,14 +437,14 @@ struct GameTableView: View {
         .padding(.bottom, 4)
     }
 
-    /// Auto-scoring scoreboard: each player's name over a big score, in their colour. The opponent's
+    /// Auto-scoring scoreboard: each player's name over a big score, in their color. The opponent's
     /// column carries the 3-second "+X" preview.
     @ViewBuilder private func autoScoreboard(_ s: PlayerSnapshot) -> some View {
         let you = s.you, opp = s.you.opponent
         let oppValue = displayedOppScore ?? vm.score(of: opp)
         HStack(spacing: 0) {
             scoreColumn(for: you, s: s)
-            // A clear centre divider between the two scores (a soft-capped vertical bar), distinct
+            // A clear center divider between the two scores (a soft-capped vertical bar), distinct
             // from the thin progress ring so the two aren't confused.
             Capsule()
                 .fill(LinearGradient(colors: [.white.opacity(0.06), .white.opacity(0.45), .white.opacity(0.06)],
@@ -555,7 +555,7 @@ struct GameTableView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
-    /// One consistent landscape layout for every play phase: the cards/primary visual fill and centre
+    /// One consistent landscape layout for every play phase: the cards/primary visual fill and center
     /// the space that's left, while the phase's prompt, status, and primary button sit in a fixed-width
     /// column on the trailing side — the same place on every screen. Nothing stacks below the cards, so
     /// the action never runs off the bottom on a short landscape phone.
@@ -566,7 +566,7 @@ struct GameTableView: View {
         @ViewBuilder action: () -> Action
     ) -> some View {
         // The rail's width is ALWAYS reserved, whether or not it currently holds flags/a button, so
-        // the cards keep a fixed centred position and never jump when a "Go" or message appears. The
+        // the cards keep a fixed centered position and never jump when a "Go" or message appears. The
         // scoring flags ("Fifteen 2 +2" …) live at the top of the rail, above the prompt/button.
         // Built here, outside the rail's GeometryReader, because that closure escapes and so can't
         // capture the `action` view builder itself.
@@ -577,9 +577,9 @@ struct GameTableView: View {
             // Two stacked slots rather than an overlay: the scoring flags get their own slot at the top
             // (always reserved, so the prompt/button below never shifts as flags come and go — and a
             // long list scrolls inside it instead of running over the button and swallowing its taps),
-            // then the prompt/button sits directly beneath it. Top-aligned, not centred in the leftover
+            // then the prompt/button sits directly beneath it. Top-aligned, not centered in the leftover
             // space: centring pushed the prompt and buttons a long way below the cards they belong to,
-            // and this lands them close to level with the (centred) cards instead.
+            // and this lands them close to level with the (centered) cards instead.
             GeometryReader { rail in
                 VStack(spacing: 8) {
                     railFlags(s)
@@ -627,7 +627,7 @@ struct GameTableView: View {
     /// Always rendered — the empty case is simply invisible — so the slot below it stays put.
     ///
     /// No name above the chips: the coach banner already says whose count this is ("Ann counts the crib",
-    /// "Ben's play") and the chips carry that player's colour, so the row was only costing the slot the
+    /// "Ben's play") and the chips carry that player's color, so the row was only costing the slot the
     /// height its total needs.
     private func railFlags(_ s: PlayerSnapshot) -> some View {
         ScoreFlagsView(flags: s.flags,
@@ -851,7 +851,7 @@ struct GameTableView: View {
                         Text(vm.showLabel).font(.caption2).foregroundStyle(.white.opacity(0.7))
                     }
                     // Cards deal out one-by-one as they're shown (re-triggers each show sub-phase).
-                    // In the crib, each card carries a marker in the colour of whoever discarded it.
+                    // In the crib, each card carries a marker in the color of whoever discarded it.
                     DealtCardsRow(cards: vm.showCards.sortedForDisplay(), cardWidth: cardW, dealSignal: s.phase,
                                   marker: { card in
                                       guard isCrib, let owner = vm.cribOwner(of: card) else { return nil }
@@ -1145,7 +1145,7 @@ private struct DealtCardsRow: View {
     let cardWidth: CGFloat
     let dealSignal: GamePhase
     /// Optional per-card marker drawn just below the card — used by the crib to show, in each
-    /// player's colour, who put that card in. Returns nil for cards that shouldn't be marked.
+    /// player's color, who put that card in. Returns nil for cards that shouldn't be marked.
     var marker: (Card) -> (color: Color, name: String)? = { _ in nil }
     @State private var revealed = 0
 

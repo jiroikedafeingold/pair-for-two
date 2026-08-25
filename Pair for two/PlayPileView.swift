@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// The shared table centre during pegging: the cut card set off to the side (it counts for everyone's
+/// The shared table center during pegging: the cut card set off to the side (it counts for everyone's
 /// hands but is never played during the pegging), the running count, the sequence of played cards
 /// (visible to both players), and a face-down crib indicator.
 struct PlayPileView: View {
@@ -10,7 +10,7 @@ struct PlayPileView: View {
 
     var body: some View {
         HStack(alignment: .top, spacing: cardWidth * 0.5) {
-            cutStack      // labelled "The Cut" + the extra spacing keeps it clearly apart from the play
+            cutStack      // labeled "The Cut" + the extra spacing keeps it clearly apart from the play
             playedStack
             cribStack
         }
@@ -66,7 +66,7 @@ struct PlayPileView: View {
     }
 
     /// A run of played cards as simplified rank+suit tiles (readable at this small size), lightly
-    /// overlapped so each rank stays visible, each with a colour bar showing who played it.
+    /// overlapped so each rank stays visible, each with a color bar showing who played it.
     private func laneRow(_ cards: [PlayedCard]) -> some View {
         HStack(spacing: -cardWidth * 0.28) {
             ForEach(cards) { pc in

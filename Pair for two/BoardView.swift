@@ -8,7 +8,7 @@ import SwiftUI
 /// of 180°), which also rotates its hit-testing — so their slider drags the way *they* see it, toward
 /// their own right. The shared readout between the halves can only face one player at a time, so it
 /// turns to whoever just changed their score, and otherwise alternates on a timer rather than picking a
-/// favourite. Pegging is the moment you most want to read the number, so that beats the timer.
+/// favorite. Pegging is the moment you most want to read the number, so that beats the timer.
 ///
 /// Deliberately just a pegboard: no hands, no crib, no cut, because the app can't see the cards. Games
 /// played here aren't recorded in Stats either — this is a utility, and lifetime "hands played" or
@@ -180,7 +180,7 @@ struct BoardView: View {
                     .frame(width: 34, height: 34)
             }
             .buttonStyle(.plain)
-            .accessibilityLabel("Edit \(isNear ? nearLabel : farLabel)'s name and colour")
+            .accessibilityLabel("Edit \(isNear ? nearLabel : farLabel)'s name and color")
         }
         .padding(.horizontal, 10)
     }
@@ -202,7 +202,7 @@ struct BoardView: View {
                 sharedScore(.bottom, scoreSize: scoreSize, nameSize: nameSize)
                 resetControl(lineHeight: height * 0.18)
                 sharedScore(.top, scoreSize: scoreSize, nameSize: nameSize)
-                // Balances the exit button on the other side so the scores stay centred.
+                // Balances the exit button on the other side so the scores stay centered.
                 Color.clear.frame(width: 34, height: 1)
             }
             .padding(.horizontal, 12)
@@ -248,7 +248,7 @@ struct BoardView: View {
         }
         .frame(maxWidth: .infinity)
         // Each score turns in place rather than the row turning as a whole: the pair keeps its
-        // positions, and every number stays labelled with whose it is, so there's nothing to work out
+        // positions, and every number stays labeled with whose it is, so there's nothing to work out
         // when it comes round to face you.
         .rotationEffect(.degrees(flipped ? 180 : 0))
         .animation(reduceMotion ? nil : .easeInOut(duration: 0.55), value: flipped)
@@ -407,20 +407,20 @@ struct BoardView: View {
     }
 }
 
-// MARK: - Name / colour sheet
+// MARK: - Name / color sheet
 
 /// `BoardSide` as a sheet item.
 extension BoardSide: Identifiable {
     public var id: String { rawValue }
 }
 
-/// Rename a side, or change its colour, from the board itself — two people share this phone, so the
+/// Rename a side, or change its color, from the board itself — two people share this phone, so the
 /// far player has to be able to put their own name on it without going through Settings.
 private struct BoardPlayerSheet: View {
     let side: BoardSide
     @Binding var name: String
     @Binding var colorID: Int
-    /// The near side's name and colour are the app-wide ones from Settings; the far side's belong to
+    /// The near side's name and color are the app-wide ones from Settings; the far side's belong to
     /// the board alone. Worth saying, so changing one here isn't a surprise elsewhere.
     let isShared: Bool
     var onDone: () -> Void
@@ -449,7 +449,7 @@ private struct BoardPlayerSheet: View {
                          : "Just for the board on this phone.")
                 }
 
-                Section("Colour") {
+                Section("Color") {
                     ScrollView(.horizontal, showsIndicators: false) {
                         HStack(spacing: 12) {
                             ForEach(Array(playerThemes.enumerated()), id: \.offset) { index, theme in

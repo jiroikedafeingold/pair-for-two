@@ -1,7 +1,7 @@
 import SwiftUI
 
 /// A short, paged welcome shown on first launch — what the app is, how to connect, how scoring works,
-/// where Settings live — ending with a name prompt. On a true first run it also picks a random colour.
+/// where Settings live — ending with a name prompt. On a true first run it also picks a random color.
 /// Sets `hasOnboarded` when finished (via `onFinish`).
 struct OnboardingView: View {
     var onFinish: () -> Void
@@ -44,7 +44,7 @@ struct OnboardingView: View {
               interactiveScoring: true),
         Slide(icon: "gearshape.fill",
               title: "Make it yours",
-              body: "Tap You on the menu for settings: name & colour, card back, haptics, sound — and Scoring, where “Automatic” hands the counting to the app if you'd rather not keep score yourself. The chart button keeps your game history, wins and skunks, with achievements in Game Center. Tap ? anytime for the full how‑to.")
+              body: "Tap You on the menu for settings: name & color, card back, haptics, sound — and Scoring, where “Automatic” hands the counting to the app if you'd rather not keep score yourself. The chart button keeps your game history, wins and skunks, with achievements in Game Center. Tap ? anytime for the full how‑to.")
     ]
 
     var body: some View {
@@ -55,7 +55,7 @@ struct OnboardingView: View {
             if askName { nameEntry } else { tour }
         }
         .onAppear {
-            // Only a true first run personalises: pick a random colour and start the name blank.
+            // Only a true first run personalises: pick a random color and start the name blank.
             if !hasOnboarded {
                 colorID = Int.random(in: 0..<max(playerThemes.count, 1))
                 if name == "Player" { name = "" }
@@ -140,12 +140,12 @@ struct OnboardingView: View {
                     .foregroundStyle(.white.opacity(0.85))
                     .multilineTextAlignment(.center)
                     .fixedSize(horizontal: false, vertical: true)
-                    .frame(maxWidth: 520)
+                    .frame(maxWidth: 760)
             }
             if slide.interactiveScoring { scoringPicker }
             Spacer(minLength: 8)
         }
-        .padding(.horizontal, 32)
+        .padding(.horizontal, 22)
         .padding(.bottom, 6)
     }
 
@@ -202,7 +202,7 @@ struct OnboardingView: View {
                 .fixedSize(horizontal: false, vertical: true)
                 .padding(.top, 2)
         }
-        .frame(maxWidth: 520)
+        .frame(maxWidth: 760)
         .padding(.top, 2)
     }
 
@@ -238,7 +238,7 @@ struct OnboardingView: View {
                 .frame(maxWidth: 360)
                 .onSubmit { onFinish() }
 
-            Text("Your colour was picked for you — change either in Settings.")
+            Text("Your color was picked for you — change either in Settings.")
                 .font(.caption).foregroundStyle(.white.opacity(0.6))
                 .multilineTextAlignment(.center)
 

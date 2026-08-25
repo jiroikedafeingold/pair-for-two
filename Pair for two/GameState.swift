@@ -225,7 +225,7 @@ nonisolated struct PlayerSnapshot: Codable, Hashable, Sendable {
     let opponentHand: [Card]?      // non-nil only at the show
     let crib: [Card]?              // non-nil only once counting reaches the crib
     let cribCount: Int
-    /// Who put each crib card in, so the crib row can show a colour marker under each card. Non-nil
+    /// Who put each crib card in, so the crib row can show a color marker under each card. Non-nil
     /// only alongside `crib` (and absent from a game that started on a build predating it).
     let cribOwners: [Card: PlayerID]?
     let starter: Card?

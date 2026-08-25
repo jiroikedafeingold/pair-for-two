@@ -140,7 +140,7 @@ struct LoserOverlay: View {
 
 // MARK: - Sad rain
 
-/// Slow, thin grey rain streaks falling behind the loser card. Pure Canvas, no assets.
+/// Slow, thin gray rain streaks falling behind the loser card. Pure Canvas, no assets.
 struct SadRainView: View {
     @State private var start = Date()
 

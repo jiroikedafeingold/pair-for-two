@@ -585,7 +585,7 @@ final class GameViewModel {
     var youAreCounting: Bool { showCountingPlayer == snapshot.you }
 
     /// The player the current scoring feedback belongs to (pegging → whoever just played; the show →
-    /// the counter). Drives the flag colour + the leading name.
+    /// the counter). Drives the flag color + the leading name.
     var scoringPlayer: PlayerID? {
         switch snapshot.phase {
         case .pegging:               return snapshot.lastToPlay ?? snapshot.dealer
@@ -620,7 +620,7 @@ final class GameViewModel {
     }
 
     /// Which player discarded a given crib card, so the crib row can mark each card with its owner's
-    /// colour. Nil when unknown (a game resumed from a build that didn't record it).
+    /// color. Nil when unknown (a game resumed from a build that didn't record it).
     func cribOwner(of card: Card) -> PlayerID? { snapshot.cribOwners?[card] }
 
     /// Name-based label for what's being counted (never the "pone/dealer" jargon).
@@ -760,8 +760,8 @@ final class GameViewModel {
     func advance() { submit(.advance) }
     func playAgain() { submit(.playAgain) }
 
-    /// A live name/colour change from Settings — propagates into the running game so this device's
-    /// (and the opponent's) highlight, slider, and score colours update immediately.
+    /// A live name/color change from Settings — propagates into the running game so this device's
+    /// (and the opponent's) highlight, slider, and score colors update immediately.
     func updateLocalIdentity(name: String, colorID: Int) {
         localName = name
         localColorID = colorID

@@ -59,7 +59,7 @@ struct HelpView: View {
                     bullet("**A slider each**, at your own edge of the screen, the right way up for you.")
                     bullet("**The score in the middle turns** to face whoever last pegged, then keeps turning "
                            + "so you both get to read it. Tap it to turn it now.")
-                    bullet("**The pencil** beside your slider sets your name and colour, and the sound, "
+                    bullet("**The pencil** beside your slider sets your name and color, and the sound, "
                            + "haptics and score-track settings.")
                     bullet("**The circle on the divider** starts a new game. It asks first.")
                     bullet("**At 121** the board replays every peg of the game, then shows the winner — "
@@ -118,7 +118,7 @@ struct HelpView: View {
                 }
 
                 Section("Settings") {
-                    bullet("**Name & colour**, and your **card back**.")
+                    bullet("**Name & color**, and your **card back**.")
                     bullet("**Scoring mode** — either player can change it. New games start on **Player "
                            + "responsibility**: you keep score, as you would on a wooden board.")
                     bullet("**Feel & effects:** toggle **Haptics**, **Sound effects**, and **Celebration effects**.")

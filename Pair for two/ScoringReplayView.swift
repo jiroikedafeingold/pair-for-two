@@ -11,7 +11,7 @@ struct ScoringReplayView: View {
     let p2Theme: PlayerTheme
     /// Whether each step names the phase it came from ("Pegging · +2"). The scoreboard has a real score
     /// log — every peg, in order — but no idea *why* any of it was scored, since it never sees the cards;
-    /// labelling those steps would be inventing detail.
+    /// labeling those steps would be inventing detail.
     var showsPhase: Bool = true
     let onFinish: () -> Void
 

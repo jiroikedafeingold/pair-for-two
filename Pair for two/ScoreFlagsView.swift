@@ -2,7 +2,7 @@ import SwiftUI
 
 /// Horizontal row of coach "flag chips" — every scoring opportunity the engine detected for the
 /// current context. Flag-only: they inform, they never auto-apply. The chips are tinted in the
-/// scoring player's colour and led by their name, so it's clear whose points these are.
+/// scoring player's color and led by their name, so it's clear whose points these are.
 struct ScoreFlagsView: View {
     let flags: [ScoreFlag]
     var accent: Color = .cribGold

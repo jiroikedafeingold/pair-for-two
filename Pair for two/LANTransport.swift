@@ -15,7 +15,7 @@ import Observation
 ///
 /// Deliberately mirrors `MultipeerSession`'s shape — `@Observable` for the connect UI, a
 /// nonisolated `events` stream, an outbox that survives brief gaps — so `GameViewModel` stays
-/// transport-agnostic and the hard-won reconnect behaviour is consistent between the two.
+/// transport-agnostic and the hard-won reconnect behavior is consistent between the two.
 ///
 /// Always speaks protocol v1 (`PROTOCOL.md`): this transport is new, so it has no legacy peers.
 @MainActor
@@ -106,7 +106,7 @@ final class LANTransport: NearbyTransport {
         // Small, latency-sensitive messages — don't wait to coalesce them.
         (params.defaultProtocolStack.transportProtocol as? NWProtocolTCP.Options)?.noDelay = true
         // Peer-to-peer (AWDL) is deliberately off: Android can't use it, and Multipeer already
-        // covers the no-network iOS↔iOS case. Keeping it off makes behaviour predictable.
+        // covers the no-network iOS↔iOS case. Keeping it off makes behavior predictable.
         params.includePeerToPeer = false
 
         guard let listener = try? NWListener(using: params) else {

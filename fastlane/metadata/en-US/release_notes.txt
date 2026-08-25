@@ -1,5 +1,5 @@
 • Steadier connections — pairing two phones is more patient and more reliable, especially when there's no Wi-Fi network around, and a game now recovers on its own after one phone has been closed or set aside for a while.
-• Whose card is that? — when the crib is counted, a small marker in each player's colour sits under the cards they put in.
+• Whose card is that? — when the crib is counted, a small marker in each player's color sits under the cards they put in.
 • Last card announced — when the final card of a hand goes down, both phones say so, so nobody misses the point.
 • Kinder to larger text — with bigger text sizes turned on, the counting prompt and its buttons no longer get cut off, and long buttons wrap instead of running off the edge.
 • Tidier counting screen — the prompt and the Continue button now line up with the cards being counted, and the scoring chips have room of their own instead of crowding them.

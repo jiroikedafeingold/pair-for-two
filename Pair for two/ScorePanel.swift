@@ -4,7 +4,7 @@ import SwiftUI
 
 /// The manual scoring control: a 0–29 points slider, an accumulating +1 / +N button, and undo.
 /// Adapted from Criboard's `PlayerPanel` — the giant name watermark is replaced with a live
-/// `your-score / opponent-score` readout in the player's theme colour. `onAdd`/`onPlusOne`/`onUndo`
+/// `your-score / opponent-score` readout in the player's theme color. `onAdd`/`onPlusOne`/`onUndo`
 /// map to `claimPoints` / `undo` intents.
 struct ScorePanel: View {
     let name: String
@@ -15,12 +15,12 @@ struct ScorePanel: View {
     let disabled: Bool
     let canUndo: Bool
     var requireConfirm: Bool = false
-    /// Opponent's colour + a pending "+X" they're about to add (shown for a few seconds before their
+    /// Opponent's color + a pending "+X" they're about to add (shown for a few seconds before their
     /// score updates), so this player can see what the other is scoring.
     var opponentColor: Color = .gray
     var opponentPending: Int = 0
     /// When true this is the only panel on screen (networked play), so it carries *both* players'
-    /// progress loops — your colour on the outer edge, the opponent's just inside it. When false
+    /// progress loops — your color on the outer edge, the opponent's just inside it. When false
     /// (pass-and-play, one panel per player) only this player's own loop is drawn.
     var showOpponentTrack: Bool = false
     /// Set false to drop this panel's own score readout and progress loop, for a screen that shows the
@@ -94,7 +94,7 @@ struct ScorePanel: View {
     var body: some View {
         ZStack {
             // Live score readout behind the controls (replaces Criboard's name watermark): your score
-            // in your colour, the opponent's in theirs, with their pending "+X" right beside it.
+            // in your color, the opponent's in theirs, with their pending "+X" right beside it.
             if showsScore {
             HStack(spacing: 6) {
                 Text("\(score)").foregroundStyle(primary.opacity(0.85))
@@ -230,7 +230,7 @@ struct ScorePanel: View {
                 .shadow(color: .black.opacity(0.35), radius: 14, y: 6)
         )
         .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
-        // The panel edge doubles as a cribbage track: each player's colour fills around the oval as
+        // The panel edge doubles as a cribbage track: each player's color fills around the oval as
         // they climb toward 121, closing into a complete loop at game point. Overlaid (not clipped)
         // so the stroke rides the rounded edge.
         .overlay {
@@ -294,7 +294,7 @@ struct ScoreTrackOverlay: View {
     }
 }
 
-/// A single progress loop traced around a rounded edge, in one player's colour. A faint full-loop
+/// A single progress loop traced around a rounded edge, in one player's color. A faint full-loop
 /// track sits behind it so the remaining distance to 121 stays visible; the filled portion glows,
 /// brightening into a closed ring at game point.
 private struct ScoreLoop: View {
