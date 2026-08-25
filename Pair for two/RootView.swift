@@ -33,6 +33,10 @@ struct RootView: View {
     @State private var showOnboarding = false
     @AppStorage("hasOnboarded") private var hasOnboarded = false
     @Environment(\.scenePhase) private var scenePhase
+    /// Regular height means an iPad: room to center the menu on the screen and scale it up. A phone in
+    /// landscape (compact) has barely enough height for the rows, so it stays top-aligned and compact.
+    @Environment(\.verticalSizeClass) private var vSizeClass
+    private var roomy: Bool { vSizeClass == .regular }
 
     @AppStorage("localName") private var name = "Player"
     @AppStorage("localColorID") private var colorID = 1
@@ -57,11 +61,11 @@ struct RootView: View {
                 Text(title).fontWeight(.bold)
                 Spacer(minLength: 0)
             }
-            .font(.headline)
+            .font(roomy ? .title3 : .headline)
             .lineLimit(1)
             .minimumScaleFactor(0.8)
-            .frame(width: 168, alignment: .leading)
-            .padding(.horizontal, 16).padding(.vertical, 10)
+            .frame(width: roomy ? 250 : 168, alignment: .leading)
+            .padding(.horizontal, roomy ? 22 : 16).padding(.vertical, roomy ? 16 : 10)
         }
         .buttonStyle(.borderedProminent)
         .tint(tint)
@@ -81,11 +85,11 @@ struct RootView: View {
 
     private func captionStyle(_ text: Text) -> some View {
         text
-            .font(.caption)
+            .font(roomy ? .callout : .caption)
             .foregroundStyle(.white.opacity(0.62))
             .multilineTextAlignment(.leading)
             .fixedSize(horizontal: false, vertical: true)
-            .frame(maxWidth: 400, alignment: .leading)
+            .frame(maxWidth: roomy ? 480 : 400, alignment: .leading)
     }
 
     /// What to call the device in copy that points at it ("use the iPad as the board").
@@ -382,18 +386,24 @@ struct RootView: View {
             // One row per thing you can do: the control on the left, what it does on the right. The
             // buttons alone weren't self-explanatory — "Play nearby" versus "Play online" versus a
             // scoreboard is a real choice, and the answer shouldn't be buried in the help.
-            ScrollView {
-                VStack(spacing: 16) {
+            GeometryReader { geo in
+              ScrollView {
+                VStack(spacing: roomy ? 26 : 16) {
+                    // Centered vertically when the screen has the height for it (iPad), which is most of
+                    // the screen: without these the menu sat in the top third with a sea of felt below.
+                    if roomy { Spacer(minLength: 0) }
+
                     VStack(spacing: 2) {
                         Text("Pair for Two")
-                            .font(.system(size: 30, weight: .heavy, design: .serif))
+                            .font(.system(size: roomy ? 46 : 30, weight: .heavy, design: .serif))
                             .foregroundStyle(.white)
                         Text("Two-phone cribbage")
-                            .font(.subheadline).foregroundStyle(Color.cribGold)
+                            .font(roomy ? .title3 : .subheadline).foregroundStyle(Color.cribGold)
                     }
                     .padding(.bottom, 2)
 
-                    Grid(alignment: .leading, horizontalSpacing: 18, verticalSpacing: 10) {
+                    Grid(alignment: .leading, horizontalSpacing: roomy ? 26 : 18,
+                         verticalSpacing: roomy ? 16 : 10) {
                         GridRow {
                             menuButton(playerName, systemImage: "person.crop.circle",
                                        tint: Color.white.opacity(0.18), foreground: .white,
@@ -468,13 +478,16 @@ struct RootView: View {
                                         : "Playing with real cards? Lay this \(Self.deviceWord) between you and it keeps score.")
                         }
                     }
-                    .frame(maxWidth: 660)
+                    .frame(maxWidth: roomy ? 820 : 660)
+
+                    if roomy { Spacer(minLength: 0) }
                 }
-                .frame(maxWidth: .infinity)
+                .frame(maxWidth: .infinity, minHeight: geo.size.height)
                 .padding(.horizontal, 24)
                 .padding(.vertical, 14)
+              }
+              .scrollBounceBehavior(.basedOnSize)
             }
-            .scrollBounceBehavior(.basedOnSize)
         }
         .overlay(alignment: .topTrailing) {
             HStack(spacing: 14) {

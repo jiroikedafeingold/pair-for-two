@@ -29,6 +29,9 @@ struct GameTableView: View {
 
     // "Check my count" — shows the correct scoring for the hand/crib currently being counted.
     @State private var showCheck = false
+    /// Measured height of the rail's prompt-and-button column, so it can be positioned against the cards
+    /// instead of against a guess.
+    @State private var actionHeight: CGFloat = 0
 
     // Set when THIS device changes the scoring mode, so the resulting snapshot change doesn't also
     // toast us — only the other player is told "so-and-so switched scoring".
@@ -51,6 +54,8 @@ struct GameTableView: View {
     @State private var glowTrigger = 0
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.horizontalSizeClass) private var hSizeClass
+    /// Regular *height* is the iPad test (a big iPhone in landscape is regular-width but compact-height).
+    @Environment(\.verticalSizeClass) private var vSizeClass
 
     // The body is split into layered `some View` properties on purpose: a single long chain of
     // modifiers (sheets + ~10 onChange handlers) makes the Swift type-checker blow up (multi-minute
@@ -581,13 +586,20 @@ struct GameTableView: View {
             // space: centring pushed the prompt and buttons a long way below the cards they belong to,
             // and this lands them close to level with the (centered) cards instead.
             GeometryReader { rail in
-                VStack(spacing: 8) {
-                    railFlags(s)
-                        .frame(height: flagsSlotHeight(for: s, railHeight: rail.size.height))
+                let slot = flagsSlotHeight(for: s, railHeight: rail.size.height)
+                // Line the prompt and button up with the cards, which are centered in the play column —
+                // so centered in the rail too — and only push them down if the flag chips would otherwise
+                // be underneath them. The action's height is measured rather than assumed, because it
+                // varies by phase (a two-line prompt over two buttons, or a lone "Go").
+                let centered = (rail.size.height - actionHeight) / 2
+                ZStack(alignment: .top) {
+                    railFlags(s).frame(height: slot)
                     actionColumn
-                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+                        .frame(maxWidth: .infinity)
+                        .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { actionHeight = $0 }
+                        .offset(y: max(slot + 8, centered))
                 }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
             }
             .frame(width: railWidth)
             .frame(maxHeight: .infinity)
@@ -876,9 +888,9 @@ struct GameTableView: View {
                 // Once points are pending the button itself says what will happen ("Add 15 & continue"),
                 // so the standing instruction is dropped — it would only crowd the narrow rail, where
                 // the taller two-line button needs the room.
-                if uncommittedLocal == 0 {
+                if uncommittedLocal == 0, vSizeClass == .regular || s.flags.isEmpty {
                     Text(s.scoringMode == .auto ? "Scored automatically" : "Count it on your slider, then Continue")
-                        .font(.caption).foregroundStyle(.white.opacity(0.7))
+                        .font(vSizeClass == .regular ? .callout : .caption).foregroundStyle(.white.opacity(0.7))
                         .multilineTextAlignment(.center)
                         .fixedSize(horizontal: false, vertical: true)
                 }
@@ -902,7 +914,7 @@ struct GameTableView: View {
                         withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) { showCheck = true }
                     } label: {
                         Label("Check", systemImage: "checkmark.circle.fill")
-                            .font(.subheadline.weight(.semibold))
+                            .font(vSizeClass == .regular ? .title3.weight(.semibold) : .subheadline.weight(.semibold))
                             .foregroundStyle(Color.cribGold)
                             .padding(.horizontal, 12).padding(.vertical, 7)
                             .background(Capsule().fill(Color.white.opacity(0.12)))
@@ -1112,12 +1124,19 @@ private struct RailButton: View {
     var disabled: Bool = false
     let action: () -> Void
 
+    /// Regular height means an iPad, where a phone-sized button looks lost against the cards.
+    @Environment(\.verticalSizeClass) private var vSizeClass
+    private var roomy: Bool { vSizeClass == .regular }
+
     private static let maxWidth: CGFloat = 240
+    private static let roomyMaxWidth: CGFloat = 340
 
     var body: some View {
-        let width: CGFloat = min(railWidth - 8, RailButton.maxWidth)
+        let width: CGFloat = min(railWidth - 8, roomy ? RailButton.roomyMaxWidth : RailButton.maxWidth)
         Button(action: action) {
             Text(title)
+                // nil inherits the button style's own font, so the phone is untouched.
+                .font(roomy ? .title3.weight(.semibold) : nil)
                 .lineLimit(2)
                 .minimumScaleFactor(0.7)
                 .multilineTextAlignment(.center)
@@ -1125,11 +1144,12 @@ private struct RailButton: View {
                 // title truncates ("Add 15 & count the…") instead of wrapping onto a second line.
                 .fixedSize(horizontal: false, vertical: true)
                 .frame(maxWidth: .infinity)
+                .padding(.vertical, roomy ? 8 : 0)
         }
         .buttonStyle(.borderedProminent)
         .tint(tint)
         .foregroundStyle(textColor)
-        .controlSize(large ? .large : .regular)
+        .controlSize(large || roomy ? .large : .regular)
         .disabled(disabled)
         .frame(maxWidth: width)
     }
