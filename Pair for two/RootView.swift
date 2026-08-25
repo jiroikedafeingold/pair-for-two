@@ -410,7 +410,7 @@ struct RootView: View {
                                        swatch: playerTheme(colorID: colorID).primary) {
                                 showingSettings = true
                             }
-                            menuCaption("Your name, color and all the app's settings.")
+                            menuCaption("Your name, color and all the app's settings. Tap to edit.")
                         }
 
                         if let resumeMarker {
