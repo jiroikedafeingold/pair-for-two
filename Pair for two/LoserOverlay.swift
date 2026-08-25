@@ -109,10 +109,24 @@ struct LoserOverlay: View {
                 // A separate way home for normal games; redundant once the primary button is "Back to
                 // menu" (opponent gone), so it's dropped then.
                 if !opponentLeft {
-                    Button("Back to menu", action: onExit)
-                        .font(.system(size: 12, weight: .semibold, design: .rounded))
-                        .foregroundStyle(.white.opacity(0.55))
-                        .buttonStyle(.plain)
+                    // A real button, the same shape and width as the primary one above it. As a small
+                    // grey line of text it read as a footnote, and leaving the game is not a footnote.
+                    Button(action: onExit) {
+                        HStack(spacing: 8) {
+                            Image(systemName: "house.fill")
+                                .font(.system(size: 15, weight: .bold))
+                            Text("BACK TO MENU")
+                                .font(.system(size: 14, weight: .heavy, design: .rounded))
+                                .tracking(1.6)
+                        }
+                        .foregroundStyle(.white.opacity(0.92))
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 11)
+                        .background(Capsule().fill(Color.white.opacity(0.14)))
+                        .overlay(Capsule().stroke(.white.opacity(0.32), lineWidth: 1.2))
+                    }
+                    .buttonStyle(.plain)
+                    .padding(.horizontal, 6)
                 }
             }
             .padding(20)

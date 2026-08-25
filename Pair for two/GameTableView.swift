@@ -890,7 +890,7 @@ struct GameTableView: View {
                 // the taller two-line button needs the room.
                 if uncommittedLocal == 0, vSizeClass == .regular || s.flags.isEmpty {
                     Text(s.scoringMode == .auto ? "Scored automatically" : "Count it on your slider, then Continue")
-                        .font(vSizeClass == .regular ? .callout : .caption).foregroundStyle(.white.opacity(0.7))
+                        .font(vSizeClass == .regular ? .title3 : .caption).foregroundStyle(.white.opacity(0.7))
                         .multilineTextAlignment(.center)
                         .fixedSize(horizontal: false, vertical: true)
                 }
@@ -914,9 +914,11 @@ struct GameTableView: View {
                         withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) { showCheck = true }
                     } label: {
                         Label("Check", systemImage: "checkmark.circle.fill")
-                            .font(vSizeClass == .regular ? .title3.weight(.semibold) : .subheadline.weight(.semibold))
+                            .font(vSizeClass == .regular ? .system(size: 26, weight: .bold, design: .rounded)
+                                                         : .subheadline.weight(.semibold))
                             .foregroundStyle(Color.cribGold)
-                            .padding(.horizontal, 12).padding(.vertical, 7)
+                            .padding(.horizontal, vSizeClass == .regular ? 22 : 12)
+                            .padding(.vertical, vSizeClass == .regular ? 14 : 7)
                             .background(Capsule().fill(Color.white.opacity(0.12)))
                             .overlay(Capsule().stroke(Color.cribGold.opacity(0.6), lineWidth: 1.2))
                     }
@@ -1129,22 +1131,24 @@ private struct RailButton: View {
     private var roomy: Bool { vSizeClass == .regular }
 
     private static let maxWidth: CGFloat = 240
-    private static let roomyMaxWidth: CGFloat = 340
+    /// About twice the phone's button on an iPad — the rail there is ~410pt wide, so this is as much of
+    /// it as a button can take and still breathe.
+    private static let roomyMaxWidth: CGFloat = 420
 
     var body: some View {
         let width: CGFloat = min(railWidth - 8, roomy ? RailButton.roomyMaxWidth : RailButton.maxWidth)
         Button(action: action) {
             Text(title)
                 // nil inherits the button style's own font, so the phone is untouched.
-                .font(roomy ? .title3.weight(.semibold) : nil)
+                .font(roomy ? .system(size: 34, weight: .bold, design: .rounded) : nil)
                 .lineLimit(2)
-                .minimumScaleFactor(0.7)
+                .minimumScaleFactor(0.6)
                 .multilineTextAlignment(.center)
                 // Without this the bordered style hands the label a single line's height, so a long
                 // title truncates ("Add 15 & count the…") instead of wrapping onto a second line.
                 .fixedSize(horizontal: false, vertical: true)
                 .frame(maxWidth: .infinity)
-                .padding(.vertical, roomy ? 8 : 0)
+                .padding(.vertical, roomy ? 22 : 0)
         }
         .buttonStyle(.borderedProminent)
         .tint(tint)

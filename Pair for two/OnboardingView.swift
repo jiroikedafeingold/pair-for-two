@@ -100,7 +100,9 @@ struct OnboardingView: View {
                         .frame(width: 7, height: 7)
                 }
             }
-            .padding(.bottom, 14)
+            // Dots and button sit low, close to the safe area — every point they give back is a point
+            // of slide height, which is what keeps the taller slides from needing to scroll.
+            .padding(.bottom, 8)
 
             Button(lastSlide && hasOnboarded ? "Done" : "Continue") {
                 if lastSlide {
@@ -112,7 +114,7 @@ struct OnboardingView: View {
             }
             .buttonStyle(.borderedProminent).tint(.cribGold).foregroundStyle(.black)
             .controlSize(.large)
-            .padding(.bottom, 28)
+            .padding(.bottom, 8)
         }
     }
 
