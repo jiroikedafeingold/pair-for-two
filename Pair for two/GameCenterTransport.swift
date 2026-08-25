@@ -167,7 +167,8 @@ final class GameCenterTransport: NSObject, GKMatchDelegate, GameTransport, @unch
         request.minPlayers = 2
         request.maxPlayers = 2
         request.recipients = [target]
-        request.inviteMessage = "Let's finish our game of Pair for Two!"
+        request.inviteMessage = String(localized: "Let's finish our game of Pair for Two!",
+                                       comment: "Message in a Game Center invite when rebuilding a dropped match")
         GKMatchmaker.shared().addPlayers(to: m, matchRequest: request) { _ in
             // Success is observed through the delegate's .connected; a failure just means the next
             // attempt (or the timeout) takes over.

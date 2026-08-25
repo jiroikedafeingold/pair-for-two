@@ -60,7 +60,7 @@ struct InvitePlayersView: View {
             VStack(spacing: 14) {
                 Image(systemName: "exclamationmark.triangle.fill")
                     .font(.system(size: 34)).foregroundStyle(Color.cribGold)
-                Text(message).foregroundStyle(.white).multilineTextAlignment(.center).frame(maxWidth: 360)
+                Text(verbatim: message).foregroundStyle(.white).multilineTextAlignment(.center).frame(maxWidth: 360)
                 Button("Back to friends") { gameCenter.cancelInvite() }
                     .buttonStyle(.borderedProminent).tint(.cribGold).foregroundStyle(.black)
                 Button("Invite with Game Center") { onUseGameCenterPicker() }
@@ -97,7 +97,7 @@ struct InvitePlayersView: View {
                             Button { gameCenter.invite(player) } label: {
                                 HStack(spacing: 12) {
                                     Image(systemName: "person.crop.circle.fill")
-                                    Text(player.displayName).fontWeight(.semibold)
+                                    Text(verbatim: player.displayName).fontWeight(.semibold)
                                     Spacer()
                                     Image(systemName: "paperplane.fill")
                                 }

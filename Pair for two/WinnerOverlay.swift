@@ -7,17 +7,17 @@ enum SkunkLevel {
 
     var title: String {
         switch self {
-        case .none:   return "VICTORY"
-        case .single: return "SKUNKED!"
-        case .double: return "DOUBLE SKUNK!"
+        case .none:   return String(localized: "VICTORY", comment: "Win screen headline; shown in capitals")
+        case .single: return String(localized: "SKUNKED!", comment: "Win screen headline when the loser was under 91; capitals")
+        case .double: return String(localized: "DOUBLE SKUNK!", comment: "Win screen headline when the loser was under 61; capitals")
         }
     }
 
     var subtitle: String {
         switch self {
-        case .none:   return "Well played"
-        case .single: return "A clean sweep"
-        case .double: return "An absolute thrashing"
+        case .none:   return String(localized: "Well played", comment: "Win screen subtitle")
+        case .single: return String(localized: "A clean sweep", comment: "Win screen subtitle for a skunk")
+        case .double: return String(localized: "An absolute thrashing", comment: "Win screen subtitle for a double skunk")
         }
     }
 
@@ -130,7 +130,7 @@ struct WinnerOverlay: View {
                         .tracking(3.2)
                         .foregroundStyle(.white.opacity(0.75))
 
-                    Text(LocalizedStringKey(skunk.title))
+                    Text(verbatim: skunk.title)
                         .font(.system(size: skunk == .double ? 30 : 34, weight: .black, design: .rounded))
                         .foregroundStyle(
                             LinearGradient(
@@ -143,7 +143,7 @@ struct WinnerOverlay: View {
                         .lineLimit(1)
                         .shadow(color: winnerColor.opacity(0.5), radius: 10)
 
-                    Text(LocalizedStringKey(skunk.subtitle))
+                    Text(verbatim: skunk.subtitle)
                         .font(.system(size: 13, weight: .semibold, design: .rounded))
                         .foregroundStyle(.white.opacity(0.6))
                         .italic()
@@ -238,7 +238,7 @@ struct WinnerOverlay: View {
     }
 
     /// The big gold capsule button, shared by "Play again" and (opponent gone) "Back to menu".
-    private func primaryButton(title: String, icon: String, action: @escaping () -> Void) -> some View {
+    private func primaryButton(title: LocalizedStringKey, icon: String, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             HStack(spacing: 8) {
                 Image(systemName: icon)
@@ -281,19 +281,19 @@ struct WinnerOverlay: View {
                 .rotationEffect(.degrees(rotate ? 6 : -6))
                 .animation(.easeInOut(duration: 1.6).repeatForever(autoreverses: true), value: rotate)
         case .single:
-            Text(loserChar)
+            Text(verbatim: loserChar)
                 .font(.system(size: 86))
                 .shadow(color: .black.opacity(0.55), radius: 14, y: 6)
                 .rotationEffect(.degrees(rotate ? 10 : -10))
                 .animation(.easeInOut(duration: 1.4).repeatForever(autoreverses: true), value: rotate)
         case .double:
             HStack(spacing: 6) {
-                Text(loserChar)
+                Text(verbatim: loserChar)
                     .font(.system(size: 74))
                     .shadow(color: .black.opacity(0.55), radius: 12, y: 6)
                     .rotationEffect(.degrees(rotate ? -18 : -8))
                     .animation(.easeInOut(duration: 1.3).repeatForever(autoreverses: true), value: rotate)
-                Text(loserChar)
+                Text(verbatim: loserChar)
                     .font(.system(size: 74))
                     .shadow(color: .black.opacity(0.55), radius: 12, y: 6)
                     .rotationEffect(.degrees(rotate ? 18 : 8))

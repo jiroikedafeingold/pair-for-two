@@ -21,9 +21,14 @@ extension Color {
 
 struct PlayerTheme: Identifiable, Hashable {
     let id: String
+    /// English name, used as the localization key — see `localizedName`. The stored `id` is what
+    /// persists, so translating a color never migrates anyone's saved choice.
     let displayName: String
     let primary: Color
     let deep: Color
+
+    /// The color's name for display.
+    var localizedName: LocalizedStringKey { LocalizedStringKey(displayName) }
 }
 
 let playerThemes: [PlayerTheme] = [
@@ -90,9 +95,9 @@ enum CardBack: Int, CaseIterable, Identifiable {
 
     var displayName: String {
         switch self {
-        case .royal:     return "Royal"
-        case .celestial: return "Celestial"
-        case .midnight:  return "Midnight"
+        case .royal:     return String(localized: "Royal", comment: "Card back design name")
+        case .celestial: return String(localized: "Celestial", comment: "Card back design name")
+        case .midnight:  return String(localized: "Midnight", comment: "Card back design name")
         }
     }
 

@@ -44,13 +44,17 @@ final class GameCenterManager: NSObject {
         case .cancelled:
             return nil
         case .gameUnrecognized:
-            return "Online play isn't set up for this app yet. Game Center doesn't recognize this build — this clears once the app is enabled for Game Center in App Store Connect (and can take a little while to take effect)."
+            return String(localized: "Online play isn't set up for this app yet. Game Center doesn't recognize this build — this clears once the app is enabled for Game Center in App Store Connect (and can take a little while to take effect).",
+                          comment: "Error shown when Game Center does not recognize the build")
         case .notAuthenticated:
-            return "Sign in to Game Center in the Settings app to play online."
+            return String(localized: "Sign in to Game Center in the Settings app to play online.",
+                          comment: "Error shown when the player is not signed into Game Center")
         case .communicationsFailure, .unknown:
-            return "Couldn't reach Game Center. Check your internet connection and try again."
+            return String(localized: "Couldn't reach Game Center. Check your internet connection and try again.",
+                          comment: "Error shown when Game Center is unreachable")
         default:
-            return "Couldn't start the online game. Please try again. (Game Center error \(gkError.code.rawValue).)"
+            return String(localized: "Couldn't start the online game. Please try again. (Game Center error \(gkError.code.rawValue).)",
+                          comment: "Generic Game Center failure; %lld is Apple's error code")
         }
     }
 
@@ -104,7 +108,8 @@ final class GameCenterManager: NSObject {
         request.minPlayers = 2
         request.maxPlayers = 2
         request.recipients = [player]
-        request.inviteMessage = "Let's play Pair for Two!"
+        request.inviteMessage = String(localized: "Let's play Pair for Two!",
+                                       comment: "Message in a Game Center invite; the app name is a brand")
         inviteState = .inviting(player.displayName)
         request.recipientResponseHandler = { [weak self] responder, response in
             Task { @MainActor in
@@ -114,10 +119,12 @@ final class GameCenterManager: NSObject {
                     break   // they'll connect; beginMatch takes over
                 case .declined:
                     self.cancelInvite()
-                    self.inviteState = .failed("\(responder.displayName) declined.")
+                    self.inviteState = .failed(String(localized: "\(responder.displayName) declined.",
+                                                      comment: "%@ is the invited player's name"))
                 default:
                     self.cancelInvite()
-                    self.inviteState = .failed("No response from \(responder.displayName). Make sure they're signed into Game Center, or use the Game Center inviter below.")
+                    self.inviteState = .failed(String(localized: "No response from \(responder.displayName). Make sure they're signed into Game Center, or use the Game Center inviter below.",
+                                                      comment: "%@ is the invited player's name"))
                 }
             }
         }
@@ -181,7 +188,8 @@ final class GameCenterManager: NSObject {
         request.maxPlayers = 2
         if let recipient {
             request.recipients = [recipient]
-            request.inviteMessage = "Let's play Pair for Two!"
+            request.inviteMessage = String(localized: "Let's play Pair for Two!",
+                                       comment: "Message in a Game Center invite; the app name is a brand")
         }
         return GKMatchmakerViewController(matchRequest: request)
     }
@@ -210,9 +218,12 @@ final class GameCenterManager: NSObject {
                 didRegisterListener = true
             }
         } else if let error {
-            unavailableReason = Self.friendlyMessage(for: error) ?? "Sign in to Game Center to play online."
+            unavailableReason = Self.friendlyMessage(for: error)
+                ?? String(localized: "Sign in to Game Center to play online.",
+                          comment: "Shown under the online play button when sign-in is needed")
         } else {
-            unavailableReason = "Sign in to Game Center to play online."
+            unavailableReason = String(localized: "Sign in to Game Center to play online.",
+                                       comment: "Shown under the online play button when sign-in is needed")
         }
     }
 

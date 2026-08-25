@@ -27,7 +27,8 @@ struct SettingsView: View {
         let info = Bundle.main.infoDictionary
         let version = info?["CFBundleShortVersionString"] as? String ?? "?"
         let build = info?["CFBundleVersion"] as? String ?? "?"
-        return "Pair for Two \(version) (build \(build))"
+        return String(localized: "Pair for Two \(version) (build \(build))",
+                      comment: "Version footer in Settings; the app name is a brand and stays as it is")
     }
 
     var body: some View {
@@ -71,8 +72,8 @@ struct SettingsView: View {
                                     .foregroundStyle(scoringModeRaw == mode.rawValue ? Color.accentColor : .secondary)
                                     .font(.title3)
                                 VStack(alignment: .leading, spacing: 2) {
-                                    Text(mode.title).font(.body).foregroundStyle(.primary)
-                                    Text(mode.detail).font(.caption).foregroundStyle(.secondary)
+                                    Text(verbatim: mode.title).font(.body).foregroundStyle(.primary)
+                                    Text(verbatim: mode.detail).font(.caption).foregroundStyle(.secondary)
                                 }
                             }
                         }
@@ -90,8 +91,7 @@ struct SettingsView: View {
                     } header: {
                         Text("Scoring slider")
                     } footer: {
-                        Text("Holds the slider value until you tap the +N button, instead of adding it "
-                             + "the moment you let go.")
+                        Text("Holds the slider value until you tap the +N button, instead of adding it the moment you let go.")
                     }
                 }
 
@@ -103,10 +103,7 @@ struct SettingsView: View {
                 } header: {
                     Text("Feel & effects")
                 } footer: {
-                    Text("Haptics are the vibrations during play and on a win. Sound effects are the "
-                         + "in-game sounds. Celebration effects are the fireworks and flash on the win "
-                         + "screen (the win screen itself still shows). Score progress rings trace each "
-                         + "player's color around the scores, closing the loop at 121.")
+                    Text("Haptics are the vibrations during play and on a win. Sound effects are the in-game sounds. Celebration effects are the fireworks and flash on the win screen (the win screen itself still shows). Score progress rings trace each player's color around the scores, closing the loop at 121.")
                 }
 
                 Section {
@@ -114,13 +111,12 @@ struct SettingsView: View {
                 } header: {
                     Text("Win screen")
                 } footer: {
-                    Text("When someone wins, replay the whole game's scoring — score by score — before "
-                         + "showing the win screen. You can also replay it any time from the win screen.")
+                    Text("When someone wins, replay the whole game's scoring — score by score — before showing the win screen. You can also replay it any time from the win screen.")
                 }
 
                 Section {
                 } footer: {
-                    Text(appVersionBuild)
+                    Text(verbatim: appVersionBuild)
                         .frame(maxWidth: .infinity, alignment: .center)
                 }
             }
@@ -154,7 +150,7 @@ struct SettingsView: View {
                             .strokeBorder(selected ? Color.accentColor : Color.cribGold.opacity(0.85),
                                           lineWidth: selected ? 3 : 1.5)
                     )
-                    Text(back.displayName)
+                    Text(verbatim: back.displayName)
                         .font(.caption)
                         .fontWeight(selected ? .semibold : .regular)
                         .foregroundStyle(selected ? .primary : .secondary)
@@ -178,6 +174,9 @@ struct SettingsView: View {
                             .frame(width: 30, height: 30)
                             .overlay(Circle().strokeBorder(.primary, lineWidth: colorID == index ? 3 : 0))
                             .onTapGesture { colorID = index }
+                            .accessibilityElement()
+                            .accessibilityLabel(theme.localizedName)
+                            .accessibilityAddTraits(colorID == index ? [.isButton, .isSelected] : .isButton)
                     }
                 }
                 .padding(.vertical, 2)

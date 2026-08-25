@@ -1,5 +1,15 @@
 import SwiftUI
 
+extension ScoreFlag {
+    /// The chip's wording, localized.
+    ///
+    /// `detail` is deliberately English on the wire (the host computes it and both devices may be
+    /// running different languages), so it doubles as the localization key: every string the scorer
+    /// can produce has an entry in the catalog, and anything unrecognized falls back to the English
+    /// it arrived as. That also means each device shows the flags in *its own* language.
+    var localizedDetail: LocalizedStringKey { LocalizedStringKey(detail) }
+}
+
 /// Horizontal row of coach "flag chips" — every scoring opportunity the engine detected for the
 /// current context. Flag-only: they inform, they never auto-apply. The chips are tinted in the
 /// scoring player's color and led by their name, so it's clear whose points these are.
@@ -37,7 +47,7 @@ struct ScoreFlagsView: View {
 
     @ViewBuilder private var chips: some View {
         if let playerName, !flags.isEmpty {
-            Text(playerName.uppercased())
+            Text(verbatim: playerName.uppercased())
                 .font(.caption.weight(.heavy))
                 .foregroundStyle(accent)
                 .lineLimit(1).minimumScaleFactor(0.7)
@@ -45,9 +55,9 @@ struct ScoreFlagsView: View {
 
         ForEach(flags) { flag in
             HStack(spacing: 4) {
-                Text(flag.detail)
+                Text(flag.localizedDetail)
                 if flag.points > 0 {
-                    Text("+\(flag.points)").fontWeight(.heavy)
+                    Text(verbatim: "+\(flag.points)").fontWeight(.heavy)
                 }
             }
             .font(chipFont)
@@ -60,7 +70,7 @@ struct ScoreFlagsView: View {
 
         // Running total of the detected points.
         if flags.count > 1 {
-            Text("= \(flags.totalPoints)")
+            Text(verbatim: "= \(flags.totalPoints)")
                 .font(totalFont)
                 .padding(.horizontal, 12)
                 .padding(.vertical, chipVPad)

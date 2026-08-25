@@ -90,17 +90,23 @@ nonisolated enum ScoringMode: Int, Codable, Sendable, CaseIterable {
 
     var title: String {
         switch self {
-        case .auto:     return "Automatic"
-        case .feedback: return "Feedback"
-        case .off:      return "Player responsibility"
+        case .auto:     return String(localized: "Automatic", comment: "Scoring mode name")
+        case .feedback: return String(localized: "Feedback", comment: "Scoring mode name")
+        case .off:      return String(localized: "Player responsibility", comment: "Scoring mode name")
         }
     }
 
     var detail: String {
         switch self {
-        case .auto:     return "The app counts and adds every score for you."
-        case .feedback: return "The app shows each score and the total; you add them on your slider."
-        case .off:      return "No hints — you count and add every score yourself."
+        case .auto:
+            return String(localized: "The app counts and adds every score for you.",
+                          comment: "What the Automatic scoring mode does")
+        case .feedback:
+            return String(localized: "The app shows each score and the total; you add them on your slider.",
+                          comment: "What the Feedback scoring mode does")
+        case .off:
+            return String(localized: "No hints — you count and add every score yourself.",
+                          comment: "What the Player responsibility scoring mode does")
         }
     }
 }

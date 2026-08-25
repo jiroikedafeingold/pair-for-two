@@ -28,10 +28,10 @@ struct ScoringReplayView: View {
 
     private func phaseLabel(_ phase: GamePhase) -> String {
         switch phase {
-        case .pegging:                 return "Pegging"
-        case .showPone, .showDealer:   return "Hand"
-        case .showCrib:                return "Crib"
-        default:                        return "Cut"
+        case .pegging:                 return String(localized: "Pegging", comment: "Where a score came from: the play")
+        case .showPone, .showDealer:   return String(localized: "Hand", comment: "Where a score came from: a hand")
+        case .showCrib:                return String(localized: "Crib", comment: "Where a score came from: the crib")
+        default:                        return String(localized: "Cut", comment: "Where a score came from: the cut")
         }
     }
 
@@ -42,7 +42,7 @@ struct ScoringReplayView: View {
                            startPoint: .top, endPoint: .bottom).ignoresSafeArea()
 
             VStack(spacing: 18) {
-                Text("SCORING REPLAY")
+                Text("SCORING REPLAY", comment: "Title of the end-of-game scoring replay; shown in capitals")
                     .font(.system(size: 14, weight: .black, design: .rounded)).tracking(3)
                     .foregroundStyle(.white.opacity(0.8))
 
@@ -55,7 +55,8 @@ struct ScoringReplayView: View {
 
                 // What the most recent step scored.
                 if let c = current {
-                    Text(showsPhase ? "\(phaseLabel(c.phase)) · +\(c.amount)" : "+\(c.amount)")
+                    // Both halves are already localized (or bare numbers), hence verbatim.
+                    Text(verbatim: showsPhase ? "\(phaseLabel(c.phase)) · +\(c.amount)" : "+\(c.amount)")
                         .font(.callout.weight(.semibold))
                         .foregroundStyle(.white.opacity(0.85))
                         .padding(.horizontal, 14).padding(.vertical, 6)
@@ -72,7 +73,9 @@ struct ScoringReplayView: View {
                     .tint(.cribGold)
                     .frame(maxWidth: 320)
 
-                Button(step >= events.count ? "Show result" : "Skip") { finish() }
+                Button(step >= events.count
+                       ? String(localized: "Show result", comment: "Jump to the win screen")
+                       : String(localized: "Skip", comment: "Skip the scoring replay")) { finish() }
                     .buttonStyle(.borderedProminent).tint(.cribGold).foregroundStyle(.black)
             }
             .padding(28)
@@ -86,16 +89,16 @@ struct ScoringReplayView: View {
     @ViewBuilder private func column(_ player: PlayerID, name: String, theme: PlayerTheme) -> some View {
         let isScoring = current?.player == player
         VStack(spacing: 4) {
-            Text(name.uppercased())
+            Text(verbatim: name.uppercased())
                 .font(.title3.weight(.heavy)).foregroundStyle(theme.primary)
                 .lineLimit(1).minimumScaleFactor(0.6)
             HStack(alignment: .center, spacing: 6) {
-                Text("\(score(player))")
+                Text(verbatim: "\(score(player))")
                     .font(.system(size: 54, weight: .heavy, design: .rounded))
                     .foregroundStyle(.white).monospacedDigit()
                     .contentTransition(.numericText(value: Double(score(player))))
                 if isScoring, let c = current {
-                    Text("+\(c.amount)")
+                    Text(verbatim: "+\(c.amount)")
                         .font(.system(size: 22, weight: .heavy, design: .rounded)).monospacedDigit()
                         .foregroundStyle(.white)
                         .padding(.horizontal, 8).padding(.vertical, 2)

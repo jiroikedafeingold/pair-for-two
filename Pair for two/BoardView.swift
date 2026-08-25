@@ -65,11 +65,11 @@ struct BoardView: View {
     /// string goes into the win screen, and "YOU WINS" is not a sentence.
     private var nearLabel: String {
         let trimmed = nearName.trimmingCharacters(in: .whitespaces)
-        return trimmed.isEmpty ? "Player" : trimmed
+        return trimmed.isEmpty ? String(localized: "Player", comment: "Stand-in for your own name when you have not set one") : trimmed
     }
     private var farLabel: String {
         let trimmed = farName.trimmingCharacters(in: .whitespaces)
-        return trimmed.isEmpty ? "Opponent" : trimmed
+        return trimmed.isEmpty ? String(localized: "Opponent", comment: "Stand-in for the other player's name when it is not set") : trimmed
     }
 
     /// How long the shared score faces one player before turning to the other.
@@ -227,7 +227,8 @@ struct BoardView: View {
             lastInteraction = Date()
         }
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("\(nearLabel) \(game.score(.bottom)), \(farLabel) \(game.score(.top))")
+        .accessibilityLabel(Text("\(nearLabel) \(game.score(.bottom)), \(farLabel) \(game.score(.top))",
+                                 comment: "VoiceOver: both players' names and scores on the shared board"))
         .accessibilityHint("Turns to face each player in turn. Double tap to turn it now.")
     }
 
@@ -236,11 +237,11 @@ struct BoardView: View {
         let isNear = side == .bottom
         let theme = playerTheme(colorID: isNear ? nearColorID : farColorID)
         VStack(spacing: 0) {
-            Text((isNear ? nearLabel : farLabel).uppercased())
+            Text(verbatim: (isNear ? nearLabel : farLabel).uppercased())
                 .font(.system(size: nameSize, weight: .heavy, design: .rounded))
                 .foregroundStyle(theme.primary)
                 .lineLimit(1).minimumScaleFactor(0.6)
-            Text("\(game.score(side))")
+            Text(verbatim: "\(game.score(side))")
                 .font(.system(size: scoreSize, weight: .heavy, design: .rounded))
                 .foregroundStyle(.white)
                 .monospacedDigit()
@@ -442,11 +443,19 @@ private struct BoardPlayerSheet: View {
                         .textInputAutocapitalization(.words)
                         .submitLabel(.done)
                 } header: {
-                    Text(side == .bottom ? "This side" : "Other side")
+                    if side == .bottom {
+                        Text("This side", comment: "Header when editing the near player on the shared board")
+                    } else {
+                        Text("Other side", comment: "Header when editing the far player on the shared board")
+                    }
                 } footer: {
-                    Text(isShared
-                         ? "This is your name from Settings — changing it here changes it everywhere."
-                         : "Just for the board on this phone.")
+                    if isShared {
+                        Text("This is your name from Settings — changing it here changes it everywhere.",
+                             comment: "Footer when editing the name that is shared with the rest of the app")
+                    } else {
+                        Text("Just for the board on this phone.",
+                             comment: "Footer when editing a name used only by the scoreboard")
+                    }
                 }
 
                 Section("Color") {
@@ -472,17 +481,14 @@ private struct BoardPlayerSheet: View {
                 } header: {
                     Text("Scoring slider")
                 } footer: {
-                    Text("Holds the slider value until you tap the +N button, instead of adding it the "
-                         + "moment you let go.")
+                    Text("Holds the slider value until you tap the +N button, instead of adding it the moment you let go.")
                 }
 
                 Section {
                     Toggle("Score track", isOn: $scoreTrackEnabled)
                     Toggle("Scoring replay before win", isOn: $replayBeforeWin)
                 } footer: {
-                    Text("The track is the loop around the score, tracing each player's progress to 121 "
-                         + "with the skunk lines marked on it. The replay walks back through every peg of "
-                         + "the game before the winner is shown.")
+                    Text("The track is the loop around the score, tracing each player's progress to 121 with the skunk lines marked on it. The replay walks back through every peg of the game before the winner is shown.")
                 }
 
                 Section("Sound & feel") {
@@ -492,8 +498,7 @@ private struct BoardPlayerSheet: View {
                 }
 
                 Section {
-                    Text("Scoring mode and the card back live in the main Settings — they're for a game "
-                         + "the app deals, and on the board you're playing with your own cards.")
+                    Text("Scoring mode and the card back live in the main Settings — they're for a game the app deals, and on the board you're playing with your own cards.")
                         .font(.footnote).foregroundStyle(.secondary)
                 }
             }

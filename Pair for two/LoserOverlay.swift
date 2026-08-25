@@ -22,22 +22,22 @@ struct LoserOverlay: View {
 
     private var title: String {
         switch skunk {
-        case .none:   return "YOU LOST"
-        case .single: return "SKUNKED"
-        case .double: return "DOUBLE SKUNKED"
+        case .none:   return String(localized: "YOU LOST", comment: "Loss screen headline; shown in capitals")
+        case .single: return String(localized: "SKUNKED", comment: "Loss screen headline, under 91; capitals")
+        case .double: return String(localized: "DOUBLE SKUNKED", comment: "Loss screen headline, under 61; capitals")
         }
     }
 
     private var subtitle: String {
         switch skunk {
-        case .none:   return "Good game — rematch?"
-        case .single: return "Ouch. Run it back?"
-        case .double: return "Brutal. Get 'em next time."
+        case .none:   return String(localized: "Good game — rematch?", comment: "Loss screen subtitle")
+        case .single: return String(localized: "Ouch. Run it back?", comment: "Loss screen subtitle for a skunk")
+        case .double: return String(localized: "Brutal. Get 'em next time.", comment: "Loss screen subtitle for a double skunk")
         }
     }
 
     /// The big gold capsule button, shared by "Play again" and (opponent gone) "Back to menu".
-    private func primaryButton(title: String, icon: String, action: @escaping () -> Void) -> some View {
+    private func primaryButton(title: LocalizedStringKey, icon: String, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             HStack(spacing: 8) {
                 Image(systemName: icon).font(.system(size: 18, weight: .bold))
@@ -70,22 +70,22 @@ struct LoserOverlay: View {
                         .fill(RadialGradient(colors: [slate.opacity(0.5), slate.opacity(0.0)],
                                              center: .center, startRadius: 8, endRadius: 72))
                         .frame(width: 130, height: 130)
-                    Text("😔")
+                    Text(verbatim: "😔")
                         .font(.system(size: 60))
                         .offset(y: droop ? 5 : -3)
                         .animation(.easeInOut(duration: 1.8).repeatForever(autoreverses: true), value: droop)
                 }
 
                 VStack(spacing: 6) {
-                    Text(title)
+                    Text(verbatim: title)
                         .font(.system(size: skunk == .double ? 30 : 34, weight: .black, design: .rounded))
                         .foregroundStyle(LinearGradient(colors: [.white.opacity(0.9), slate],
                                                         startPoint: .leading, endPoint: .trailing))
                         .multilineTextAlignment(.center).minimumScaleFactor(0.6).lineLimit(1)
-                    Text("\(winnerName) wins")
+                    Text("\(winnerName) wins", comment: "Under the loss headline; %@ is the winner's name")
                         .font(.system(size: 13, weight: .black, design: .rounded)).tracking(2)
                         .foregroundStyle(.white.opacity(0.7))
-                    Text(subtitle)
+                    Text(verbatim: subtitle)
                         .font(.system(size: 13, weight: .semibold, design: .rounded))
                         .foregroundStyle(.white.opacity(0.55)).italic()
                 }

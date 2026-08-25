@@ -64,7 +64,7 @@ final class LANTransport: NearbyTransport {
 
     init(displayName: String) {
         let trimmed = displayName.trimmingCharacters(in: .whitespaces)
-        self.displayName = String((trimmed.isEmpty ? "Player" : trimmed).prefix(60))
+        self.displayName = String((trimmed.isEmpty ? String(localized: "Player", comment: "Fallback name shown to the other device when you have not set one") : trimmed).prefix(60))
         var captured: AsyncStream<TransportEvent>.Continuation!
         events = AsyncStream(bufferingPolicy: .unbounded) { captured = $0 }
         continuation = captured

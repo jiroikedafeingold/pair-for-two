@@ -94,7 +94,13 @@ struct ConnectView: View {
                 .ignoresSafeArea()
 
             VStack(spacing: 20) {
-                Text(resuming ? "Resume Game" : "Play Nearby")
+                Group {
+                    if resuming {
+                        Text("Resume Game", comment: "Title of the nearby-connect screen when picking a game back up")
+                    } else {
+                        Text("Play Nearby", comment: "Title of the nearby-connect screen")
+                    }
+                }
                     .font(.system(size: 34, weight: .heavy, design: .serif))
                     .foregroundStyle(.white)
                 Text("Bluetooth / Wi-Fi · no internet needed")
@@ -197,9 +203,25 @@ struct ConnectView: View {
         case .hosting:
             VStack(spacing: 14) {
                 ProgressView().tint(.white).controlSize(.large)
-                Text(resuming ? "Waiting for the other player to rejoin…" : "Waiting for a player to join…")
+                Group {
+                    if resuming {
+                        Text("Waiting for the other player to rejoin…", comment: "Host is waiting during a resume")
+                    } else {
+                        Text("Waiting for a player to join…", comment: "Host is waiting for the second device")
+                    }
+                }
                     .foregroundStyle(.white)
-                Text("Have the other player tap **\(resuming ? "Rejoin game" : "Join a game")** on their phone.")
+                Group {
+                    // Two whole sentences rather than one with a swapped-in button name: the name is
+                    // itself a translated string, and where it falls in the sentence varies by language.
+                    if resuming {
+                        Text("Have the other player tap **Rejoin game** on their phone.",
+                             comment: "Bold text matches the Rejoin game button's label")
+                    } else {
+                        Text("Have the other player tap **Join a game** on their phone.",
+                             comment: "Bold text matches the Join a game button's label")
+                    }
+                }
                     .font(.caption).foregroundStyle(.white.opacity(0.6)).multilineTextAlignment(.center)
                 radioHint
             }
@@ -233,7 +255,7 @@ struct ConnectView: View {
                             Button(action: row.connect) {
                                 HStack {
                                     Image(systemName: row.overWiFi ? "wifi" : "person.fill")
-                                    Text(row.name).fontWeight(.semibold)
+                                    Text(verbatim: row.name).fontWeight(.semibold)
                                     Spacer()
                                     Image(systemName: "arrow.right.circle.fill")
                                 }
@@ -251,16 +273,29 @@ struct ConnectView: View {
         case .connecting:
             VStack(spacing: 12) {
                 ProgressView().tint(.white).controlSize(.large)
-                Text(resuming ? "Reconnecting your game…" : "Connecting…").foregroundStyle(.white)
+                Group {
+                    if resuming {
+                        Text("Reconnecting your game…", comment: "Shown while a resumed game reconnects")
+                    } else {
+                        Text("Connecting…", comment: "Shown while two devices connect")
+                    }
+                }
+                .foregroundStyle(.white)
                 if resuming {
                     Text("Make sure the other phone also tapped **Rejoin game**.")
                         .font(.caption).foregroundStyle(.white.opacity(0.6)).multilineTextAlignment(.center)
                 }
                 if connectStalled {
                     VStack(spacing: 8) {
-                        Text(resuming
-                             ? "Still trying. If it keeps failing, both players can go back and start a **New game** — or check that Local Network access is allowed in Settings (it can reset after reinstalling)."
-                             : "Still trying — it keeps retrying on its own. Bring the phones closer, and check that Local Network access is allowed in Settings (it can reset after reinstalling).")
+                        Group {
+                            if resuming {
+                                Text("Still trying. If it keeps failing, both players can go back and start a **New game** — or check that Local Network access is allowed in Settings (it can reset after reinstalling).",
+                                     comment: "Stalled connection advice during a resume")
+                            } else {
+                                Text("Still trying — it keeps retrying on its own. Bring the phones closer, and check that Local Network access is allowed in Settings (it can reset after reinstalling).",
+                                     comment: "Stalled connection advice")
+                            }
+                        }
                             .font(.caption).foregroundStyle(Color.cribGold).multilineTextAlignment(.center)
                         radioHint
                         Button("Back to menu") { stopAll(); onCancel() }
@@ -274,7 +309,9 @@ struct ConnectView: View {
         case .connected:
             VStack(spacing: 12) {
                 Image(systemName: "checkmark.circle.fill").font(.system(size: 44)).foregroundStyle(.green)
-                Text("Connected to \(connectedPeerName ?? "player")!").foregroundStyle(.white)
+                Text("Connected to \(connectedPeerName ?? String(localized: "player", comment: "Stand-in for an unknown peer's name"))!",
+                     comment: "Shown once two devices are connected; %@ is the other device's name")
+                    .foregroundStyle(.white)
             }
 
         case .disconnected:
@@ -298,7 +335,7 @@ struct ConnectView: View {
             .frame(maxWidth: 380)
     }
 
-    private func bigButton(_ title: String, systemImage: String, action: @escaping () -> Void) -> some View {
+    private func bigButton(_ title: LocalizedStringKey, systemImage: String, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             VStack(spacing: 10) {
                 Image(systemName: systemImage).font(.system(size: 30, weight: .bold))

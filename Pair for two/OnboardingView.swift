@@ -20,8 +20,10 @@ struct OnboardingView: View {
     private struct Slide: Identifiable {
         let id = UUID()
         let icon: String
-        let title: String
-        let body: String
+        /// Keys rather than strings: the copy is written inline in `slides` below, and only a
+        /// `LocalizedStringKey` gets picked up from there by the string extractor.
+        let title: LocalizedStringKey
+        let body: LocalizedStringKey
         var interactiveScoring = false
     }
 
@@ -104,7 +106,9 @@ struct OnboardingView: View {
             // of slide height, which is what keeps the taller slides from needing to scroll.
             .padding(.bottom, 8)
 
-            Button(lastSlide && hasOnboarded ? "Done" : "Continue") {
+            Button(lastSlide && hasOnboarded
+                   ? String(localized: "Done", comment: "Finish the welcome tour")
+                   : String(localized: "Continue", comment: "Next slide of the welcome tour")) {
                 if lastSlide {
                     // First run ends with the name prompt; a replay from Help just finishes.
                     if hasOnboarded { onFinish() } else { withAnimation { askName = true } }
@@ -154,9 +158,9 @@ struct OnboardingView: View {
     /// A short one-line description for each mode, so every option fits on a single row.
     private func scoringBlurb(_ mode: ScoringMode) -> String {
         switch mode {
-        case .auto:     return "the app scores for you"
-        case .feedback: return "you score, with hints"
-        case .off:      return "you score, no hints"
+        case .auto:     return String(localized: "the app scores for you", comment: "One-line gloss on the Automatic scoring mode")
+        case .feedback: return String(localized: "you score, with hints", comment: "One-line gloss on the Feedback scoring mode")
+        case .off:      return String(localized: "you score, no hints", comment: "One-line gloss on the Player responsibility scoring mode")
         }
     }
 
@@ -177,8 +181,8 @@ struct OnboardingView: View {
                         Image(systemName: selected ? "checkmark.circle.fill" : "circle")
                             .font(.body)
                             .foregroundStyle(selected ? Color.cribGold : .white.opacity(0.5))
-                        Text(mode.title).font(.callout.weight(.semibold)).foregroundStyle(.white)
-                        Text("— \(scoringBlurb(mode))").font(.caption).foregroundStyle(.white.opacity(0.65))
+                        Text(verbatim: mode.title).font(.callout.weight(.semibold)).foregroundStyle(.white)
+                        Text("— \(scoringBlurb(mode))", comment: "Gloss beside a scoring mode; %@ is the description").font(.caption).foregroundStyle(.white.opacity(0.65))
                         if isDefault {
                             Text("default").font(.caption2.weight(.bold))
                                 .foregroundStyle(.black.opacity(0.8))

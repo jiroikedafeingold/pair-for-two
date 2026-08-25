@@ -35,13 +35,22 @@ struct StatsView: View {
                     }
                 } else {
                     Section("Lifetime") {
-                        LabeledContent("Games") { Text("\(summary.games)") }
-                        LabeledContent("Won") { Text("\(summary.wins) of \(summary.games)  ·  \(percent(summary.winRate))") }
-                        LabeledContent("Skunks") { Text(skunkLine) }
-                        LabeledContent("Best hand") { Text(summary.bestHand > 0 ? "\(summary.bestHand) points" : "—") }
-                        LabeledContent("Win streak") { Text(streakLine) }
-                        LabeledContent("Hands played") { Text("\(summary.hands)") }
-                        LabeledContent("Time at the table") { Text(durationText(summary.totalPlayTime)) }
+                        LabeledContent("Games") { Text(verbatim: "\(summary.games)") }
+                        LabeledContent("Won") {
+                            Text("\(summary.wins) of \(summary.games)  ·  \(percent(summary.winRate))",
+                                 comment: "Games won: count, total, then a percentage")
+                        }
+                        LabeledContent("Skunks") { Text(verbatim: skunkLine) }
+                        LabeledContent("Best hand") {
+                            if summary.bestHand > 0 {
+                                Text("\(summary.bestHand) points", comment: "Best hand ever counted; %lld is the score")
+                            } else {
+                                Text(verbatim: "—")
+                            }
+                        }
+                        LabeledContent("Win streak") { Text(verbatim: streakLine) }
+                        LabeledContent("Hands played") { Text(verbatim: "\(summary.hands)") }
+                        LabeledContent("Time at the table") { Text(verbatim: durationText(summary.totalPlayTime)) }
                     }
 
                     Section {
@@ -68,9 +77,13 @@ struct StatsView: View {
                     }
                     .disabled(!GKLocalPlayer.local.isAuthenticated)
                 } footer: {
-                    Text(GKLocalPlayer.local.isAuthenticated
-                         ? "Earned from the games above and reported to Game Center."
-                         : "Sign in to Game Center in the Settings app to collect achievements.")
+                    if GKLocalPlayer.local.isAuthenticated {
+                        Text("Earned from the games above and reported to Game Center.",
+                             comment: "Footer under the achievements row")
+                    } else {
+                        Text("Sign in to Game Center in the Settings app to collect achievements.",
+                             comment: "Footer under the achievements row when not signed in")
+                    }
                 }
             }
             .navigationTitle("Stats")
@@ -109,61 +122,89 @@ struct StatsView: View {
                 Image(systemName: game.youWon ? "crown.fill" : "circle")
                     .font(.caption)
                     .foregroundStyle(game.youWon ? Color.cribGold : .secondary)
-                Text("\(game.yourScore) – \(game.opponentScore)")
+                Text(verbatim: "\(game.yourScore) – \(game.opponentScore)")
                     .font(.body.weight(.semibold)).monospacedDigit()
-                Text("vs \(game.opponentName)").font(.subheadline).foregroundStyle(.secondary)
+                Text("vs \(game.opponentName)", comment: "Opponent in a past game; %@ is their name")
+                    .font(.subheadline).foregroundStyle(.secondary)
                     .lineLimit(1)
                 Spacer(minLength: 4)
                 if let badge = skunkBadge(game) {
-                    Text(badge)
+                    Text(verbatim: badge)
                         .font(.caption2.weight(.bold))
                         .padding(.horizontal, 7).padding(.vertical, 2)
                         .background(Capsule().fill(game.youWon ? Color.cribGold.opacity(0.85) : Color.secondary.opacity(0.25)))
                         .foregroundStyle(game.youWon ? .black : .primary)
                 }
             }
-            Text(detailLine(game))
+            Text(verbatim: detailLine(game))
                 .font(.caption2).foregroundStyle(.secondary)
         }
         .accessibilityElement(children: .combine)
-        .accessibilityLabel(accessibleSummary(game))
+        .accessibilityLabel(Text(verbatim: accessibleSummary(game)))
     }
 
+    /// The badge on a past game. Built as four whole strings rather than by appending "ED" to a
+    /// stem — suffixing a word is an English-only trick.
     private func skunkBadge(_ game: GameRecord) -> String? {
         guard game.isSkunk else { return nil }
-        let kind = game.isDoubleSkunk ? "DOUBLE SKUNK" : "SKUNK"
-        return game.youWon ? kind : "\(kind)ED"
+        switch (game.isDoubleSkunk, game.youWon) {
+        case (true, true):   return String(localized: "DOUBLE SKUNK", comment: "Badge: you won with the loser under 61; shown in capitals")
+        case (true, false):  return String(localized: "DOUBLE SKUNKED", comment: "Badge: you lost with under 61; shown in capitals")
+        case (false, true):  return String(localized: "SKUNK", comment: "Badge: you won with the loser under 91; shown in capitals")
+        case (false, false): return String(localized: "SKUNKED", comment: "Badge: you lost with under 91; shown in capitals")
+        }
     }
 
     private func detailLine(_ game: GameRecord) -> String {
         var parts = [game.finishedAt.formatted(date: .abbreviated, time: .shortened)]
-        parts.append("\(game.hands) hand\(game.hands == 1 ? "" : "s")")
+        parts.append(String(localized: "^[\(game.hands) hand](inflect: true)",
+                            comment: "How many hands a game lasted; %lld is the count"))
         parts.append(durationText(game.duration))
-        parts.append(game.youDealtFirst ? "you dealt first" : "\(game.opponentName) dealt first")
-        if game.yourBestHand > 0 { parts.append("best hand \(game.yourBestHand)") }
+        parts.append(game.youDealtFirst
+                     ? String(localized: "you dealt first", comment: "Who dealt the first hand")
+                     : String(localized: "\(game.opponentName) dealt first", comment: "%@ is the other player's name"))
+        if game.yourBestHand > 0 {
+            parts.append(String(localized: "best hand \(game.yourBestHand)",
+                                comment: "Your best count in that game; %lld is the score"))
+        }
         return parts.joined(separator: "  ·  ")
     }
 
     private func accessibleSummary(_ game: GameRecord) -> String {
-        let outcome = game.youWon ? "Won" : "Lost"
-        let skunk = game.isSkunk ? (game.isDoubleSkunk ? ", double skunk" : ", skunk") : ""
-        return "\(outcome) \(game.yourScore) to \(game.opponentScore) against \(game.opponentName)\(skunk). "
-            + "\(game.hands) hands, \(durationText(game.duration))."
+        let outcome = game.youWon
+            ? String(localized: "Won", comment: "VoiceOver: you won this game")
+            : String(localized: "Lost", comment: "VoiceOver: you lost this game")
+        let skunk: String
+        switch (game.isSkunk, game.isDoubleSkunk) {
+        case (true, true):  skunk = String(localized: ", double skunk", comment: "VoiceOver, appended to a result")
+        case (true, false): skunk = String(localized: ", skunk", comment: "VoiceOver, appended to a result")
+        default:            skunk = ""
+        }
+        return String(localized: "\(outcome) \(game.yourScore) to \(game.opponentScore) against \(game.opponentName)\(skunk). \(game.hands) hands, \(durationText(game.duration)).",
+                      comment: "VoiceOver summary of one past game")
     }
 
     // MARK: Formatting
 
     private var skunkLine: String {
-        guard summary.skunksInflicted > 0 || summary.skunksSuffered > 0 else { return "none yet" }
-        var text = "\(summary.skunksInflicted) for"
-        if summary.doubleSkunksInflicted > 0 { text += " (\(summary.doubleSkunksInflicted) double)" }
-        text += ", \(summary.skunksSuffered) against"
-        return text
+        guard summary.skunksInflicted > 0 || summary.skunksSuffered > 0 else {
+            return String(localized: "none yet", comment: "No skunks recorded yet")
+        }
+        let forCount = summary.doubleSkunksInflicted > 0
+            ? String(localized: "\(summary.skunksInflicted) for (\(summary.doubleSkunksInflicted) double)",
+                     comment: "Skunks you inflicted; first %lld is the total, second how many were doubles")
+            : String(localized: "\(summary.skunksInflicted) for", comment: "Skunks you inflicted; %lld is the count")
+        return String(localized: "\(forCount), \(summary.skunksSuffered) against",
+                      comment: "Skunks for and against; %@ is the 'for' half, %lld the count against")
     }
 
     private var streakLine: String {
-        if summary.currentWinStreak > 1 { return "\(summary.currentWinStreak) now  ·  best \(summary.longestWinStreak)" }
-        return summary.longestWinStreak > 0 ? "best \(summary.longestWinStreak)" : "—"
+        if summary.currentWinStreak > 1 {
+            return String(localized: "\(summary.currentWinStreak) now  ·  best \(summary.longestWinStreak)",
+                          comment: "Current win streak and the best ever; both %lld are counts")
+        }
+        guard summary.longestWinStreak > 0 else { return "—" }
+        return String(localized: "best \(summary.longestWinStreak)", comment: "Best win streak; %lld is the count")
     }
 
     private func percent(_ rate: Double) -> String {
@@ -175,9 +216,13 @@ struct StatsView: View {
     private func durationText(_ seconds: TimeInterval) -> String {
         let total = Int(seconds.rounded())
         let hours = total / 3600, minutes = (total % 3600) / 60
-        if hours > 0 { return "\(hours)h \(minutes)m" }
-        if minutes > 0 { return "\(minutes)m" }
-        return "under a minute"
+        if hours > 0 {
+            return String(localized: "\(hours)h \(minutes)m", comment: "A duration in hours and minutes")
+        }
+        if minutes > 0 {
+            return String(localized: "\(minutes)m", comment: "A duration in minutes")
+        }
+        return String(localized: "under a minute", comment: "A duration shorter than a minute")
     }
 }
 

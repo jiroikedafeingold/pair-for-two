@@ -91,32 +91,59 @@ nonisolated struct Card: Codable, Hashable, Sendable, Identifiable {
     /// e.g. "A♠", "10♥", "K♣" — compact debug/label form.
     var shortName: String { "\(rank.label)\(suit.symbol)" }
 
-    /// Spoken form for VoiceOver, e.g. "Seven of Hearts".
+    /// Spoken form for VoiceOver, localized, e.g. "Seven of Hearts".
     var accessibleName: String {
-        let rankName: String
-        switch rank {
-        case .ace:   rankName = "Ace"
-        case .two:   rankName = "Two"
-        case .three: rankName = "Three"
-        case .four:  rankName = "Four"
-        case .five:  rankName = "Five"
-        case .six:   rankName = "Six"
-        case .seven: rankName = "Seven"
-        case .eight: rankName = "Eight"
-        case .nine:  rankName = "Nine"
-        case .ten:   rankName = "Ten"
-        case .jack:  rankName = "Jack"
-        case .queen: rankName = "Queen"
-        case .king:  rankName = "King"
+        String(localized: "\(rank.spokenName) of \(suit.spokenName)",
+               comment: "VoiceOver name of a card: rank, then suit")
+    }
+}
+
+// MARK: - Localized names
+
+extension Rank {
+    /// The letter or number printed on the card face. Localizable because other decks use other
+    /// letters for the face cards (German B/D/K, French V/D/R); a translation may equally leave
+    /// them as they are.
+    var faceLabel: String {
+        switch self {
+        case .ace:   return String(localized: "A", comment: "Ace, on the card face — one or two letters")
+        case .jack:  return String(localized: "J", comment: "Jack, on the card face — one or two letters")
+        case .queen: return String(localized: "Q", comment: "Queen, on the card face — one or two letters")
+        case .king:  return String(localized: "K", comment: "King, on the card face — one or two letters")
+        // Digits read the same in every language, so they need no lookup.
+        default:     return String(rawValue)
         }
-        let suitName: String
-        switch suit {
-        case .spades:   suitName = "Spades"
-        case .hearts:   suitName = "Hearts"
-        case .diamonds: suitName = "Diamonds"
-        case .clubs:    suitName = "Clubs"
+    }
+
+    /// Spoken rank for VoiceOver.
+    var spokenName: String {
+        switch self {
+        case .ace:   return String(localized: "Ace", comment: "Card rank, spoken")
+        case .two:   return String(localized: "Two", comment: "Card rank, spoken")
+        case .three: return String(localized: "Three", comment: "Card rank, spoken")
+        case .four:  return String(localized: "Four", comment: "Card rank, spoken")
+        case .five:  return String(localized: "Five", comment: "Card rank, spoken")
+        case .six:   return String(localized: "Six", comment: "Card rank, spoken")
+        case .seven: return String(localized: "Seven", comment: "Card rank, spoken")
+        case .eight: return String(localized: "Eight", comment: "Card rank, spoken")
+        case .nine:  return String(localized: "Nine", comment: "Card rank, spoken")
+        case .ten:   return String(localized: "Ten", comment: "Card rank, spoken")
+        case .jack:  return String(localized: "Jack", comment: "Card rank, spoken")
+        case .queen: return String(localized: "Queen", comment: "Card rank, spoken")
+        case .king:  return String(localized: "King", comment: "Card rank, spoken")
         }
-        return "\(rankName) of \(suitName)"
+    }
+}
+
+extension Suit {
+    /// Spoken suit for VoiceOver.
+    var spokenName: String {
+        switch self {
+        case .spades:   return String(localized: "Spades", comment: "Card suit, spoken")
+        case .hearts:   return String(localized: "Hearts", comment: "Card suit, spoken")
+        case .diamonds: return String(localized: "Diamonds", comment: "Card suit, spoken")
+        case .clubs:    return String(localized: "Clubs", comment: "Card suit, spoken")
+        }
     }
 }
 

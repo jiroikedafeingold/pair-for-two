@@ -127,9 +127,11 @@ nonisolated enum GamePersistence {
         }
     }
 
+    /// One line for the menu's "Rejoin" caption: both names and scores. Only the stand-in names need
+    /// translating — everything else is a name or a number.
     private static func summary(of s: GameState) -> String {
-        let one = s.names[.one] ?? "Player 1"
-        let two = s.names[.two] ?? "Player 2"
+        let one = s.names[.one] ?? String(localized: "Player 1", comment: "Stand-in name for the first player")
+        let two = s.names[.two] ?? String(localized: "Player 2", comment: "Stand-in name for the second player")
         return "\(one) \(s.scores[.one] ?? 0) · \(two) \(s.scores[.two] ?? 0)"
     }
 }

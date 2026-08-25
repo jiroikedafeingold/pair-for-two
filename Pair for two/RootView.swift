@@ -43,7 +43,7 @@ struct RootView: View {
     @AppStorage("scoringMode") private var scoringModeRaw = ScoringMode.off.rawValue
 
     /// One menu button. Fixed width so the captions beside them line up into a column.
-    private func menuButton(_ title: String,
+    private func menuButton(_ title: Text,
                             systemImage: String,
                             tint: Color,
                             foreground: Color,
@@ -58,7 +58,7 @@ struct RootView: View {
                 } else {
                     Image(systemName: systemImage)
                 }
-                Text(title).fontWeight(.bold)
+                title.fontWeight(.bold)
                 Spacer(minLength: 0)
             }
             .font(roomy ? .title3 : .headline)
@@ -78,9 +78,10 @@ struct RootView: View {
         captionStyle(Text(text))
     }
 
-    /// Same, for a caption that comes from a value (an error message) rather than a literal.
+    /// Same, for a caption that comes from a value (an already-localized error message) rather than
+    /// a literal.
     private func menuCaption(verbatim text: String) -> some View {
-        captionStyle(Text(text))
+        captionStyle(Text(verbatim: text))
     }
 
     private func captionStyle(_ text: Text) -> some View {
@@ -100,10 +101,18 @@ struct RootView: View {
         UIDevice.current.userInterfaceIdiom == .pad ? "iPad" : "phone"
     }
 
-    /// Trimmed, non-empty player name.
+    /// Stand-in when a saved game doesn't record who it was against.
+    private static var opponentStandIn: String {
+        String(localized: "your opponent", comment: "Used in a sentence in place of an unknown player's name")
+    }
+
+    private var rejoinOpponentDisplayName: String { rejoinOpponentName ?? Self.opponentStandIn }
+
+    /// Trimmed, non-empty player name. The fallback is localized; the stored default deliberately
+    /// isn't, because onboarding compares against it before blanking it.
     private var playerName: String {
         let trimmed = name.trimmingCharacters(in: .whitespaces)
-        return trimmed.isEmpty ? "Player" : trimmed
+        return trimmed.isEmpty ? String(localized: "Player", comment: "Stand-in for your own name when you have not set one") : trimmed
     }
 
     var body: some View {
@@ -178,7 +187,7 @@ struct RootView: View {
                                         set: { if !$0 { gameCenter.presentedError = nil } })) {
                 Button("OK", role: .cancel) { gameCenter.presentedError = nil }
             } message: {
-                Text(gameCenter.presentedError ?? "")
+                Text(verbatim: gameCenter.presentedError ?? "")
             }
     }
 
@@ -207,14 +216,16 @@ struct RootView: View {
         guard rejoinIsHost else { return }   // guest: just wait for their invitation to arrive
         guard let id = marker.opponentGamePlayerID else {
             // Nothing to invite (a marker from before this existed). Let them pick from the list.
-            rejoinFailure = "Choose who to rejoin from your Game Center friends and recent players."
+            rejoinFailure = String(localized: "Choose who to rejoin from your Game Center friends and recent players.",
+                                   comment: "Shown when the saved opponent can't be identified")
             return
         }
         Task { @MainActor in
             if let player = await gameCenter.recentPlayer(withGamePlayerID: id) {
                 gameCenter.invite(player)
             } else {
-                rejoinFailure = "Couldn't find \(marker.opponentName ?? "your opponent") in Game Center. They may need to invite you instead — or pick them from your friends and recent players."
+                rejoinFailure = String(localized: "Couldn't find \(marker.opponentName ?? Self.opponentStandIn) in Game Center. They may need to invite you instead — or pick them from your friends and recent players.",
+                                       comment: "%@ is the other player's name, or a stand-in for it")
             }
         }
     }
@@ -342,17 +353,29 @@ struct RootView: View {
 
                 if rejoinFailure == nil {
                     ProgressView().tint(.white).controlSize(.large)
-                    Text(rejoinIsHost
-                         ? "Inviting \(rejoinOpponentName ?? "your opponent") back…"
-                         : "Waiting for \(rejoinOpponentName ?? "your opponent") to invite you back…")
+                    Group {
+                        if rejoinIsHost {
+                            Text("Inviting \(rejoinOpponentDisplayName) back…",
+                                 comment: "%@ is the other player's name, or a stand-in for it")
+                        } else {
+                            Text("Waiting for \(rejoinOpponentDisplayName) to invite you back…",
+                                 comment: "%@ is the other player's name, or a stand-in for it")
+                        }
+                    }
                         .font(.headline).foregroundStyle(.white)
-                    Text(rejoinIsHost
-                         ? "They'll get a Game Center invitation — they need to accept it to pick the game up where you left off."
-                         : "This phone has the invitation coming to it. Ask them to open Pair for Two and tap Rejoin online game.")
+                    Group {
+                        if rejoinIsHost {
+                            Text("They'll get a Game Center invitation — they need to accept it to pick the game up where you left off.",
+                                 comment: "Explains what the other player has to do")
+                        } else {
+                            Text("This phone has the invitation coming to it. Ask them to open Pair for Two and tap Rejoin online game.",
+                                 comment: "Explains what the other player has to do; the app name is a brand")
+                        }
+                    }
                         .font(.caption).foregroundStyle(.white.opacity(0.7))
                         .multilineTextAlignment(.center).frame(maxWidth: 420)
                 } else {
-                    Text(rejoinFailure ?? "")
+                    Text(verbatim: rejoinFailure ?? "")
                         .font(.callout).foregroundStyle(Color.cribGold)
                         .multilineTextAlignment(.center).frame(maxWidth: 420)
                     Button("Choose from Game Center") {
@@ -362,7 +385,15 @@ struct RootView: View {
                     .buttonStyle(.borderedProminent).tint(.cribGold).foregroundStyle(.black)
                 }
 
-                Text("The position is safe on \(rejoinIsHost ? "this phone" : "their phone") — it's kept until the game is finished or you start a new one.")
+                Group {
+                    if rejoinIsHost {
+                        Text("The position is safe on this phone — it's kept until the game is finished or you start a new one.",
+                             comment: "Reassurance on the rejoin screen when this device holds the game")
+                    } else {
+                        Text("The position is safe on their phone — it's kept until the game is finished or you start a new one.",
+                             comment: "Reassurance on the rejoin screen when the other device holds the game")
+                    }
+                }
                     .font(.caption2).foregroundStyle(.white.opacity(0.5))
                     .multilineTextAlignment(.center).frame(maxWidth: 420)
 
@@ -405,7 +436,7 @@ struct RootView: View {
                     Grid(alignment: .leading, horizontalSpacing: roomy ? 26 : 18,
                          verticalSpacing: roomy ? 16 : 10) {
                         GridRow {
-                            menuButton(playerName, systemImage: "person.crop.circle",
+                            menuButton(Text(verbatim: playerName), systemImage: "person.crop.circle",
                                        tint: Color.white.opacity(0.18), foreground: .white,
                                        swatch: playerTheme(colorID: colorID).primary) {
                                 showingSettings = true
@@ -415,7 +446,9 @@ struct RootView: View {
 
                         if let resumeMarker {
                             GridRow {
-                                menuButton(resumeMarker.isOnline ? "Rejoin online" : "Rejoin game",
+                                menuButton(resumeMarker.isOnline
+                                           ? Text("Rejoin online", comment: "Menu: pick up an interrupted online game")
+                                           : Text("Rejoin game", comment: "Menu: pick up an interrupted nearby game"),
                                            systemImage: resumeMarker.isOnline ? "globe" : "arrow.clockwise.circle.fill",
                                            tint: .cribGold, foreground: .black,
                                            disabled: resumeMarker.isOnline && !gameCenter.isAuthenticated) {
@@ -433,7 +466,9 @@ struct RootView: View {
                         }
 
                         GridRow {
-                            menuButton(resumeMarker == nil ? "Play nearby" : "New nearby",
+                            menuButton(resumeMarker == nil
+                                       ? Text("Play nearby", comment: "Menu: start a game with a device in the room")
+                                       : Text("New nearby", comment: "Menu: start a fresh nearby game, discarding the saved one"),
                                        systemImage: "dot.radiowaves.left.and.right",
                                        tint: resumeMarker == nil ? .cribGold : Color.white.opacity(0.18),
                                        foreground: resumeMarker == nil ? .black : .white) {
@@ -446,7 +481,9 @@ struct RootView: View {
                         }
 
                         GridRow {
-                            menuButton(resumeMarker?.isOnline == true ? "New online" : "Play online",
+                            menuButton(resumeMarker?.isOnline == true
+                                       ? Text("New online", comment: "Menu: start a fresh online game, discarding the saved one")
+                                       : Text("Play online", comment: "Menu: start a game over Game Center"),
                                        systemImage: "globe",
                                        tint: Color.white.opacity(0.18), foreground: .white,
                                        disabled: !gameCenter.isAuthenticated) {
@@ -469,7 +506,7 @@ struct RootView: View {
                         GridRow {
                             // The board on its own: one device between two players, real cards in hand.
                             // Not the pass-and-play mode that was removed — nothing is dealt here.
-                            menuButton("Scoreboard", systemImage: "rectangle.split.2x1",
+                            menuButton(Text("Scoreboard", comment: "Menu: use the device as a cribbage board"), systemImage: "rectangle.split.2x1",
                                        tint: Color.white.opacity(0.18), foreground: .white) {
                                 screen = .board
                             }

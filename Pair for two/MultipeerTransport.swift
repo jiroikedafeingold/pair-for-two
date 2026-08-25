@@ -70,7 +70,7 @@ final class MultipeerSession: NSObject, NearbyTransport {
 
     init(displayName: String) {
         let trimmed = displayName.trimmingCharacters(in: .whitespaces)
-        let name = String((trimmed.isEmpty ? "Player" : trimmed).prefix(60))
+        let name = String((trimmed.isEmpty ? String(localized: "Player", comment: "Fallback name shown to the other device when you have not set one") : trimmed).prefix(60))
         myPeerID = MCPeerID(displayName: name)
         session = MCSession(peer: myPeerID, securityIdentity: nil, encryptionPreference: .required)
         var captured: AsyncStream<TransportEvent>.Continuation!

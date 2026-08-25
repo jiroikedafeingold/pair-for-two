@@ -45,7 +45,9 @@ struct CardView: View {
         .offset(y: isSelected ? -width * 0.22 : 0)
         .animation(.spring(response: 0.3, dampingFraction: 0.75), value: isSelected)
         .accessibilityElement()
-        .accessibilityLabel(faceUp ? (card?.accessibleName ?? "Card") : "Face-down card")
+        .accessibilityLabel(faceUp
+                            ? Text(verbatim: card?.accessibleName ?? String(localized: "Card", comment: "VoiceOver name for a card whose face is unknown"))
+                            : Text("Face-down card", comment: "VoiceOver name for a card lying face down"))
     }
 
     // MARK: Face
@@ -59,7 +61,7 @@ struct CardView: View {
 
             // Center pip. Sized to sit clearly inside the middle so it never collides with the corner
             // indices — especially the wider two-character "10".
-            Text(card.suit.symbol)
+            Text(verbatim: card.suit.symbol)
                 .font(.system(size: width * 0.44))
                 .foregroundStyle(ink.opacity(0.92))
 
@@ -76,12 +78,12 @@ struct CardView: View {
     /// so it doesn't creep toward the center pip.
     private func cornerIndex(for card: Card, ink: Color) -> some View {
         VStack(alignment: .leading, spacing: -width * 0.02) {
-            Text(card.rank.label)
+            Text(verbatim: card.rank.faceLabel)
                 .font(.system(size: width * 0.30, weight: .heavy, design: .rounded))
                 .kerning(-width * 0.012)
                 .lineLimit(1)
                 .fixedSize()
-            Text(card.suit.symbol)
+            Text(verbatim: card.suit.symbol)
                 .font(.system(size: width * 0.22, weight: .bold))
         }
         .foregroundStyle(ink)
@@ -122,11 +124,11 @@ struct RankSuitTile: View {
 
     var body: some View {
         VStack(spacing: -width * 0.06) {
-            Text(card.rank.label)
+            Text(verbatim: card.rank.faceLabel)
                 .font(.system(size: width * 0.72, weight: .heavy, design: .rounded))
                 .minimumScaleFactor(0.5)
                 .lineLimit(1)
-            Text(card.suit.symbol)
+            Text(verbatim: card.suit.symbol)
                 .font(.system(size: width * 0.5, weight: .bold))
         }
         .foregroundStyle(ink)
@@ -142,7 +144,7 @@ struct RankSuitTile: View {
                 .strokeBorder(Color.cribGold.opacity(isHighlighted ? 1 : 0.7),
                               lineWidth: isHighlighted ? 2.4 : 1.2)
         )
-        .accessibilityLabel(card.accessibleName)
+        .accessibilityLabel(Text(verbatim: card.accessibleName))
     }
 }
 

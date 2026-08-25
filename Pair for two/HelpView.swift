@@ -43,40 +43,25 @@ struct HelpView: View {
                 }
 
                 Section("Play online") {
-                    helpText("Tap **Play online** to invite a friend through **Game Center** and play from "
-                             + "anywhere. Sign in to Game Center on both devices first.")
-                    bullet("**If someone drops out** — closing the app, losing signal — the game isn't over. "
-                           + "The other phone invites them back, and whoever left just accepts the Game "
-                           + "Center invitation to carry on from the same hand.")
-                    bullet("**Force-quit the app?** Tap **Rejoin online** on the menu. The phone holding the "
-                           + "position invites the other one back.")
+                    helpText("Tap **Play online** to invite a friend through **Game Center** and play from anywhere. Sign in to Game Center on both devices first.")
+                    bullet("**If someone drops out** — closing the app, losing signal — the game isn't over. The other phone invites them back, and whoever left just accepts the Game Center invitation to carry on from the same hand.")
+                    bullet("**Force-quit the app?** Tap **Rejoin online** on the menu. The phone holding the position invites the other one back.")
                 }
 
                 Section("Scoreboard (playing with real cards)") {
-                    helpText("Dealing real cards? Tap **Scoreboard** and lay the \(deviceWord) between you. "
-                             + "The app keeps score and nothing else — no hands, no crib, no cut, because it "
-                             + "can't see your cards.")
+                    helpText("Dealing real cards? Tap **Scoreboard** and lay the \(deviceWord) between you. The app keeps score and nothing else — no hands, no crib, no cut, because it can't see your cards.")
                     bullet("**A slider each**, at your own edge of the screen, the right way up for you.")
-                    bullet("**The score in the middle turns** to face whoever last pegged, then keeps turning "
-                           + "so you both get to read it. Tap it to turn it now.")
-                    bullet("**The pencil** beside your slider sets your name and color, and the sound, "
-                           + "haptics and score-track settings.")
+                    bullet("**The score in the middle turns** to face whoever last pegged, then keeps turning so you both get to read it. Tap it to turn it now.")
+                    bullet("**The pencil** beside your slider sets your name and color, and the sound, haptics and score-track settings.")
                     bullet("**The circle on the divider** starts a new game. It asks first.")
-                    bullet("**At 121** the board replays every peg of the game, then shows the winner — "
-                           + "both turning to face each of you in turn. Turn the replay off in the board's "
-                           + "own settings if you'd rather go straight to the celebration.")
-                    bullet("Scoreboard games aren't added to your stats — the app never sees the hands, so "
-                           + "there'd be nothing to record beyond the result.")
+                    bullet("**At 121** the board replays every peg of the game, then shows the winner — both turning to face each of you in turn. Turn the replay off in the board's own settings if you'd rather go straight to the celebration.")
+                    bullet("Scoreboard games aren't added to your stats — the app never sees the hands, so there'd be nothing to record beyond the result.")
                 }
 
                 Section("Stats & achievements") {
-                    bullet("**Stats** (the chart on the menu) keeps every finished game on this device: wins, "
-                           + "skunks for and against, your best hand, streaks and time played.")
-                    bullet("It's **only on this phone** — no accounts, nothing synced — so a reinstall clears "
-                           + "it.")
-                    bullet("**Achievements and the wins leaderboard** are in Game Center, reached from the "
-                           + "bottom of Stats: first win, skunks, a 24-hand, the perfect 29, a comeback from "
-                           + "30 behind, five in a row, and a hundred hands.")
+                    bullet("**Stats** (the chart on the menu) keeps every finished game on this device: wins, skunks for and against, your best hand, streaks and time played.")
+                    bullet("It's **only on this phone** — no accounts, nothing synced — so a reinstall clears it.")
+                    bullet("**Achievements and the wins leaderboard** are in Game Center, reached from the bottom of Stats: first win, skunks, a 24-hand, the perfect 29, a comeback from 30 behind, five in a row, and a hundred hands.")
                 }
 
                 Section("A hand, step by step") {
@@ -92,8 +77,7 @@ struct HelpView: View {
                     bullet("**Cut for deal:** each player taps to cut — low card deals and takes the crib.")
                     bullet("**Discard:** each player sends 2 cards to the dealer's crib.")
                     bullet("**Cut the starter:** the non‑dealer taps the deck; the dealer turns up the starter card.")
-                    bullet("**The play (pegging):** take turns laying cards and calling the count. Say **Go** when "
-                           + "you can't play without passing 31 — you're nudged when a Go or 31 is yours to take.")
+                    bullet("**The play (pegging):** take turns laying cards and calling the count. Say **Go** when you can't play without passing 31 — you're nudged when a Go or 31 is yours to take.")
                     bullet("**The show:** count in order — non‑dealer's hand, dealer's hand, then the crib.")
                 }
 
@@ -109,8 +93,7 @@ struct HelpView: View {
                     bullet("**Slider:** drag to the number of points and let go.")
                     bullet("**+ button:** tap **+1** repeatedly to count up one at a time.")
                     bullet("**Confirm after release** (Settings): holds the amount until you tap **+N** to confirm.")
-                    bullet("**Check my count:** the ✓ next to Continue shows the correct count and breakdown — "
-                           + "double runs, pair royal, and so on.")
+                    bullet("**Check my count:** the ✓ next to Continue shows the correct count and breakdown — double runs, pair royal, and so on.")
                     helpText("Scoring mode (Settings) applies to the whole game:")
                     bullet("**Automatic** — the app counts and adds every point.")
                     bullet("**Feedback** — the app shows each score; you add it yourself.")
@@ -119,15 +102,11 @@ struct HelpView: View {
 
                 Section("Settings") {
                     bullet("**Name & color**, and your **card back**.")
-                    bullet("**Scoring mode** — either player can change it. New games start on **Player "
-                           + "responsibility**: you keep score, as you would on a wooden board.")
+                    bullet("**Scoring mode** — either player can change it. New games start on **Player responsibility**: you keep score, as you would on a wooden board.")
                     bullet("**Feel & effects:** toggle **Haptics**, **Sound effects**, and **Celebration effects**.")
                     bullet("**Scoring replay before win:** replay the game score‑by‑score before the win screen.")
-                    bullet("**Score track:** the loop around your score tracing the way to 121, with the skunk "
-                           + "lines marked.")
-                    helpText("The scoreboard has its own copy of most of these, behind the pencil beside your "
-                             + "slider — everything except the scoring mode and the card back, which only "
-                             + "apply to a game the app deals.")
+                    bullet("**Score track:** the loop around your score tracing the way to 121, with the skunk lines marked.")
+                    helpText("The scoreboard has its own copy of most of these, behind the pencil beside your slider — everything except the scoring mode and the card back, which only apply to a game the app deals.")
                 }
 
                 if let onReplayOnboarding {
@@ -178,12 +157,14 @@ struct HelpView: View {
             .listRowInsets(EdgeInsets(top: 6, leading: 12, bottom: 6, trailing: 12))
     }
 
-    private func helpText(_ markdown: String) -> some View {
-        Text(.init(markdown)).font(.callout).foregroundStyle(.primary)
+    /// `LocalizedStringKey`, not `String`: the extractor only sees literals if the parameter itself
+    /// is a key. Markdown in the string still renders.
+    private func helpText(_ markdown: LocalizedStringKey) -> some View {
+        Text(markdown).font(.callout).foregroundStyle(.primary)
     }
 
-    private func bullet(_ markdown: String) -> some View {
-        Text(.init(markdown))
+    private func bullet(_ markdown: LocalizedStringKey) -> some View {
+        Text(markdown)
             .font(.callout)
             .frame(maxWidth: .infinity, alignment: .leading)
     }

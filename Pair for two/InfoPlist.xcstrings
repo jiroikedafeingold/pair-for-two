@@ -1,0 +1,54 @@
+{
+  "sourceLanguage" : "en",
+  "strings" : {
+    "CFBundleDisplayName" : {
+      "comment" : "Bundle display name",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Pair for two"
+          }
+        }
+      }
+    },
+    "CFBundleName" : {
+      "comment" : "Bundle name",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Pair for two"
+          }
+        }
+      }
+    },
+    "NSGKFriendListUsageDescription" : {
+      "comment" : "Permission prompt shown when the app reads your Game Center friends to offer them as opponents.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pair for Two shows your Game Center friends so you can invite one to a game."
+          }
+        }
+      }
+    },
+    "NSLocalNetworkUsageDescription" : {
+      "comment" : "Permission prompt shown when the app looks for another device on the local network.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pair for Two uses the local network to find and connect to a nearby phone for two-player cribbage. No internet or account is needed."
+          }
+        }
+      }
+    }
+  },
+  "version" : "1.0"
+}

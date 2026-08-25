@@ -114,7 +114,8 @@ struct GameTableView: View {
                 if initiatedScoringChange {
                     initiatedScoringChange = false
                 } else {
-                    showPegAlert("\(vm.snapshot.opponentName) switched scoring to \(newMode.title)")
+                    showPegAlert(String(localized: "\(vm.snapshot.opponentName) switched scoring to \(newMode.title)",
+                                        comment: "Toast: first %@ is a player name, second the scoring mode's name"))
                 }
             }
     }
@@ -254,7 +255,8 @@ struct GameTableView: View {
     private func handleOpponentOut() {
         if vm.opponentOutKeepPlaying {
             GameFeedback.shared.play(.go)
-            showPegAlert("\(vm.snapshot.opponentName) is out — keep playing")
+            showPegAlert(String(localized: "\(vm.snapshot.opponentName) is out — keep playing",
+                                comment: "Toast: the other player has no cards left; %@ is their name"))
         }
     }
 
@@ -273,23 +275,45 @@ struct GameTableView: View {
                 // "Go" was said and the play passed to the other player — notify only them.
                 guard !mine else { return }
                 GameFeedback.shared.play(.go)
-                pegAlert = "\(who) said Go — your play"
+                pegAlert = String(localized: "\(who) said Go — your play",
+                                  comment: "Toast: the other player could not play; %@ is their name. 'Go' is the cribbage call")
             } else {
                 GameFeedback.shared.play(.go)
-                pegAlert = auto ? "Go — \(who) pegs 1"
-                                : (mine ? "Go — take 1" : "\(who) takes 1 for the go")
+                if auto {
+                    pegAlert = String(localized: "Go — \(who) pegs 1",
+                                      comment: "Toast in automatic scoring; %@ is a player name")
+                } else if mine {
+                    pegAlert = String(localized: "Go — take 1", comment: "Toast telling you to peg 1 for the go")
+                } else {
+                    pegAlert = String(localized: "\(who) takes 1 for the go", comment: "%@ is a player name")
+                }
             }
         case .thirtyOne:
             GameFeedback.shared.play(.thirtyOne)
-            pegAlert = auto ? "31 for \(event.points)!"
-                            : (mine ? "31 — take \(event.points)" : "\(who) hits 31 for \(event.points)")
+            if auto {
+                pegAlert = String(localized: "31 for \(event.points)!",
+                                  comment: "Toast in automatic scoring; %lld is the points pegged")
+            } else if mine {
+                pegAlert = String(localized: "31 — take \(event.points)",
+                                  comment: "Toast telling you to peg for hitting 31; %lld is the points")
+            } else {
+                pegAlert = String(localized: "\(who) hits 31 for \(event.points)",
+                                  comment: "%@ is a player name, %lld the points")
+            }
         case .lastCard:
             // The hand's final card is down — tell both players, so the one who laid it takes the
             // point and the other knows the play is over and the count is next.
             GameFeedback.shared.play(.go)
-            pegAlert = auto ? "Last card — \(who) pegs \(event.points)"
-                            : (mine ? "Last card — take \(event.points)"
-                                    : "Last card played — \(who) takes \(event.points)")
+            if auto {
+                pegAlert = String(localized: "Last card — \(who) pegs \(event.points)",
+                                  comment: "Toast in automatic scoring; %@ is a player name, %lld the points")
+            } else if mine {
+                pegAlert = String(localized: "Last card — take \(event.points)",
+                                  comment: "Toast telling you to peg for the last card; %lld is the points")
+            } else {
+                pegAlert = String(localized: "Last card played — \(who) takes \(event.points)",
+                                  comment: "%@ is a player name, %lld the points")
+            }
         }
         scheduleClearPegAlert()
     }
@@ -333,9 +357,7 @@ struct GameTableView: View {
                 // Online recovery needs the other player to accept a Game Center invitation — GameKit
                 // has no way to rebuild a real-time match without them agreeing — so say so rather
                 // than spinning on "Reconnecting…" while they wonder what to do.
-                Text(vm.connection == .reconnecting
-                     ? (vm.isOnline ? "Reconnecting… accept the Game Center invite to rejoin" : "Reconnecting…")
-                     : "Disconnected")
+                connectionBannerText
                     .font(.caption.weight(.semibold)).foregroundStyle(.white)
                     .multilineTextAlignment(.center)
                     .fixedSize(horizontal: false, vertical: true)
@@ -347,10 +369,22 @@ struct GameTableView: View {
         }
     }
 
+    /// Split out of the banner so each string is a plain literal: the localization extractor reads
+    /// literals, not the branches of a ternary.
+    @ViewBuilder private var connectionBannerText: some View {
+        if vm.connection != .reconnecting {
+            Text("Disconnected", comment: "Connection banner")
+        } else if vm.isOnline {
+            Text("Reconnecting… accept the Game Center invite to rejoin", comment: "Connection banner for an online game")
+        } else {
+            Text("Reconnecting…", comment: "Connection banner")
+        }
+    }
+
     /// The go/31 "take the score" toast — bold and briefly shown so a player never misses their point.
     @ViewBuilder private var pegAlertBanner: some View {
         if let text = pegAlert {
-            Text(text)
+            Text(verbatim: text)
                 .font(.title3.weight(.heavy))
                 .foregroundStyle(.black)
                 .padding(.horizontal, 20).padding(.vertical, 10)
@@ -407,7 +441,7 @@ struct GameTableView: View {
 
     @ViewBuilder private func topBand(_ s: PlayerSnapshot) -> some View {
         VStack(spacing: 8) {
-            Text(vm.coachBanner)
+            Text(verbatim: vm.coachBanner)
                 .font(.headline.weight(.bold))
                 .foregroundStyle(.white)
                 .multilineTextAlignment(.center)
@@ -483,7 +517,7 @@ struct GameTableView: View {
         let isOpponent = player != s.you
         let value = isOpponent ? (displayedOppScore ?? vm.score(of: player)) : vm.score(of: player)
         VStack(spacing: 4) {
-            Text(vm.name(of: player).uppercased())
+            Text(verbatim: vm.name(of: player).uppercased())
                 .font(.title3.weight(.heavy))
                 .foregroundStyle(theme.primary)
                 .lineLimit(1).minimumScaleFactor(0.5)
@@ -666,7 +700,8 @@ struct GameTableView: View {
                         .buttonStyle(.borderedProminent).tint(.cribGold).foregroundStyle(.black)
                         .controlSize(.large)
                 } else {
-                    waitingLabel("Waiting for \(vm.name(of: s.dealer)) to deal…")
+                    waitingLabel(String(localized: "Waiting for \(vm.name(of: s.dealer)) to deal…",
+                                        comment: "%@ is the dealer's name"))
                 }
             } else if vm.youNeedToCut {
                 Button { vm.cut() } label: {
@@ -677,7 +712,8 @@ struct GameTableView: View {
                 }
                 .buttonStyle(.plain)
             } else {
-                waitingLabel("Waiting for \(s.opponentName) to cut…")
+                waitingLabel(String(localized: "Waiting for \(s.opponentName) to cut…",
+                                    comment: "%@ is the other player's name"))
             }
         }
     }
@@ -688,7 +724,7 @@ struct GameTableView: View {
     private func waitingLabel(_ text: String) -> some View {
         VStack(spacing: 8) {
             ProgressView().tint(.white)
-            Text(text).font(.callout).foregroundStyle(.white.opacity(0.8))
+            Text(verbatim: text).font(.callout).foregroundStyle(.white.opacity(0.8))
                 .multilineTextAlignment(.center)
                 .fixedSize(horizontal: false, vertical: true)
         }
@@ -697,16 +733,22 @@ struct GameTableView: View {
     @ViewBuilder private func cutResult(for player: PlayerID, s: PlayerSnapshot, width: CGFloat) -> some View {
         let isWinner = vm.cutForDealDecided && s.dealer == player
         VStack(spacing: 4) {
-            Text(vm.name(of: player)).font(.caption).foregroundStyle(.white.opacity(0.7)).lineLimit(1)
+            Text(verbatim: vm.name(of: player)).font(.caption).foregroundStyle(.white.opacity(0.7)).lineLimit(1)
             if let card = s.cutForDeal[player] {
                 CardView(card: card, isHighlighted: isWinner, width: width)
             } else {
                 CardView(card: nil, faceUp: false, width: width)
                     .opacity(0.35)
             }
-            Text(isWinner ? "deals · crib" : " ")
-                .font(.caption2.weight(.bold))
-                .foregroundStyle(Color.cribGold)
+            Group {
+                if isWinner {
+                    Text("deals · crib", comment: "Caption under the cut card that won the deal")
+                } else {
+                    Text(verbatim: " ")   // holds the row's height so the cards don't shift
+                }
+            }
+            .font(.caption2.weight(.bold))
+            .foregroundStyle(Color.cribGold)
         }
         .frame(width: width + 12)
     }
@@ -721,7 +763,10 @@ struct GameTableView: View {
                      cardWidth: width,
                      dealSignal: AnyHashable(s.yourHand.map(\.id)))   // deal cards in on a fresh hand
         } action: {
-            RailButton(title: "Send 2 to \(s.yourSeat == .dealer ? "your crib" : "\(vm.name(of: s.dealer))'s crib")",
+            RailButton(title: s.yourSeat == .dealer
+                       ? String(localized: "Send 2 to your crib", comment: "Button: discard two cards into your own crib")
+                       : String(localized: "Send 2 to \(vm.name(of: s.dealer))'s crib",
+                                comment: "Button: discard into the dealer's crib; %@ is their name"),
                        railWidth: railWidth,
                        tint: vm.theme(for: s.you).deep,
                        textColor: .white,
@@ -762,8 +807,10 @@ struct GameTableView: View {
                 Text("Tap the deck to turn up the cut").font(.callout.weight(.semibold)).foregroundStyle(.white)
                     .multilineTextAlignment(.center)
             } else {
-                waitingLabel(lifted ? "Waiting for \(vm.name(of: s.dealer)) to turn up the cut…"
-                                    : "Waiting for \(vm.name(of: s.pone)) to cut the deck…")
+                waitingLabel(lifted ? String(localized: "Waiting for \(vm.name(of: s.dealer)) to turn up the cut…",
+                                             comment: "%@ is the dealer's name")
+                                    : String(localized: "Waiting for \(vm.name(of: s.pone)) to cut the deck…",
+                                             comment: "%@ is the non-dealer's name"))
             }
         }
     }
@@ -815,7 +862,10 @@ struct GameTableView: View {
                 if vm.youStartCount {
                     // Fold any pending slider points in before advancing (like the show's Continue),
                     // so last-card / go / 31 points aren't stranded when moving to the count.
-                    RailButton(title: uncommittedLocal > 0 ? "Add \(uncommittedLocal) & count the hands" : "Count the hands",
+                    RailButton(title: uncommittedLocal > 0
+                               ? String(localized: "Add \(uncommittedLocal) & count the hands",
+                                        comment: "Adds the pending slider points, then starts the show; %lld is the points")
+                               : String(localized: "Count the hands", comment: "Button: move from the play to the show"),
                                railWidth: railWidth, tint: .cribGold, large: true) {
                         if uncommittedLocal > 0 {
                             GameFeedback.shared.play(.score)
@@ -827,7 +877,8 @@ struct GameTableView: View {
                         vm.advance()
                     }
                 } else {
-                    waitingLabel("Waiting for \(vm.name(of: vm.snapshot.lastToPlay ?? vm.snapshot.you))…")
+                    waitingLabel(String(localized: "Waiting for \(vm.name(of: vm.snapshot.lastToPlay ?? vm.snapshot.you))…",
+                                    comment: "%@ is a player name"))
                 }
             } else if vm.canSayGo {
                 Button("Go") { GameFeedback.shared.play(.advance); vm.sayGo() }
@@ -854,13 +905,15 @@ struct GameTableView: View {
                     // The crib gets a distinct gold badge + backing so it's obvious it's the crib
                     // being counted (not another hand).
                     if isCrib {
-                        Label("\(vm.name(of: s.dealer))'s crib".uppercased(), systemImage: "square.stack.3d.up.fill")
+                        Label(String(localized: "\(vm.name(of: s.dealer))'s crib",
+                                     comment: "Badge over the crib being counted; %@ is the dealer's name").uppercased(),
+                              systemImage: "square.stack.3d.up.fill")
                             .font(.caption2.weight(.heavy))
                             .foregroundStyle(.black)
                             .padding(.horizontal, 10).padding(.vertical, 3)
                             .background(Capsule().fill(Color.cribGold))
                     } else {
-                        Text(vm.showLabel).font(.caption2).foregroundStyle(.white.opacity(0.7))
+                        Text(verbatim: vm.showLabel).font(.caption2).foregroundStyle(.white.opacity(0.7))
                     }
                     // Cards deal out one-by-one as they're shown (re-triggers each show sub-phase).
                     // In the crib, each card carries a marker in the color of whoever discarded it.
@@ -889,14 +942,23 @@ struct GameTableView: View {
                 // so the standing instruction is dropped — it would only crowd the narrow rail, where
                 // the taller two-line button needs the room.
                 if uncommittedLocal == 0, vSizeClass == .regular || s.flags.isEmpty {
-                    Text(s.scoringMode == .auto ? "Scored automatically" : "Count it on your slider, then Continue")
+                    Group {
+                        if s.scoringMode == .auto {
+                            Text("Scored automatically", comment: "The app is keeping score, so there is nothing to add")
+                        } else {
+                            Text("Count it on your slider, then Continue", comment: "Instruction while counting a hand")
+                        }
+                    }
                         .font(vSizeClass == .regular ? .title3 : .caption).foregroundStyle(.white.opacity(0.7))
                         .multilineTextAlignment(.center)
                         .fixedSize(horizontal: false, vertical: true)
                 }
                 // With a pending slider value (confirm-after-release), the button adds it, then advances.
                 // In manual modes a check button sits below to verify the count.
-                RailButton(title: uncommittedLocal > 0 ? "Add \(uncommittedLocal) & continue" : "Continue",
+                RailButton(title: uncommittedLocal > 0
+                           ? String(localized: "Add \(uncommittedLocal) & continue",
+                                    comment: "Adds the pending slider points and moves on; %lld is the points")
+                           : String(localized: "Continue", comment: "Move on to the next step"),
                            railWidth: railWidth, tint: .cribGold) {
                     if uncommittedLocal > 0 {
                         GameFeedback.shared.play(.score)
@@ -926,7 +988,8 @@ struct GameTableView: View {
                     .accessibilityLabel("Check my count")
                 }
             } else {
-                waitingLabel("Waiting for \(vm.name(of: vm.showCountingPlayer ?? s.you)) to count…")
+                waitingLabel(String(localized: "Waiting for \(vm.name(of: vm.showCountingPlayer ?? s.you)) to count…",
+                                    comment: "%@ is the player counting their hand"))
             }
         }
     }
@@ -944,11 +1007,13 @@ struct GameTableView: View {
         } action: {
             // Only the next dealer starts the deal (the deal passes to the former pone).
             if vm.youStartNextDeal {
-                RailButton(title: "Deal next hand", railWidth: railWidth, tint: .cribGold, large: true) {
+                RailButton(title: String(localized: "Deal next hand", comment: "Button: deal the next hand"),
+                           railWidth: railWidth, tint: .cribGold, large: true) {
                     vm.advance()
                 }
             } else {
-                waitingLabel("Waiting for \(vm.name(of: vm.nextDealer)) to deal…")
+                waitingLabel(String(localized: "Waiting for \(vm.name(of: vm.nextDealer)) to deal…",
+                                    comment: "%@ is the next dealer's name"))
             }
         }
     }
@@ -963,9 +1028,15 @@ struct GameTableView: View {
                 Text("Opponent left").font(.title2.weight(.bold)).foregroundStyle(.white)
                 // Online now retries before giving up (re-inviting them back into the match), so this
                 // is the end of that attempt rather than the first sign of trouble — say so.
-                Text(vm.isOnline
-                     ? "We kept trying to get them back, but they didn't rejoin. This game can't be picked up from here."
-                     : "The connection to your opponent was lost.")
+                Group {
+                    if vm.isOnline {
+                        Text("We kept trying to get them back, but they didn't rejoin. This game can't be picked up from here.",
+                             comment: "Shown when an online opponent never came back")
+                    } else {
+                        Text("The connection to your opponent was lost.",
+                             comment: "Shown when a nearby opponent's connection dropped")
+                    }
+                }
                     .font(.callout).foregroundStyle(.white.opacity(0.8))
                     .multilineTextAlignment(.center).frame(maxWidth: 360)
                 Button("Back to menu") { onExit() }
@@ -1009,7 +1080,7 @@ struct GameTableView: View {
 
             VStack(spacing: 12) {
                 Text("Correct count").font(.title3.weight(.bold)).foregroundStyle(.white)
-                Text(vm.showLabel).font(.caption).foregroundStyle(.white.opacity(0.7))
+                Text(verbatim: vm.showLabel).font(.caption).foregroundStyle(.white.opacity(0.7))
 
                 if flags.isEmpty {
                     Text("0").font(.system(size: 46, weight: .heavy, design: .rounded)).foregroundStyle(Color.cribGold)
@@ -1019,7 +1090,7 @@ struct GameTableView: View {
                         VStack(spacing: 6) {
                             ForEach(Array(flags.enumerated()), id: \.offset) { _, f in
                                 HStack {
-                                    Text(f.detail).font(.callout).foregroundStyle(.white.opacity(0.9))
+                                    Text(f.localizedDetail).font(.callout).foregroundStyle(.white.opacity(0.9))
                                     Spacer(minLength: 16)
                                     Text("+\(f.points)").font(.callout.weight(.heavy)).foregroundStyle(Color.cribGold)
                                 }
@@ -1029,8 +1100,17 @@ struct GameTableView: View {
                     .frame(maxWidth: 300).frame(maxHeight: 150)
                     Rectangle().fill(.white.opacity(0.15)).frame(height: 1).frame(maxWidth: 300)
                     HStack(alignment: .firstTextBaseline, spacing: 8) {
-                        Text("\(total)").font(.system(size: 44, weight: .heavy, design: .rounded)).foregroundStyle(Color.cribGold)
-                        Text(total == 1 ? "point" : "points").font(.caption).foregroundStyle(.white.opacity(0.7))
+                        Text(verbatim: "\(total)").font(.system(size: 44, weight: .heavy, design: .rounded)).foregroundStyle(Color.cribGold)
+                        // Two keys rather than one inflected string: the number is already on screen
+                        // in the big face above, so only the bare noun belongs here.
+                        Group {
+                            if total == 1 {
+                                Text("point", comment: "Unit after a score of one, e.g. '1 point'")
+                            } else {
+                                Text("points", comment: "Unit after a score of more than one, e.g. '12 points'")
+                            }
+                        }
+                        .font(.caption).foregroundStyle(.white.opacity(0.7))
                     }
                 }
 

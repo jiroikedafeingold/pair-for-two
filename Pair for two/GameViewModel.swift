@@ -139,7 +139,7 @@ final class GameViewModel {
         var s = GameState.newMatch(matchID: UUID(), seed: seed, names: names, colorIDs: colorIDs, scoringMode: scoringMode)
         CribbageEngine.begin(&s)
         return GameViewModel(transport: transport, isLoopback: true,
-                             localName: names[.one] ?? "Player 1", localColorID: colorIDs[.one] ?? 1,
+                             localName: names[.one] ?? String(localized: "Player 1", comment: "Stand-in name for the first player"), localColorID: colorIDs[.one] ?? 1,
                              seed: seed, scoringMode: scoringMode,
                              state: s, snapshot: s.snapshot(for: .one), connection: .connected)
     }
@@ -189,7 +189,7 @@ final class GameViewModel {
                            onlineOpponentID: String? = nil,
                            onlineOpponentName: String? = nil) -> GameViewModel {
         GameViewModel(transport: transport, isLoopback: false,
-                      localName: savedState.names[.one] ?? "Player 1",
+                      localName: savedState.names[.one] ?? String(localized: "Player 1", comment: "Stand-in name for the first player"),
                       localColorID: savedState.colorIDs[.one] ?? 1,
                       seed: savedState.seed, scoringMode: savedState.scoringMode,
                       state: savedState,
@@ -232,7 +232,9 @@ final class GameViewModel {
                        playSequence: [], runningCount: 0, lapCardCount: 0, whoseTurn: nil, lastToPlay: nil,
                        yourScore: 0, opponentScore: 0, flags: [], scoringMode: .off,
                        cutForDeal: [:], winner: nil,
-                       yourName: name, opponentName: "Opponent",
+                       yourName: name,
+                       opponentName: String(localized: "Opponent",
+                                            comment: "Stand-in for the other player's name until it arrives"),
                        yourColorID: colorID, opponentColorID: you == .one ? 7 : 1,
                        playersWithClaims: [],
                        claimTick: 0, lastClaimPlayer: nil, lastClaimAmount: 0,
@@ -638,12 +640,20 @@ final class GameViewModel {
     /// color. Nil when unknown (a game resumed from a build that didn't record it).
     func cribOwner(of card: Card) -> PlayerID? { snapshot.cribOwners?[card] }
 
-    /// Name-based label for what's being counted (never the "pone/dealer" jargon).
+    /// Name-based label for what's being counted (never the "pone/dealer" jargon). Localized here
+    /// rather than in the view because the phase-to-wording mapping is the model's business; views
+    /// render it with `Text(verbatim:)`.
     var showLabel: String {
         switch snapshot.phase {
-        case .showPone:   return "\(name(of: snapshot.pone))'s hand"
-        case .showDealer: return "\(name(of: snapshot.dealer))'s hand"
-        case .showCrib:   return "\(name(of: snapshot.dealer))'s crib"
+        case .showPone:
+            return String(localized: "\(name(of: snapshot.pone))'s hand",
+                          comment: "Whose hand is being counted; %@ is a player name")
+        case .showDealer:
+            return String(localized: "\(name(of: snapshot.dealer))'s hand",
+                          comment: "Whose hand is being counted; %@ is a player name")
+        case .showCrib:
+            return String(localized: "\(name(of: snapshot.dealer))'s crib",
+                          comment: "Whose crib is being counted; %@ is a player name")
         default:          return ""
         }
     }
@@ -668,41 +678,79 @@ final class GameViewModel {
     /// scoring replay. Empty until game over.
     var scoreLog: [Claim] { snapshot.scoreLog }
 
+    /// The one-line prompt across the top of the table. Localized here — every `%@` is a player
+    /// name, which is never translated.
     var coachBanner: String {
         let s = snapshot
         switch s.phase {
-        case .connecting:  return isHost ? "Waiting for a player to join…" : "Connecting…"
+        case .connecting:
+            return isHost ? String(localized: "Waiting for a player to join…",
+                                   comment: "Host is waiting for the second device")
+                          : String(localized: "Connecting…", comment: "Guest is joining a game")
         case .cutForDeal:
             if cutForDealDecided {
-                return "\(name(of: s.dealer)) wins the cut — deals & takes the crib"
+                return String(localized: "\(name(of: s.dealer)) wins the cut — deals & takes the crib",
+                              comment: "Result of the cut for deal; %@ is a player name")
             }
-            if waitingForOpponentCut { return "Waiting for \(s.opponentName) to cut…" }
-            return "\(s.yourName), cut for deal"
-        case .dealing:     return "Dealing…"
+            if waitingForOpponentCut {
+                return String(localized: "Waiting for \(s.opponentName) to cut…",
+                              comment: "%@ is the other player's name")
+            }
+            return String(localized: "\(s.yourName), cut for deal",
+                          comment: "Prompt to cut for the deal; %@ is your name")
+        case .dealing:
+            return String(localized: "Dealing…", comment: "Cards are being dealt")
         case .discardToCrib:
-            let whose = s.yourSeat == .dealer ? "your crib" : "\(name(of: s.dealer))'s crib"
-            return "\(s.yourName), discard 2 to \(whose)"
+            return s.yourSeat == .dealer
+                ? String(localized: "\(s.yourName), discard 2 to your crib",
+                         comment: "Prompt to discard; %@ is your name and the crib is yours")
+                : String(localized: "\(s.yourName), discard 2 to \(name(of: s.dealer))'s crib",
+                         comment: "Prompt to discard; first %@ is your name, second is the dealer's")
         case .cutStarter:
             if s.starterCutLifted {
-                return youRevealStarter ? "\(name(of: s.dealer)), turn up the cut"
-                                        : "Waiting for \(name(of: s.dealer)) to turn up the cut…"
+                return youRevealStarter
+                    ? String(localized: "\(name(of: s.dealer)), turn up the cut",
+                             comment: "Prompt for the dealer to reveal the starter; %@ is a player name")
+                    : String(localized: "Waiting for \(name(of: s.dealer)) to turn up the cut…",
+                             comment: "%@ is the dealer's name")
             }
-            return youLiftCut ? "\(name(of: s.pone)), cut the deck"
-                              : "Waiting for \(name(of: s.pone)) to cut the deck…"
+            return youLiftCut
+                ? String(localized: "\(name(of: s.pone)), cut the deck",
+                         comment: "Prompt for the non-dealer to cut; %@ is a player name")
+                : String(localized: "Waiting for \(name(of: s.pone)) to cut the deck…",
+                         comment: "%@ is the non-dealer's name")
         case .pegging:
-            if peggingComplete { return "All cards played — count the hands" }
-            if opponentOutKeepPlaying { return "\(s.opponentName) is out — keep laying your cards" }
-            if s.isYourTurn {
-                return canSayGo ? "\(s.yourName): no card to play — say Go" : "\(s.yourName)'s play"
+            if peggingComplete {
+                return String(localized: "All cards played — count the hands",
+                              comment: "The play is over and the show begins")
             }
-            return "Waiting for \(s.opponentName)"
-        case .showPone:    return "\(name(of: s.pone)) counts their hand"
-        case .showDealer:  return "\(name(of: s.dealer)) counts their hand"
-        case .showCrib:    return "\(name(of: s.dealer)) counts the crib"
-        case .handComplete: return "Hand complete"
+            if opponentOutKeepPlaying {
+                return String(localized: "\(s.opponentName) is out — keep laying your cards",
+                              comment: "The other player has no cards left; %@ is their name")
+            }
+            if s.isYourTurn {
+                return canSayGo
+                    ? String(localized: "\(s.yourName): no card to play — say Go",
+                             comment: "You cannot play under 31; %@ is your name. 'Go' is the cribbage call")
+                    : String(localized: "\(s.yourName)'s play",
+                             comment: "It is your turn to lay a card; %@ is your name")
+            }
+            return String(localized: "Waiting for \(s.opponentName)",
+                          comment: "%@ is the other player's name")
+        case .showPone:
+            return String(localized: "\(name(of: s.pone)) counts their hand",
+                          comment: "%@ is a player name")
+        case .showDealer:
+            return String(localized: "\(name(of: s.dealer)) counts their hand",
+                          comment: "%@ is a player name")
+        case .showCrib:
+            return String(localized: "\(name(of: s.dealer)) counts the crib",
+                          comment: "%@ is a player name")
+        case .handComplete:
+            return String(localized: "Hand complete", comment: "The hand has finished scoring")
         case .gameOver:
             let w = s.winner == s.you ? s.yourName : s.opponentName
-            return "\(w) wins!"
+            return String(localized: "\(w) wins!", comment: "%@ is the winner's name")
         }
     }
 

@@ -21,8 +21,13 @@ nonisolated struct ScoreFlag: Codable, Hashable, Sendable, Identifiable {
 
     let kind: Kind
     let points: Int
-    /// Human-readable detail, e.g. "Fifteen 2", "Run of 3", "Pair", "His Nobs". Kept English here;
-    /// the view layer localizes for display.
+    /// Human-readable detail, e.g. "Fifteen 2", "Run of 3", "Pair", "His Nobs".
+    ///
+    /// **English on purpose, and a shipped contract.** It crosses the wire from the host, which may be
+    /// running a different language from the guest, so each device looks the string up in its own
+    /// catalog — `ScoreFlag.localizedDetail` uses it as the localization key. Every string this file
+    /// and `CribbageEngine` can produce therefore has a manual entry in `Localizable.xcstrings`;
+    /// change the wording here and you must add the new key there, or that chip falls back to English.
     let detail: String
 
     var id: String { "\(kind.rawValue)|\(detail)|\(points)" }
