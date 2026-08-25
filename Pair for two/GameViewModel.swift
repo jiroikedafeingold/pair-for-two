@@ -145,6 +145,21 @@ final class GameViewModel {
     }
 #endif
 
+#if DEBUG
+    /// A guest showing one prepared snapshot, for App Store screenshots (see `ScreenshotFixtures`).
+    ///
+    /// It renders through the ordinary guest path — no authoritative state, seat fixed to `.two` — so
+    /// what's captured is what a real player sees on their own device, not the pass-and-play view.
+    /// The snapshot is supplied here rather than awaited from the transport because a preview snapshot
+    /// is taken on the first frame, which would otherwise catch the "connecting" placeholder.
+    static func previewGuest(snapshot: PlayerSnapshot) -> GameViewModel {
+        GameViewModel(transport: PreviewSnapshotTransport(snapshot), isLoopback: false,
+                      localName: snapshot.yourName, localColorID: snapshot.yourColorID,
+                      seed: 0, scoringMode: snapshot.scoringMode,
+                      state: nil, snapshot: snapshot, connection: .connected, resumable: false)
+    }
+#endif
+
     /// Two-device play over a real transport (Multipeer). The host builds state once the guest's
     /// `.hello` arrives; the guest renders incoming snapshots. The host's `scoringMode` governs.
     static func networked(transport: any GameTransport,
