@@ -32,6 +32,8 @@ struct BoardView: View {
     @State private var saveTask: Task<Void, Never>?
     /// Flips once the pre-win replay has run, so the celebration can take over. Re-armed by a new game.
     @State private var preWinReplayShown = false
+    /// Watches which way the device is leaning; nil while it lies flat.
+    @State private var tilt = BoardTiltReader()
 
     /// The near player is whoever set the app up; the far player is named on the board itself, since
     /// two people share this phone and only one of them owns it.
@@ -42,6 +44,7 @@ struct BoardView: View {
     @AppStorage("confirmRelease") private var confirmRelease = true
     @AppStorage("scoreTrackEnabled") private var trackEnabled = true
     @AppStorage("replayBeforeWin") private var replayBeforeWin = true
+    @AppStorage("boardTiltTurns") private var tiltTurns = true
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     /// Compact height means a phone in landscape; regular means an iPad. Drives how much of the screen
     /// the sliders keep versus the score — not a device check, a space check.
@@ -71,6 +74,10 @@ struct BoardView: View {
         let trimmed = farName.trimmingCharacters(in: .whitespaces)
         return trimmed.isEmpty ? String(localized: "Opponent", comment: "Stand-in for the other player's name when it is not set") : trimmed
     }
+
+    /// Whoever is holding the device, per the accelerometer — nil when it's flat on the table and the
+    /// score belongs to both of them.
+    private var tiltFacing: BoardSide? { tiltTurns ? tilt.facing : nil }
 
     /// How long the shared score faces one player before turning to the other.
     private static let flipInterval: TimeInterval = 5
@@ -128,6 +135,17 @@ struct BoardView: View {
             Text("This clears both scores.")
         }
         .task { await runFlipTimer() }
+        .task(id: tiltTurns) {
+            // Nothing is read while the setting is off, so nothing is sampled either.
+            guard tiltTurns else { tilt.stop(); return }
+            tilt.start()
+        }
+        .onDisappear { tilt.stop() }
+        .onChange(of: tiltFacing) { _, side in
+            // Picking the device up is the clearest statement of who's reading, so it turns at once —
+            // and `face` marks it as an interaction, which keeps the timer off it for a beat after.
+            if let side { face(side) }
+        }
         .onAppear {
             guard startGame == nil else { return }   // a seeded preview keeps its own position
             if let saved = BoardGameStore.load() { game = saved }
@@ -397,7 +415,17 @@ struct BoardView: View {
             try? await Task.sleep(for: .seconds(game.isFinished ? Self.winFlipInterval : Self.flipInterval))
             guard !Task.isCancelled else { continue }
             if game.isFinished {
-                flipped.toggle()   // nobody is pegging any more, so nothing to wait for
+                if let held = tiltFacing {
+                    flipped = (held == .top)
+                } else {
+                    flipped.toggle()   // nobody is pegging any more, so nothing to wait for
+                }
+                continue
+            }
+            // While the device is tipped toward one player it's theirs, and the timer stands down:
+            // turning the score away from someone who is holding it up to read would be perverse.
+            if let held = tiltFacing {
+                flipped = (held == .top)
                 continue
             }
             let busy = bottomPending > 0 || topPending > 0
@@ -434,6 +462,7 @@ private struct BoardPlayerSheet: View {
     @AppStorage("soundEnabled") private var soundEnabled = true
     @AppStorage("celebrationEffects") private var celebrationEffects = true
     @AppStorage("replayBeforeWin") private var replayBeforeWin = true
+    @AppStorage("boardTiltTurns") private var tiltTurns = true
 
     var body: some View {
         NavigationStack {
@@ -489,6 +518,12 @@ private struct BoardPlayerSheet: View {
                     Toggle("Scoring replay before win", isOn: $replayBeforeWin)
                 } footer: {
                     Text("The track is the loop around the score, tracing each player's progress to 121 with the skunk lines marked on it. The replay walks back through every peg of the game before the winner is shown.")
+                }
+
+                Section {
+                    Toggle("Turn with the tilt", isOn: $tiltTurns)
+                } footer: {
+                    Text("Pick the \(deviceWord()) up to read the score and it turns the right way up for whoever is holding it. Flat on the table it goes back to taking turns.")
                 }
 
                 Section("Sound & feel") {

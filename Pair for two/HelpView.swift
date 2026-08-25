@@ -10,12 +10,6 @@ struct HelpView: View {
     /// A live, throwaway score so the help panel's slider actually works. Wraps back to 0 at 121.
     @State private var demoScore = 0
 
-    /// Naming the hardware in a sentence ("lay the iPad between you") — not a layout decision, so an
-    /// idiom check is the right tool.
-    private var deviceWord: String {
-        UIDevice.current.userInterfaceIdiom == .pad ? "iPad" : "phone"
-    }
-
     private func addDemo(_ points: Int) {
         demoScore += points
         if demoScore >= 121 { demoScore = 0 }   // hitting/passing 121 just resets the demo
@@ -49,9 +43,10 @@ struct HelpView: View {
                 }
 
                 Section("Scoreboard (playing with real cards)") {
-                    helpText("Dealing real cards? Tap **Scoreboard** and lay the \(deviceWord) between you. The app keeps score and nothing else — no hands, no crib, no cut, because it can't see your cards.")
+                    helpText("Dealing real cards? Tap **Scoreboard** and lay the \(deviceWord()) between you. The app keeps score and nothing else — no hands, no crib, no cut, because it can't see your cards.")
                     bullet("**A slider each**, at your own edge of the screen, the right way up for you.")
                     bullet("**The score in the middle turns** to face whoever last pegged, then keeps turning so you both get to read it. Tap it to turn it now.")
+                    bullet("**Pick it up and it follows you** — tilt the \(deviceWord()) toward yourself to read the score and it turns the right way up for you, until it's flat on the table again.")
                     bullet("**The pencil** beside your slider sets your name and color, and the sound, haptics and score-track settings.")
                     bullet("**The circle on the divider** starts a new game. It asks first.")
                     bullet("**At 121** the board replays every peg of the game, then shows the winner — both turning to face each of you in turn. Turn the replay off in the board's own settings if you'd rather go straight to the celebration.")

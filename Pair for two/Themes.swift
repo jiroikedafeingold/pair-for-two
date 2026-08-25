@@ -105,6 +105,20 @@ enum CardBack: Int, CaseIterable, Identifiable {
     static func from(_ id: Int) -> CardBack { CardBack(rawValue: id) ?? .royal }
 }
 
+// MARK: - Naming the hardware
+
+/// "iPad" or "phone", for copy that names the thing in the player's hands ("lay the iPad between
+/// you"). The one place an idiom check is right: this is a sentence, not a layout decision — size
+/// classes can't tell an iPad from a big iPhone in landscape, and they shouldn't have to.
+///
+/// Localized, because it lands inside translated sentences. "iPad" is a product name and stays as it
+/// is in every language; "phone" is an ordinary noun and doesn't.
+func deviceWord() -> String {
+    UIDevice.current.userInterfaceIdiom == .pad
+        ? String(localized: "iPad", comment: "The device in the player's hands, named in a sentence")
+        : String(localized: "phone", comment: "The device in the player's hands, named in a sentence")
+}
+
 // MARK: - Attention glow
 
 /// A brief attention glow: a soft gold halo that flashes once behind an icon whenever `trigger`

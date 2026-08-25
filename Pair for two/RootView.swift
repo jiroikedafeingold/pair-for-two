@@ -95,12 +95,6 @@ struct RootView: View {
 
     /// What to call the device in copy that points at it ("use the iPad as the board").
     ///
-    /// The one place an idiom check is right: this is naming the hardware in a sentence, not deciding a
-    /// layout. Size classes can't tell an iPad from a big iPhone in landscape, and they shouldn't have to.
-    private static var deviceWord: String {
-        UIDevice.current.userInterfaceIdiom == .pad ? "iPad" : "phone"
-    }
-
     /// Stand-in when a saved game doesn't record who it was against.
     private static var opponentStandIn: String {
         String(localized: "your opponent", comment: "Used in a sentence in place of an unknown player's name")
@@ -511,8 +505,8 @@ struct RootView: View {
                                 screen = .board
                             }
                             menuCaption(boardResumeAvailable
-                                        ? "Your board is part-way through. Real cards, this \(Self.deviceWord) between you as the board."
-                                        : "Playing with real cards? Lay this \(Self.deviceWord) between you and it keeps score.")
+                                        ? "Your board is part-way through. Real cards, this \(deviceWord()) between you as the board."
+                                        : "Playing with real cards? Lay this \(deviceWord()) between you and it keeps score.")
                         }
                     }
                     .frame(maxWidth: roomy ? 820 : 660)
