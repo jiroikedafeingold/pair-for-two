@@ -62,6 +62,9 @@ struct HelpView: View {
                     bullet("**The pencil** beside your slider sets your name and colour, and the sound, "
                            + "haptics and score-track settings.")
                     bullet("**The circle on the divider** starts a new game. It asks first.")
+                    bullet("**At 121** the board replays every peg of the game, then shows the winner — "
+                           + "both turning to face each of you in turn. Turn the replay off in the board's "
+                           + "own settings if you'd rather go straight to the celebration.")
                     bullet("Scoreboard games aren't added to your stats — the app never sees the hands, so "
                            + "there'd be nothing to record beyond the result.")
                 }
@@ -123,8 +126,8 @@ struct HelpView: View {
                     bullet("**Score track:** the loop around your score tracing the way to 121, with the skunk "
                            + "lines marked.")
                     helpText("The scoreboard has its own copy of most of these, behind the pencil beside your "
-                             + "slider — everything except the scoring mode, which only applies to a game the "
-                             + "app deals.")
+                             + "slider — everything except the scoring mode and the card back, which only "
+                             + "apply to a game the app deals.")
                 }
 
                 if let onReplayOnboarding {

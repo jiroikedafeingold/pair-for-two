@@ -30,6 +30,8 @@ struct BoardView: View {
     @State private var editing: BoardSide?
     @State private var confirmingNewGame = false
     @State private var saveTask: Task<Void, Never>?
+    /// Flips once the pre-win replay has run, so the celebration can take over. Re-armed by a new game.
+    @State private var preWinReplayShown = false
 
     /// The near player is whoever set the app up; the far player is named on the board itself, since
     /// two people share this phone and only one of them owns it.
@@ -39,6 +41,7 @@ struct BoardView: View {
     @AppStorage("boardFarColorID") private var farColorID = 7
     @AppStorage("confirmRelease") private var confirmRelease = true
     @AppStorage("scoreTrackEnabled") private var trackEnabled = true
+    @AppStorage("replayBeforeWin") private var replayBeforeWin = true
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     /// Compact height means a phone in landscape; regular means an iPad. Drives how much of the screen
     /// the sliders keep versus the score — not a device check, a space check.
@@ -102,11 +105,13 @@ struct BoardView: View {
         .background(felt)
         .overlay {
             if game.isFinished {
-                // The whole celebration turns, not just the score: it's the one screen both players want
-                // to look at, and it belongs to neither side of the table.
-                winner
-                    .rotationEffect(.degrees(flipped ? 180 : 0))
-                    .animation(reduceMotion ? nil : .easeInOut(duration: 0.7), value: flipped)
+                // Both of these turn as a whole, not just the score: they're the screens both players
+                // want to look at, and they belong to neither side of the table.
+                Group {
+                    if wantsPreWinReplay { boardReplay } else { winner }
+                }
+                .rotationEffect(.degrees(flipped ? 180 : 0))
+                .animation(reduceMotion ? nil : .easeInOut(duration: 0.7), value: flipped)
             }
         }
         .sheet(item: $editing) { side in
@@ -302,6 +307,27 @@ struct BoardView: View {
             .frame(width: 2)
     }
 
+    /// Whether to replay the game's pegs before revealing the winner.
+    private var wantsPreWinReplay: Bool {
+        replayBeforeWin && game.hasProgress && !preWinReplayShown
+    }
+
+    /// The same score-by-score replay the dealt game uses, fed from the board's peg history. Every peg is
+    /// there in order — what's missing is *why* each one was scored, since the app never sees the cards,
+    /// so the steps show the points alone rather than inventing a phase for them.
+    @ViewBuilder private var boardReplay: some View {
+        ScoringReplayView(
+            events: game.pegs.map {
+                Claim(player: $0.side == .bottom ? .one : .two, amount: $0.amount, phase: .pegging)
+            },
+            p1Name: nearLabel, p2Name: farLabel,
+            p1Theme: playerTheme(colorID: nearColorID),
+            p2Theme: playerTheme(colorID: farColorID),
+            showsPhase: false,
+            onFinish: { withAnimation { preWinReplayShown = true } }
+        )
+    }
+
     @ViewBuilder private var winner: some View {
         if let side = game.winner {
             let isNear = side == .bottom
@@ -328,6 +354,7 @@ struct BoardView: View {
     private func newGame() {
         game = BoardGame()
         BoardGameStore.clear()
+        preWinReplayShown = false
         bottomPending = 0
         topPending = 0
         touch()
@@ -398,14 +425,14 @@ private struct BoardPlayerSheet: View {
     let isShared: Bool
     var onDone: () -> Void
 
-    // The app-wide preferences that mean something on a scoreboard. Card back is left out (no cards
-    // here) along with the pre-win scoring replay (the board keeps no score log to replay) and the
-    // scoring mode, which only governs a game the app deals.
+    // The app-wide preferences that mean something on a scoreboard. Left out: the card back (no cards
+    // here) and the scoring mode, which only governs a game the app deals.
     @AppStorage("confirmRelease") private var confirmRelease = true
     @AppStorage("scoreTrackEnabled") private var scoreTrackEnabled = true
     @AppStorage("hapticsEnabled") private var hapticsEnabled = true
     @AppStorage("soundEnabled") private var soundEnabled = true
     @AppStorage("celebrationEffects") private var celebrationEffects = true
+    @AppStorage("replayBeforeWin") private var replayBeforeWin = true
 
     var body: some View {
         NavigationStack {
@@ -451,9 +478,11 @@ private struct BoardPlayerSheet: View {
 
                 Section {
                     Toggle("Score track", isOn: $scoreTrackEnabled)
+                    Toggle("Scoring replay before win", isOn: $replayBeforeWin)
                 } footer: {
-                    Text("The loop around the score, tracing each player's progress to 121 with the "
-                         + "skunk lines marked on it.")
+                    Text("The track is the loop around the score, tracing each player's progress to 121 "
+                         + "with the skunk lines marked on it. The replay walks back through every peg of "
+                         + "the game before the winner is shown.")
                 }
 
                 Section("Sound & feel") {
@@ -463,8 +492,8 @@ private struct BoardPlayerSheet: View {
                 }
 
                 Section {
-                    Text("Scoring mode lives in the main Settings — it's for a game the app deals, and "
-                         + "on the board you're counting your own cards.")
+                    Text("Scoring mode and the card back live in the main Settings — they're for a game "
+                         + "the app deals, and on the board you're playing with your own cards.")
                         .font(.footnote).foregroundStyle(.secondary)
                 }
             }
