@@ -156,6 +156,40 @@ enum ScreenshotFixture {
         return s.snapshot(for: .two)
     }
 
+    /// The cut for deal, decided in the guest's favour — the rail shows their "Deal" button.
+    static func deal() -> PlayerSnapshot {
+        var s = GameState.newMatch(matchID: UUID(), seed: 3, names: names,
+                                   colorIDs: colorIDs, scoringMode: .off)
+        CribbageEngine.begin(&s)
+        // Cut until the guest draws the lower card, which is what makes them the dealer.
+        for index in 0..<52 where !CribbageEngine.cutForDealDecided(s) {
+            s.cutForDeal = [:]
+            CribbageEngine.cutForDeal(&s, player: .one, index: index)
+            CribbageEngine.cutForDeal(&s, player: .two, index: index + 7)
+            if CribbageEngine.cutForDealDecided(s), s.dealer != .two { s.cutForDeal = [:] }
+        }
+        return s.snapshot(for: .two)
+    }
+
+    /// Mid-play with the count too high for anything the guest holds — the rail shows "Go".
+    static func mustSayGo() -> PlayerSnapshot {
+        for bump in 0..<400 {
+            var s = dealt(seed: 6000 &+ UInt64(bump))
+            cutStarter(&s)
+            score(&s, ann: 58, ben: 63)
+            var steps = 0
+            while s.phase == .pegging, s.whoseTurn != nil, steps < 16 {
+                if s.whoseTurn == .two,
+                   CribbageScorer.legalPlays(hand: s.unplayed(of: .two), count: s.runningCount).isEmpty {
+                    return s.snapshot(for: .two)
+                }
+                playOne(&s)
+                steps += 1
+            }
+        }
+        return pegging()
+    }
+
     /// Shot 5 — the scoreboard: a real-cards game most of the way to 121.
     static func board() -> BoardGame {
         var game = BoardGame()
@@ -189,13 +223,14 @@ struct GuestShot: View {
 struct ScreenshotStage: View {
     let shot: Int
 
-    /// The `-shot N` argument, if the app was launched for a screenshot. Shot 6 isn't a store shot —
-    /// it's the opening held on its first frame, which is what the splash artwork's connector is
-    /// baked from.
+    /// The `-shot N` argument, if the app was launched for a screenshot. Shots 6–8 aren't store shots:
+    /// 6 is the opening held on its first frame (what the splash artwork's connector is baked from),
+    /// and 7 and 8 are the two rail buttons — "Deal" and "Go" — that otherwise need a live two-device
+    /// game to lay eyes on.
     static var requested: Int? {
         guard UserDefaults.standard.object(forKey: "shot") != nil else { return nil }
         let shot = UserDefaults.standard.integer(forKey: "shot")
-        return (1...6).contains(shot) ? shot : nil
+        return (1...8).contains(shot) ? shot : nil
     }
 
     var body: some View {
@@ -206,6 +241,8 @@ struct ScreenshotStage: View {
             case 3: GuestShot(ScreenshotFixture.starterCut())
             case 4: BoardShot()
             case 6: OpeningView(onFinish: {}, frozen: true)
+            case 7: GuestShot(ScreenshotFixture.deal())
+            case 8: GuestShot(ScreenshotFixture.mustSayGo())
             default: GuestShot(ScreenshotFixture.winner())
             }
         }

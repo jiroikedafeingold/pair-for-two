@@ -699,9 +699,8 @@ struct GameTableView: View {
         } action: {
             if vm.cutForDealDecided {
                 if vm.youDeal {
-                    Button("Deal") { vm.advance() }
-                        .buttonStyle(.borderedProminent).tint(.cribGold).foregroundStyle(.black)
-                        .controlSize(.large)
+                    RailButton(title: String(localized: "Deal", comment: "Button: deal the hand"),
+                               railWidth: railWidth, tint: .cribGold) { vm.advance() }
                 } else {
                     waitingLabel(String(localized: "Waiting for \(vm.name(of: s.dealer)) to deal…",
                                         comment: "%@ is the dealer's name"))
@@ -884,10 +883,11 @@ struct GameTableView: View {
                                     comment: "%@ is a player name"))
                 }
             } else if vm.canSayGo {
-                Button("Go") { GameFeedback.shared.play(.advance); vm.sayGo() }
-                    .buttonStyle(.borderedProminent)
-                    .tint(.orange)
-                    .controlSize(.large)
+                RailButton(title: String(localized: "Go", comment: "Button: you have no card to play. A cribbage call"),
+                           railWidth: railWidth, tint: .orange, textColor: .white) {
+                    GameFeedback.shared.play(.advance)
+                    vm.sayGo()
+                }
             }
         }
     }
