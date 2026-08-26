@@ -134,7 +134,11 @@ struct GameTableView: View {
             // button, so nothing stacks below the cards. iPad gets a much wider rail (it dwarfed the
             // big screen at the iPhone width); iPhone keeps it narrow so the cards get the space.
             let railWidth: CGFloat = hSizeClass == .regular ? min(width * 0.30, 420) : 156
-            let playWidth: CGFloat = width - railWidth
+            // What's actually left for the cards: the rail, the 12pt gap beside it and the row's own
+            // 4pt of horizontal padding each side all come out first. Leaving those 20 points out is
+            // what pushed the rail off the right edge of a standard iPad — the card row sized itself
+            // to space it didn't have, and being intrinsically sized it won the HStack.
+            let playWidth: CGFloat = width - railWidth - 20
             // Card aspect is height = width * 1.45. Each phase's cards fill as much of the play area as
             // its layout allows, capped by the width the row needs. Discard: a 6-card hand. Pegging: a
             // pile ABOVE the hand, so shorter. Show: the cut + a 4-card row. Cut: just two big cards.
@@ -941,7 +945,8 @@ struct GameTableView: View {
                 // Once points are pending the button itself says what will happen ("Add 15 & continue"),
                 // so the standing instruction is dropped — it would only crowd the narrow rail, where
                 // the taller two-line button needs the room.
-                if uncommittedLocal == 0, vSizeClass == .regular || s.flags.isEmpty {
+                let wideRail = railWidth >= 300
+                if uncommittedLocal == 0, wideRail || s.flags.isEmpty {
                     Group {
                         if s.scoringMode == .auto {
                             Text("Scored automatically", comment: "The app is keeping score, so there is nothing to add")
@@ -949,7 +954,7 @@ struct GameTableView: View {
                             Text("Count it on your slider, then Continue", comment: "Instruction while counting a hand")
                         }
                     }
-                        .font(vSizeClass == .regular ? .title3 : .caption).foregroundStyle(.white.opacity(0.7))
+                        .font(wideRail ? .title3 : .caption).foregroundStyle(.white.opacity(0.7))
                         .multilineTextAlignment(.center)
                         .fixedSize(horizontal: false, vertical: true)
                 }
@@ -976,11 +981,11 @@ struct GameTableView: View {
                         withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) { showCheck = true }
                     } label: {
                         Label("Check", systemImage: "checkmark.circle.fill")
-                            .font(vSizeClass == .regular ? .system(size: 26, weight: .bold, design: .rounded)
-                                                         : .subheadline.weight(.semibold))
+                            .font(wideRail ? .system(size: 26, weight: .bold, design: .rounded)
+                                           : .subheadline.weight(.semibold))
                             .foregroundStyle(Color.cribGold)
-                            .padding(.horizontal, vSizeClass == .regular ? 22 : 12)
-                            .padding(.vertical, vSizeClass == .regular ? 14 : 7)
+                            .padding(.horizontal, wideRail ? 22 : 12)
+                            .padding(.vertical, wideRail ? 14 : 7)
                             .background(Capsule().fill(Color.white.opacity(0.12)))
                             .overlay(Capsule().stroke(Color.cribGold.opacity(0.6), lineWidth: 1.2))
                     }
@@ -1210,17 +1215,50 @@ private struct RailButton: View {
     @Environment(\.verticalSizeClass) private var vSizeClass
     private var roomy: Bool { vSizeClass == .regular }
 
-    private static let maxWidth: CGFloat = 240
-    /// About twice the phone's button on an iPad — the rail there is ~410pt wide, so this is as much of
-    /// it as a button can take and still breathe.
-    private static let roomyMaxWidth: CGFloat = 420
+    /// How big the type can be is a question about the rail, not about the device: an iPad in Split
+    /// View, or in portrait, has a much narrower rail than one in full-screen landscape. Sizing this
+    /// from the vertical size class while the rail's width came from the horizontal one is what sent
+    /// the Continue button off the edge of a standard iPad.
+    private enum Room { case phone, medium, wide }
+    private var room: Room {
+        if railWidth >= 300 { return .wide }
+        if railWidth >= 210 { return .medium }
+        return .phone
+    }
+
+    /// nil on a phone, which leaves the button style's own font in place.
+    private var titleFont: Font? {
+        switch room {
+        case .wide:   .system(size: 34, weight: .bold, design: .rounded)
+        case .medium: .system(size: 22, weight: .bold, design: .rounded)
+        case .phone:  nil
+        }
+    }
+
+    private var verticalPadding: CGFloat {
+        switch room {
+        case .wide:   22
+        case .medium: 10
+        case .phone:  0
+        }
+    }
+
+    /// Never wider than this, so a button doesn't stretch across a roomy rail.
+    private var widthCap: CGFloat {
+        switch room {
+        case .wide:   420
+        case .medium: 300
+        case .phone:  240
+        }
+    }
 
     var body: some View {
-        let width: CGFloat = min(railWidth - 8, roomy ? RailButton.roomyMaxWidth : RailButton.maxWidth)
+        let cap: CGFloat = widthCap
+        let width: CGFloat = min(railWidth - 8, cap)
         Button(action: action) {
             Text(title)
                 // nil inherits the button style's own font, so the phone is untouched.
-                .font(roomy ? .system(size: 34, weight: .bold, design: .rounded) : nil)
+                .font(titleFont)
                 .lineLimit(2)
                 .minimumScaleFactor(0.6)
                 .multilineTextAlignment(.center)
@@ -1228,12 +1266,12 @@ private struct RailButton: View {
                 // title truncates ("Add 15 & count the…") instead of wrapping onto a second line.
                 .fixedSize(horizontal: false, vertical: true)
                 .frame(maxWidth: .infinity)
-                .padding(.vertical, roomy ? 22 : 0)
+                .padding(.vertical, verticalPadding)
         }
         .buttonStyle(.borderedProminent)
         .tint(tint)
         .foregroundStyle(textColor)
-        .controlSize(large || roomy ? .large : .regular)
+        .controlSize(large || room != .phone ? .large : .regular)
         .disabled(disabled)
         .frame(maxWidth: width)
     }

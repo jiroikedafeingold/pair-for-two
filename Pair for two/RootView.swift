@@ -52,12 +52,21 @@ struct RootView: View {
                             action: @escaping () -> Void) -> some View {
         Button(action: action) {
             HStack(spacing: 8) {
-                if let swatch {
-                    Circle().fill(swatch).frame(width: 16, height: 16)
-                        .overlay(Circle().stroke(.white.opacity(0.5), lineWidth: 1))
-                } else {
-                    Image(systemName: systemImage)
+                // Every row's icon gets the same slot, so the labels beside them start on one line
+                // however wide the symbol happens to be — "dot.radiowaves.left.and.right" is nearly
+                // twice the width of "globe".
+                Group {
+                    if let swatch {
+                        // Drawn as a symbol rather than a Circle so it takes its size and baseline
+                        // from the same font as the other icons instead of a hardcoded diameter.
+                        Image(systemName: "circle.fill")
+                            .foregroundStyle(swatch)
+                            .overlay(Image(systemName: "circle").foregroundStyle(.white.opacity(0.55)))
+                    } else {
+                        Image(systemName: systemImage)
+                    }
                 }
+                .frame(width: roomy ? 30 : 24)
                 title.fontWeight(.bold)
                 Spacer(minLength: 0)
             }
