@@ -51,7 +51,7 @@ struct OnboardingView: View {
 
     var body: some View {
         ZStack {
-            LinearGradient(colors: [.feltMid, .feltDark], startPoint: .top, endPoint: .bottom)
+            FeltSurface()
                 .ignoresSafeArea()
 
             if askName { nameEntry } else { tour }

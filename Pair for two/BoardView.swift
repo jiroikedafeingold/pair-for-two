@@ -276,7 +276,7 @@ struct BoardView: View {
     // MARK: Chrome
 
     private var felt: some View {
-        LinearGradient(colors: [.feltMid, .feltDark], startPoint: .top, endPoint: .bottom)
+        FeltSurface()
             .ignoresSafeArea()
     }
 

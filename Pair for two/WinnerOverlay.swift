@@ -305,7 +305,7 @@ struct WinnerOverlay: View {
 
 #Preview("Winner card", traits: .landscapeLeft) {
     ZStack {
-        LinearGradient(colors: [.feltMid, .feltDark], startPoint: .top, endPoint: .bottom).ignoresSafeArea()
+        FeltSurface().ignoresSafeArea()
         WinnerOverlay(winner: .one, skunk: .none, winnerTheme: playerTheme(colorID: 1), winnerName: "Ann",
                       canReplay: true, onPlayAgain: {})
     }

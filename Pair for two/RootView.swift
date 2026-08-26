@@ -346,7 +346,7 @@ struct RootView: View {
     /// mostly exists to say which of those is going on, since GameKit needs a human to accept.
     private var onlineRejoinWaiting: some View {
         ZStack {
-            LinearGradient(colors: [.feltMid, .feltDark], startPoint: .top, endPoint: .bottom)
+            FeltSurface()
                 .ignoresSafeArea()
 
             VStack(spacing: 16) {
@@ -450,7 +450,7 @@ struct RootView: View {
 
     private var menu: some View {
         ZStack {
-            LinearGradient(colors: [.feltMid, .feltDark], startPoint: .top, endPoint: .bottom)
+            FeltSurface()
                 .ignoresSafeArea()
 
             // One row per thing you can do: the control on the left, what it does on the right. The

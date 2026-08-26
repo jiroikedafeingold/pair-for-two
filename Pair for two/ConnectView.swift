@@ -90,7 +90,7 @@ struct ConnectView: View {
 
     var body: some View {
         ZStack {
-            LinearGradient(colors: [.feltMid, .feltDark], startPoint: .top, endPoint: .bottom)
+            FeltSurface()
                 .ignoresSafeArea()
 
             VStack(spacing: 20) {

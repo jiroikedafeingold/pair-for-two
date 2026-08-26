@@ -105,6 +105,66 @@ enum CardBack: Int, CaseIterable, Identifiable {
     static func from(_ id: Int) -> CardBack { CardBack(rawValue: id) ?? .royal }
 }
 
+// MARK: - The felt
+
+/// The table itself: baize rather than a flat wash of green.
+///
+/// Four layers over the old gradient, all static and cheap. **Mottling** — very low-resolution noise
+/// stretched across the whole surface — gives the large-scale unevenness of a real cloth, the part
+/// that reads as "table" rather than "background". **Grain** is fine tiled noise for the fibre.
+/// A **vignette** lets the edges fall away so the middle feels lit. Both noise images are generated
+/// once from a fixed seed, so the table looks the same every launch, and the stack is rasterised with
+/// `drawingGroup()` — nothing here animates, and blending three layers per frame behind a game that
+/// does would be waste.
+struct FeltSurface: View {
+    var body: some View {
+        ZStack {
+            LinearGradient(colors: [.feltMid, .feltDark], startPoint: .top, endPoint: .bottom)
+
+            // Stretched, not tiled: at this scale a repeat would be obvious.
+            Image(uiImage: Self.mottle)
+                .resizable()
+                .interpolation(.high)
+                .blendMode(.overlay)
+                .opacity(0.40)
+
+            Image(uiImage: Self.grain)
+                .resizable(resizingMode: .tile)
+                .blendMode(.overlay)
+                .opacity(0.16)
+
+            RadialGradient(colors: [.clear, .black.opacity(0.26)],
+                           center: .center, startRadius: 120, endRadius: 760)
+        }
+        .drawingGroup()
+    }
+
+    /// Mid-grey is neutral under an overlay blend, so noise around 128 lightens and darkens the felt
+    /// without shifting its colour.
+    private static func greyNoise(dimension: Int, spread: Double, seed: UInt64, scale: CGFloat) -> UIImage {
+        var rng = SeededGenerator(seed: seed)
+        var bytes = [UInt8](repeating: 128, count: dimension * dimension)
+        for i in bytes.indices {
+            let t = Double(rng.next() % 2_000) / 2_000.0 - 0.5        // -0.5…0.5
+            bytes[i] = UInt8(max(0, min(255, 128 + t * spread * 255)))
+        }
+        guard let provider = CGDataProvider(data: Data(bytes) as CFData),
+              let image = CGImage(width: dimension, height: dimension,
+                                  bitsPerComponent: 8, bitsPerPixel: 8, bytesPerRow: dimension,
+                                  space: CGColorSpaceCreateDeviceGray(),
+                                  bitmapInfo: CGBitmapInfo(rawValue: 0), provider: provider,
+                                  decode: nil, shouldInterpolate: true, intent: .defaultIntent)
+        else { return UIImage() }
+        return UIImage(cgImage: image, scale: scale, orientation: .up)
+    }
+
+    /// Broad unevenness: 44 patches across the screen, smoothed by the interpolation on the way up.
+    /// Fewer than that and it reads as a stained cloth rather than nap.
+    private static let mottle = greyNoise(dimension: 44, spread: 0.38, seed: 0x5EED_FE17, scale: 1)
+    /// Fibre: at scale 3 one noise pixel lands on about one device pixel.
+    private static let grain = greyNoise(dimension: 192, spread: 0.5, seed: 0xBA1_2E, scale: 3)
+}
+
 // MARK: - Naming the hardware
 
 /// "iPad" or "phone", for copy that names the thing in the player's hands ("lay the iPad between

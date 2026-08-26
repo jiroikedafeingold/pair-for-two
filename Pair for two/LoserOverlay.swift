@@ -196,7 +196,7 @@ struct SadRainView: View {
 
 #Preview("Loser", traits: .landscapeLeft) {
     ZStack {
-        LinearGradient(colors: [.feltMid, .feltDark], startPoint: .top, endPoint: .bottom).ignoresSafeArea()
+        FeltSurface().ignoresSafeArea()
         LoserOverlay(winnerName: "Ann", skunk: .single, canReplay: true, onPlayAgain: {}, onReplay: {})
     }
 }

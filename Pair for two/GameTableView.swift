@@ -436,8 +436,7 @@ struct GameTableView: View {
     // MARK: Background
 
     private var felt: some View {
-        LinearGradient(colors: [.feltMid, .feltDark],
-                       startPoint: .top, endPoint: .bottom)
+        FeltSurface()
             .ignoresSafeArea()
     }
 

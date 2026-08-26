@@ -146,8 +146,8 @@ struct HelpView: View {
             .frame(maxWidth: .infinity)
             .padding(.vertical, 12)
             .background(
-                RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .fill(LinearGradient(colors: [.feltMid, .feltDark], startPoint: .top, endPoint: .bottom))
+                FeltSurface()
+                    .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
             )
             .listRowInsets(EdgeInsets(top: 6, leading: 12, bottom: 6, trailing: 12))
     }
