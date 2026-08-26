@@ -23,7 +23,9 @@ struct OpeningView: View {
     /// The poster is full-width and vertically centred in both the phone and the iPad canvas, so one
     /// set of numbers works for both — only the scale changes.
     private enum Art {
-        static let width: CGFloat = 1852          // the poster's own width, the unit for `scale`
+        /// The artwork's pixel width. Every measurement below is in those pixels, so dividing the
+        /// displayed width by this converts them to points — independent of the @2x declaration.
+        static let width: CGFloat = 1852
         static let row: CGFloat = 27.5            // the connector's line, below the centre
         static let lineFrom: CGFloat = -104       // left end, at the near phone's edge
         static let lineTo: CGFloat = 103          // right end, at the far phone's edge
@@ -41,9 +43,9 @@ struct OpeningView: View {
     /// The launch screen's backdrop, so the letterbox on an iPad matches through the handover.
     private static let backdrop = Color(red: 0, green: 29 / 255, blue: 23 / 255)
 
-    /// The same image the launch screen uses, including its `~ipad` variant.
-    private let poster = UIImage(named: "Splash")
-    private let patch = UIImage(named: "SplashConnectorPatch")
+    /// The same image the launch screen uses — the asset catalog picks the phone or iPad canvas.
+    private let poster = UIImage(named: "SplashArt")
+    private let patch = UIImage(named: "SplashPatch")
 
     var body: some View {
         GeometryReader { geo in
