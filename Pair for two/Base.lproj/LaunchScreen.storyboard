@@ -19,7 +19,7 @@
                             </imageView>
                         </subviews>
                         <viewLayoutGuide key="safeArea" id="Bcu-3y-fUX"/>
-                        <color key="backgroundColor" red="0.043137254901960784" green="0.12941176470588237" blue="0.10196078431372549" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
+                        <color key="backgroundColor" red="0.0" green="0.11372549019607843" blue="0.09019607843137255" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
                         <constraints>
                             <constraint firstItem="img-01-view" firstAttribute="leading" secondItem="Ze5-6b-2t3" secondAttribute="leading" id="cst-lead"/>
                             <constraint firstItem="img-01-view" firstAttribute="trailing" secondItem="Ze5-6b-2t3" secondAttribute="trailing" id="cst-trail"/>
@@ -34,6 +34,6 @@
         </scene>
     </scenes>
     <resources>
-        <image name="Splash" width="1851" height="1388"/>
+        <image name="Splash" width="1852" height="1389"/>
     </resources>
 </document>
