@@ -8964,6 +8964,12 @@
     "Double tap to skip": {
       "comment": "VoiceOver hint on the opening screen",
       "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zum Überspringen doppeltippen"
+          }
+        },
         "es": {
           "stringUnit": {
             "state": "translated",
@@ -8976,16 +8982,34 @@
             "value": "Touche deux fois pour passer"
           }
         },
-        "de": {
+        "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Zum Überspringen doppeltippen"
+            "value": "Tocca due volte per saltare"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
             "value": "ダブルタップでスキップ"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "두 번 눌러 건너뛰기"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Toque duas vezes para pular"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Atlamak için iki kez dokun"
           }
         },
         "zh-Hans": {
@@ -8998,30 +9022,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "點兩下略過"
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Toque duas vezes para pular"
-          }
-        },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Tocca due volte per saltare"
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "두 번 눌러 건너뛰기"
-          }
-        },
-        "tr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Atlamak için iki kez dokun"
           }
         }
       }
@@ -10136,6 +10136,70 @@
           "stringUnit": {
             "state": "translated",
             "value": "來自 %@"
+          }
+        }
+      }
+    },
+    "Game in progress. Real cards, this %@ between you as the board.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Partida en curso. Cartas de verdad y este %@ entre los dos como tablero."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Partie en cours. De vraies cartes, et ce %@ entre vous comme planche."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Spiel läuft. Echte Karten und dieses %@ als Brett zwischen euch."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "対戦中。本物のカードと、2人の間に置いたこの%@がボードになります。"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "对局进行中。用实体牌，这台%@放在两人之间当记分板。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "對局進行中。用實體牌，這台%@放在兩人之間當計分板。"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Partida em andamento. Cartas de verdade e este %@ entre vocês como tabuleiro."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Partita in corso. Carte vere e questo %@ tra voi come tabellone."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "게임 진행 중. 실제 카드와 두 사람 사이에 놓인 이 %@이(가) 점수판이 됩니다."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Oyun sürüyor. Gerçek kartlar ve tahta olarak aranızdaki bu %@."
           }
         }
       }
@@ -15512,130 +15576,130 @@
         }
       }
     },
-    "Pick up **%@** — both phones tap this.": {
+    "Pick up the game **%@** — both phones tap this.": {
       "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "**%@** fortsetzen – beide Geräte tippen hier."
-          }
-        },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Retomar **%@**: los dos teléfonos pulsan aquí."
+            "value": "Retoma la partida **%@**: los dos teléfonos pulsan aquí."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Reprendre **%@** : les deux téléphones touchent ici."
+            "value": "Reprends la partie **%@** : les deux téléphones touchent ici."
           }
         },
-        "it": {
+        "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Riprendi **%@**: entrambi i dispositivi toccano qui."
+            "value": "Setze das Spiel **%@** fort — beide Geräte tippen hier."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "**%@** を再開 — 両方の端末でここをタップ。"
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "**%@** 이어서 하기 — 두 기기 모두 여기를 누르세요."
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Retomar **%@** — os dois aparelhos tocam aqui."
-          }
-        },
-        "tr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "**%@** oyununa dön — iki cihaz da buraya dokunur."
+            "value": "対戦 **%@** を再開 — 両方の端末でここをタップ。"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "继续 **%@** — 两台设备都点这里。"
+            "value": "继续这局 **%@** — 两台设备都点这里。"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "繼續 **%@** — 兩台裝置都點這裡。"
+            "value": "繼續這局 **%@** — 兩台裝置都點這裡。"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Retome a partida **%@** — os dois aparelhos tocam aqui."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Riprendi la partita **%@** — entrambi i dispositivi toccano qui."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "**%@** 게임 이어서 하기 — 두 기기 모두 여기를 누르세요."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "**%@** oyununa devam et — iki cihaz da buraya dokunur."
           }
         }
       }
     },
-    "Pick up **%@** — we'll invite them back.": {
+    "Pick up the game **%@** — we'll invite them back.": {
       "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "**%@** fortsetzen – wir laden die Person erneut ein."
-          }
-        },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Retomar **%@**: le invitaremos de nuevo."
+            "value": "Retoma la partida **%@**: le invitaremos de nuevo."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Reprendre **%@** : on l'invitera de nouveau."
+            "value": "Reprends la partie **%@** : on l'invitera de nouveau."
           }
         },
-        "it": {
+        "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Riprendi **%@**: lo invitiamo di nuovo."
+            "value": "Setze das Spiel **%@** fort — wir laden die Person erneut ein."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "**%@** を再開 — 相手を再招待します。"
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "**%@** 이어서 하기 — 상대를 다시 초대합니다."
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Retomar **%@** — vamos convidar a pessoa de novo."
-          }
-        },
-        "tr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "**%@** oyununa dön — rakibi yeniden davet edeceğiz."
+            "value": "対戦 **%@** を再開 — 相手を再招待します。"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "继续 **%@** — 我们会重新邀请对方。"
+            "value": "继续这局 **%@** — 我们会重新邀请对方。"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "繼續 **%@** — 我們會重新邀請對方。"
+            "value": "繼續這局 **%@** — 我們會重新邀請對方。"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Retome a partida **%@** — vamos convidar a pessoa de novo."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Riprendi la partita **%@** — lo invitiamo di nuovo."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "**%@** 게임 이어서 하기 — 상대를 다시 초대합니다."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "**%@** oyununa devam et — rakibi yeniden davet edeceğiz."
           }
         }
       }
@@ -25223,70 +25287,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "預設由你自己計分，就像使用真正的計分板。想讓App計算並加上每一分？可以在這裡選**自動**，或稍後在**設定 → 計分**中開啟。"
-          }
-        }
-      }
-    },
-    "Your board is part-way through. Real cards, this %@ between you as the board.": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Deine Tafel läuft noch. Echte Karten und dieses %@ als Brett zwischen euch."
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Tu marcador está a medias. Cartas de verdad y este %@ entre los dos como tablero."
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Ton tableau est en cours. De vraies cartes, et ce %@ entre vous comme planche."
-          }
-        },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Il tuo tabellone è a metà. Carte vere e questo %@ tra voi come tabellone."
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "ボードは途中です。本物のカードと、2人の間に置いたこの%@がボードになります。"
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "점수판 게임이 진행 중입니다. 실제 카드와 두 사람 사이에 놓인 이 %@이(가) 점수판이 됩니다."
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Seu marcador está no meio de uma partida. Cartas de verdade e este %@ entre vocês como tabuleiro."
-          }
-        },
-        "tr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Tahtan yarıda kalmış. Gerçek kartlar ve tahta olarak aranızdaki bu %@."
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "你的记分板还没打完。用实体牌，这台%@放在两人之间当记分板。"
-          }
-        },
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "你的計分板還沒打完。用實體牌，這台%@放在兩人之間當計分板。"
           }
         }
       }

@@ -492,8 +492,8 @@ struct RootView: View {
                                     }
                                 }
                                 menuCaption(resumeMarker.isOnline
-                                            ? "Pick up **\(resumeMarker.summary)** — we'll invite them back."
-                                            : "Pick up **\(resumeMarker.summary)** — both phones tap this.")
+                                            ? "Pick up the game **\(resumeMarker.summary)** — we'll invite them back."
+                                            : "Pick up the game **\(resumeMarker.summary)** — both phones tap this.")
                             }
                         }
 
@@ -543,7 +543,7 @@ struct RootView: View {
                                 screen = .board
                             }
                             menuCaption(boardResumeAvailable
-                                        ? "Your board is part-way through. Real cards, this \(deviceWord()) between you as the board."
+                                        ? "Game in progress. Real cards, this \(deviceWord()) between you as the board."
                                         : "Playing with real cards? Lay this \(deviceWord()) between you and it keeps score.")
                         }
                     }
@@ -604,6 +604,10 @@ struct RootView: View {
     UserDefaults.standard.set("Ann", forKey: "localName")
     GamePersistence.saveMarker(isHost: true, summary: "Ann 41 · Ben 33",
                                online: false, opponentGamePlayerID: nil, opponentName: "Ben")
+    var board = BoardGame()          // so the scoreboard row shows its in-progress caption too
+    board.add(37, to: .bottom)
+    board.add(24, to: .top)
+    BoardGameStore.save(board)
     return RootView()
 }
 #endif
