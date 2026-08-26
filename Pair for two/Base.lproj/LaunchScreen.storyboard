@@ -14,12 +14,12 @@
                         <rect key="frame" x="0.0" y="0.0" width="852" height="393"/>
                         <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
                         <subviews>
-                            <imageView clipsSubviews="YES" userInteractionEnabled="NO" contentMode="scaleAspectFill" horizontalHuggingPriority="251" verticalHuggingPriority="251" image="SplashArt" translatesAutoresizingMaskIntoConstraints="NO" id="img-01-view">
+                            <imageView clipsSubviews="YES" userInteractionEnabled="NO" contentMode="scaleAspectFit" horizontalHuggingPriority="251" verticalHuggingPriority="251" image="Splash" translatesAutoresizingMaskIntoConstraints="NO" id="img-01-view">
                                 <rect key="frame" x="0.0" y="0.0" width="852" height="393"/>
                             </imageView>
                         </subviews>
                         <viewLayoutGuide key="safeArea" id="Bcu-3y-fUX"/>
-                        <color key="backgroundColor" red="0.058823529411764705" green="0.20392156862745098" blue="0.14117647058823529" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
+                        <color key="backgroundColor" red="0.043137254901960784" green="0.12941176470588237" blue="0.10196078431372549" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
                         <constraints>
                             <constraint firstItem="img-01-view" firstAttribute="leading" secondItem="Ze5-6b-2t3" secondAttribute="leading" id="cst-lead"/>
                             <constraint firstItem="img-01-view" firstAttribute="trailing" secondItem="Ze5-6b-2t3" secondAttribute="trailing" id="cst-trail"/>
@@ -34,6 +34,6 @@
         </scene>
     </scenes>
     <resources>
-        <image name="SplashArt" width="1534" height="704"/>
+        <image name="Splash" width="1851" height="1388"/>
     </resources>
 </document>
