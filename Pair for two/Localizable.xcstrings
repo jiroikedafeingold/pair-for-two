@@ -3302,6 +3302,12 @@
     },
     "**Pick it up and it follows you** — tilt the %@ toward yourself to read the score and it turns the right way up for you, until it's flat on the table again.": {
       "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "**Nimm es hoch, und es folgt dir:** kippe das %@ zu dir, um den Punktestand zu lesen, und er dreht sich für dich richtig herum — bis es wieder flach auf dem Tisch liegt."
+          }
+        },
         "es": {
           "stringUnit": {
             "state": "translated",
@@ -3314,16 +3320,34 @@
             "value": "**Prends-le et il te suit :** incline le %@ vers toi pour lire le score et il pivote dans le bon sens pour toi, jusqu'à ce qu'il soit reposé à plat."
           }
         },
-        "de": {
+        "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "**Nimm es hoch, und es folgt dir:** kippe das %@ zu dir, um den Punktestand zu lesen, und er dreht sich für dich richtig herum — bis es wieder flach auf dem Tisch liegt."
+            "value": "**Lo prendi e ti segue:** inclina il %@ verso di te per leggere il punteggio e si gira nel verso giusto per te, finché non torna appoggiato sul tavolo."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
             "value": "**持ち上げるとついてきます。** %@を自分の方に傾けてスコアを見ると、自分から見て正しい向きになります。平らに置くと元に戻ります。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "**들면 따라옵니다.** %@을(를) 자기 쪽으로 기울여 점수를 보면 자기 방향으로 바르게 돌아가고, 다시 평평하게 두면 원래대로 돌아갑니다."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "**Pegue e ela acompanha você:** incline o %@ na sua direção para ler a pontuação e ela gira na posição certa para você, até o aparelho voltar a ficar na mesa."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "**Eline alırsan seni takip eder:** puanı okumak için %@ cihazını kendine doğru eğ, sana göre doğru yöne döner; masaya düz bırakınca eski haline geçer."
           }
         },
         "zh-Hans": {
@@ -3336,30 +3360,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "**拿起來它就跟著你：** 把%@朝自己傾斜看分數，它會轉成對你正的方向，直到重新平放在桌上。"
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "**Pegue e ela acompanha você:** incline o %@ na sua direção para ler a pontuação e ela gira na posição certa para você, até o aparelho voltar a ficar na mesa."
-          }
-        },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "**Lo prendi e ti segue:** inclina il %@ verso di te per leggere il punteggio e si gira nel verso giusto per te, finché non torna appoggiato sul tavolo."
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "**들면 따라옵니다.** %@을(를) 자기 쪽으로 기울여 점수를 보면 자기 방향으로 바르게 돌아가고, 다시 평평하게 두면 원래대로 돌아갑니다."
-          }
-        },
-        "tr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "**Eline alırsan seni takip eder:** puanı okumak için %@ cihazını kendine doğru eğ, sana göre doğru yöne döner; masaya düz bırakınca eski haline geçer."
           }
         }
       }
@@ -8957,6 +8957,71 @@
           "stringUnit": {
             "state": "translated",
             "value": "四張雙順子"
+          }
+        }
+      }
+    },
+    "Double tap to skip": {
+      "comment": "VoiceOver hint on the opening screen",
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Toca dos veces para saltar"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Touche deux fois pour passer"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zum Überspringen doppeltippen"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ダブルタップでスキップ"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "双击跳过"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "點兩下略過"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Toque duas vezes para pular"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tocca due volte per saltare"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "두 번 눌러 건너뛰기"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Atlamak için iki kez dokun"
           }
         }
       }
@@ -15117,8 +15182,7 @@
       }
     },
     "Pair for Two": {
-      "comment": "Title of a slide in the onboarding that describes the app as a two-player game.",
-      "isCommentAutoGenerated": true,
+      "comment": "VoiceOver name for the opening screen",
       "localizations": {
         "de": {
           "stringUnit": {
@@ -15386,6 +15450,12 @@
     },
     "Pick the %@ up to read the score and it turns the right way up for whoever is holding it. Flat on the table it goes back to taking turns.": {
       "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nimm das %@ in die Hand, um den Punktestand zu lesen — er dreht sich richtig herum für den, der es hält. Flach auf dem Tisch wechselt er wieder ab."
+          }
+        },
         "es": {
           "stringUnit": {
             "state": "translated",
@@ -15398,16 +15468,34 @@
             "value": "Prends le %@ en main pour lire le score : il pivote dans le bon sens pour celui qui le tient. Reposé à plat, il recommence à alterner."
           }
         },
-        "de": {
+        "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Nimm das %@ in die Hand, um den Punktestand zu lesen — er dreht sich richtig herum für den, der es hält. Flach auf dem Tisch wechselt er wieder ab."
+            "value": "Prendi in mano il %@ per leggere il punteggio e si gira nel verso giusto per chi lo tiene. Appoggiato sul tavolo, torna ad alternarsi."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
             "value": "%@を持ち上げてスコアを見ると、持っている人から見て正しい向きになります。テーブルに平らに置くと、また交互に向きを変えます。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@을(를) 들어 점수를 보면 들고 있는 사람 쪽으로 바르게 돌아갑니다. 테이블에 평평하게 두면 다시 번갈아 돌아갑니다."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pegue o %@ para ler a pontuação e ela gira na posição certa para quem está segurando. Apoiado na mesa, volta a alternar."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Puanı okumak için %@ cihazını eline al; tutan kişiye göre doğru yöne döner. Masaya düz bıraktığında yine sırayla döner."
           }
         },
         "zh-Hans": {
@@ -15420,30 +15508,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "拿起%@看分數時，它會朝著拿著它的人轉到正確方向。平放在桌上後，又會輪流轉向兩人。"
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Pegue o %@ para ler a pontuação e ela gira na posição certa para quem está segurando. Apoiado na mesa, volta a alternar."
-          }
-        },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Prendi in mano il %@ per leggere il punteggio e si gira nel verso giusto per chi lo tiene. Appoggiato sul tavolo, torna ad alternarsi."
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%@을(를) 들어 점수를 보면 들고 있는 사람 쪽으로 바르게 돌아갑니다. 테이블에 평평하게 두면 다시 번갈아 돌아갑니다."
-          }
-        },
-        "tr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Puanı okumak için %@ cihazını eline al; tutan kişiye göre doğru yöne döner. Masaya düz bıraktığında yine sırayla döner."
           }
         }
       }
@@ -23339,6 +23403,12 @@
     },
     "Turn with the tilt": {
       "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Beim Kippen mitdrehen"
+          }
+        },
         "es": {
           "stringUnit": {
             "state": "translated",
@@ -23351,16 +23421,34 @@
             "value": "Pivoter en inclinant"
           }
         },
-        "de": {
+        "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Beim Kippen mitdrehen"
+            "value": "Ruota con l'inclinazione"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
             "value": "傾けたら向きを変える"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "기울이면 방향 전환"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Girar ao inclinar"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Eğdikçe dönsün"
           }
         },
         "zh-Hans": {
@@ -23373,30 +23461,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "傾斜時自動轉向"
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Girar ao inclinar"
-          }
-        },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Ruota con l'inclinazione"
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "기울이면 방향 전환"
-          }
-        },
-        "tr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Eğdikçe dönsün"
           }
         }
       }
@@ -25751,6 +25815,12 @@
     "iPad": {
       "comment": "The device in the player's hands, named in a sentence",
       "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "iPad"
+          }
+        },
         "es": {
           "stringUnit": {
             "state": "translated",
@@ -25763,13 +25833,31 @@
             "value": "iPad"
           }
         },
-        "de": {
+        "it": {
           "stringUnit": {
             "state": "translated",
             "value": "iPad"
           }
         },
         "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "iPad"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "iPad"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "iPad"
+          }
+        },
+        "tr": {
           "stringUnit": {
             "state": "translated",
             "value": "iPad"
@@ -25782,30 +25870,6 @@
           }
         },
         "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "iPad"
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "iPad"
-          }
-        },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "iPad"
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "iPad"
-          }
-        },
-        "tr": {
           "stringUnit": {
             "state": "translated",
             "value": "iPad"
@@ -25881,6 +25945,12 @@
     "phone": {
       "comment": "The device in the player's hands, named in a sentence",
       "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gerät"
+          }
+        },
         "es": {
           "stringUnit": {
             "state": "translated",
@@ -25893,16 +25963,34 @@
             "value": "téléphone"
           }
         },
-        "de": {
+        "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Gerät"
+            "value": "dispositivo"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
             "value": "端末"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "기기"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "aparelho"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "telefon"
           }
         },
         "zh-Hans": {
@@ -25915,30 +26003,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "裝置"
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "aparelho"
-          }
-        },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "dispositivo"
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "기기"
-          }
-        },
-        "tr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "telefon"
           }
         }
       }
