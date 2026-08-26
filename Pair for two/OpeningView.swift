@@ -8,8 +8,8 @@ import SwiftUI
 /// over the connector baked into the artwork and redraws it live: gold dashes flowing from one phone
 /// to the other, and each player's dot breathing.
 ///
-/// Deliberately brief. An opening is charming once and tiresome by the fiftieth launch, so it runs for
-/// a beat and gets out of the way, and a tap anywhere skips it. With Reduce Motion on it holds still
+/// It runs for a couple of seconds and then gets out of the way, and a tap anywhere skips it — an
+/// opening is charming once and tiresome by the fiftieth launch. With Reduce Motion on it holds still
 /// and leaves sooner.
 struct OpeningView: View {
     var onFinish: () -> Void
@@ -143,7 +143,7 @@ struct OpeningView: View {
         withAnimation(.easeInOut(duration: 0.7).repeatForever(autoreverses: true)) {
             breathing = true
         }
-        try? await Task.sleep(for: .milliseconds(1_150))
+        try? await Task.sleep(for: .milliseconds(2_300))
         finish()
     }
 

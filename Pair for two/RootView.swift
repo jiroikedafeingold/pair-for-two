@@ -65,7 +65,7 @@ struct RootView: View {
             .lineLimit(1)
             .minimumScaleFactor(0.8)
             .frame(width: roomy ? 250 : 168, alignment: .leading)
-            .padding(.horizontal, roomy ? 22 : 16).padding(.vertical, roomy ? 16 : 10)
+            .padding(.horizontal, roomy ? 22 : 16).padding(.vertical, roomy ? 16 : 7)
         }
         .buttonStyle(.borderedProminent)
         .tint(tint)
@@ -403,6 +403,42 @@ struct RootView: View {
         }
     }
 
+    /// "Pair for Two" over its line of explanation. Two layouts rather than one that bends: an iPad
+    /// stacks them with the title big, a phone in landscape puts them on a single line, because there
+    /// the height belongs to the buttons — with a "Rejoin game" row there are five of them.
+    @ViewBuilder private var masthead: some View {
+        if roomy {
+            VStack(spacing: 2) {
+                embossedTitle(size: 46)
+                Text("Two-phone cribbage")
+                    .font(.title3).foregroundStyle(Color.cribGold)
+            }
+            .padding(.bottom, 2)
+        } else {
+            HStack(alignment: .firstTextBaseline, spacing: 9) {
+                embossedTitle(size: 27)
+                Text("Two-phone cribbage")
+                    .font(.footnote.weight(.semibold)).foregroundStyle(Color.cribGold)
+            }
+            .lineLimit(1)
+            .minimumScaleFactor(0.65)      // a longer translation shrinks rather than wraps
+        }
+    }
+
+    /// Letterpress: a top-lit fill, a dark edge dropped below the glyphs and a faint highlight above,
+    /// so the title reads as pressed into the felt rather than printed on it. Kept subtle — at this
+    /// size a heavy bevel would look like a sticker.
+    private func embossedTitle(size: CGFloat) -> some View {
+        Text("Pair for Two")
+            .font(.system(size: size, weight: .heavy, design: .serif))
+            .foregroundStyle(
+                LinearGradient(colors: [.white, Color(white: 0.78)],
+                               startPoint: .top, endPoint: .bottom)
+            )
+            .shadow(color: .black.opacity(0.7), radius: 1, x: 0, y: size * 0.055)
+            .shadow(color: .white.opacity(0.25), radius: 0.5, x: 0, y: -size * 0.03)
+    }
+
     private var menu: some View {
         ZStack {
             LinearGradient(colors: [.feltMid, .feltDark], startPoint: .top, endPoint: .bottom)
@@ -413,22 +449,15 @@ struct RootView: View {
             // scoreboard is a real choice, and the answer shouldn't be buried in the help.
             GeometryReader { geo in
               ScrollView {
-                VStack(spacing: roomy ? 26 : 16) {
+                VStack(spacing: roomy ? 26 : 10) {
                     // Centered vertically when the screen has the height for it (iPad), which is most of
                     // the screen: without these the menu sat in the top third with a sea of felt below.
                     if roomy { Spacer(minLength: 0) }
 
-                    VStack(spacing: 2) {
-                        Text("Pair for Two")
-                            .font(.system(size: roomy ? 46 : 30, weight: .heavy, design: .serif))
-                            .foregroundStyle(.white)
-                        Text("Two-phone cribbage")
-                            .font(roomy ? .title3 : .subheadline).foregroundStyle(Color.cribGold)
-                    }
-                    .padding(.bottom, 2)
+                    masthead
 
                     Grid(alignment: .leading, horizontalSpacing: roomy ? 26 : 18,
-                         verticalSpacing: roomy ? 16 : 10) {
+                         verticalSpacing: roomy ? 16 : 7) {
                         GridRow {
                             menuButton(Text(verbatim: playerName), systemImage: "person.crop.circle",
                                        tint: Color.white.opacity(0.18), foreground: .white,
@@ -515,7 +544,7 @@ struct RootView: View {
                 }
                 .frame(maxWidth: .infinity, minHeight: geo.size.height)
                 .padding(.horizontal, 24)
-                .padding(.vertical, 14)
+                .padding(.vertical, roomy ? 14 : 6)
               }
               .scrollBounceBehavior(.basedOnSize)
             }
@@ -553,6 +582,19 @@ struct RootView: View {
     }
 }
 
-#Preview(traits: .landscapeLeft) {
+#Preview("Menu", traits: .landscapeLeft) {
     RootView()
 }
+
+#if DEBUG
+/// The tight case: a saved game adds a fifth row, and all of it still has to be on screen at once on
+/// a phone in landscape. Writes a marker to the real store, like the stats preview does, and marks
+/// onboarding as seen — otherwise the first-run welcome covers the very thing being checked.
+#Preview("Menu — with a saved game", traits: .landscapeLeft) {
+    UserDefaults.standard.set(true, forKey: "hasOnboarded")
+    UserDefaults.standard.set("Ann", forKey: "localName")
+    GamePersistence.saveMarker(isHost: true, summary: "Ann 41 · Ben 33",
+                               online: false, opponentGamePlayerID: nil, opponentName: "Ben")
+    return RootView()
+}
+#endif
