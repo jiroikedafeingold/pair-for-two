@@ -13,6 +13,11 @@ import SwiftUI
 /// and leaves sooner.
 struct OpeningView: View {
     var onFinish: () -> Void
+    /// Hold the first frame and never finish. This is how the connector baked into the splash artwork
+    /// is regenerated (`-shot 6`, then composite the capture back into Splash art): the printed
+    /// connector and this view's first frame have to be the same picture, or the handover from the
+    /// launch screen to here shows a jump.
+    var frozen = false
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var dashPhase: CGFloat = 0
@@ -111,18 +116,21 @@ struct OpeningView: View {
 
     private func dot(_ color: Color, at point: CGPoint, centre: CGPoint, unit: CGFloat,
                      offBeat: Bool) -> some View {
-        let grown = breathing != offBeat        // one leads, the other follows
+        // Both dots start at rest, which is what the artwork is drawn from — the swing only begins
+        // once the animation does, so the first frame here is the frame the launch screen shows.
+        let scale = breathing ? (offBeat ? 0.94 : 1.16) : 1.0
         return Circle()
             .fill(color)
             .frame(width: Art.dotRadius * 2 * unit, height: Art.dotRadius * 2 * unit)
-            .shadow(color: color.opacity(0.9), radius: (grown ? 9 : 5) * unit)
-            .scaleEffect(grown ? 1.16 : 0.94)
+            .shadow(color: color.opacity(0.9), radius: (breathing && !offBeat ? 9 : 6) * unit)
+            .scaleEffect(scale)
             .position(x: centre.x + point.x * unit, y: centre.y + point.y * unit)
     }
 
     // MARK: Timing
 
     private func run() async {
+        guard !frozen else { return }
         guard !reduceMotion else {
             // No motion: just let the poster stand for a moment.
             try? await Task.sleep(for: .milliseconds(450))

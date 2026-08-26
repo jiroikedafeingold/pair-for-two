@@ -189,11 +189,13 @@ struct GuestShot: View {
 struct ScreenshotStage: View {
     let shot: Int
 
-    /// The `-shot N` argument, if the app was launched for a screenshot.
+    /// The `-shot N` argument, if the app was launched for a screenshot. Shot 6 isn't a store shot —
+    /// it's the opening held on its first frame, which is what the splash artwork's connector is
+    /// baked from.
     static var requested: Int? {
         guard UserDefaults.standard.object(forKey: "shot") != nil else { return nil }
         let shot = UserDefaults.standard.integer(forKey: "shot")
-        return (1...5).contains(shot) ? shot : nil
+        return (1...6).contains(shot) ? shot : nil
     }
 
     var body: some View {
@@ -203,6 +205,7 @@ struct ScreenshotStage: View {
             case 2: GuestShot(ScreenshotFixture.show())
             case 3: GuestShot(ScreenshotFixture.starterCut())
             case 4: BoardShot()
+            case 6: OpeningView(onFinish: {}, frozen: true)
             default: GuestShot(ScreenshotFixture.winner())
             }
         }

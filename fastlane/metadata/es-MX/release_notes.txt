@@ -1,11 +1,4 @@
-• Modo marcador: ¿jugáis con cartas de verdad? Pon el móvil o el iPad entre los dos y usadlo como tablero. Un deslizador para cada uno, del derecho para ambos, y el marcador del centro gira hacia quien acaba de puntuar. Levántalo para leerlo y se pone del derecho para quien lo tenga en la mano.
-• Logros y clasificación: primera victoria, skunks, una mano de 24, el 29 perfecto, remontar 30 puntos, cinco seguidas y las victorias totales, todo con Game Center.
-• Tu historial: se guarda cada partida con victorias, rachas, skunks, tu mejor mano y el tiempo jugado.
-• Conexiones más firmes: emparejar dos dispositivos es más paciente y fiable, sobre todo sin red Wi-Fi, y una partida se recompone sola tras un corte, un rato en el bolsillo o incluso un cierre forzado.
-• ¿De quién es esa carta? Al contar el crib, una marca del color de cada jugador señala las cartas que puso.
-• Última carta anunciada: cuando cae la última carta de la mano, lo dicen los dos dispositivos.
-• Mejor con texto grande: con tamaños de texto mayores, el aviso de conteo y sus botones ya no se cortan.
-• Más espacio en iPad: botones y tablero más grandes, pensados para un dispositivo entre dos jugadores.
-• Y ahora en español, además de nueve idiomas más.
+• Nuevo aspecto al abrir: una nueva ilustración al iniciar la app, y la conexión entre los dos móviles se anima mientras carga. Toca para ir directo al menú.
+• Mejor en iPad: la ilustración se dibuja para la forma del iPad en vez de recortarse para encajar.
 
 ¡Gracias por jugar! ¿Dudas o comentarios? apps@feingold5.com
