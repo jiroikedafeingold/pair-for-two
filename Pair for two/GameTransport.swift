@@ -36,6 +36,30 @@ nonisolated enum TransportEvent: Sendable {
     case received(GameMessage)
 }
 
+// MARK: - Which link is carrying the game
+
+/// How the two devices are actually talking. Surfaced in the UI because "it wouldn't connect" is
+/// impossible to act on without it: the same two phones can pair over Bluetooth with no network at
+/// all, or over a Wi-Fi network that may be blocking peer-to-peer traffic, and the fix differs.
+nonisolated enum LinkKind: Sendable {
+    case direct        // Multipeer: Bluetooth / peer-to-peer Wi-Fi, no network involved
+    case wifiNetwork   // LANTransport: Bonjour + TCP across a shared Wi-Fi network
+    case online        // Game Center
+    case sameDevice    // loopback (pass-and-play)
+
+    /// Names the path in the words a player would use, for "Connected over …".
+    var name: String {
+        switch self {
+        case .direct:      return String(localized: "Bluetooth / Wi-Fi Direct",
+                                         comment: "The two phones are connected directly, with no network")
+        case .wifiNetwork: return String(localized: "your Wi-Fi network",
+                                         comment: "The two devices are connected through the Wi-Fi network they share")
+        case .online:      return String(localized: "Game Center", comment: "Connected through Apple's Game Center")
+        case .sameDevice:  return String(localized: "this phone", comment: "Both players are sharing one device")
+        }
+    }
+}
+
 // MARK: - Transport protocol
 
 /// Abstraction over how the two devices talk. v1 ships `MultipeerTransport` (in-person) and
@@ -47,6 +71,9 @@ protocol GameTransport: Sendable {
 
     /// Connection events and inbound messages.
     var events: AsyncStream<TransportEvent> { get }
+
+    /// Which path is carrying the game — see `LinkKind`.
+    var linkKind: LinkKind { get }
 
     /// Sends a message to the peer. On the host this typically means a snapshot; on a guest, an intent.
     func send(_ message: GameMessage) async

@@ -83,7 +83,7 @@ struct GameTableView: View {
     private var interactiveScreen: some View {
         tableScreen
             .sheet(isPresented: $showingSettings) {
-                SettingsView(onDone: { showingSettings = false })
+                SettingsView(onDone: { showingSettings = false }, linkKind: vm.linkKind)
             }
             .sheet(isPresented: $showingHelp) {
                 HelpView(onDone: { showingHelp = false })

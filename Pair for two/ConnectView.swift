@@ -25,6 +25,7 @@ struct ConnectView: View {
     @State private var lan: LANTransport
     @State private var connectStalled = false  // surfaced after a while so a stuck connect isn't a silent spinner
     @State private var handedOff = false       // both transports can report .connected; only hand up once
+    @State private var offerWiFiPeers = false  // see `rows`: Multipeer gets first refusal
 
     private var resuming: Bool { resumeRole != nil }
 
@@ -79,7 +80,18 @@ struct ConnectView: View {
             out.append(Row(id: "mc-\(peer.displayName)", name: peer.displayName,
                            overWiFi: false, connect: { mc.invite(peer) }))
         }
-        if lanActive {
+        // Wi-Fi rows wait their turn (`offerWiFiPeers`). Bonjour over an access point often answers
+        // before Multipeer has finished looking, so the first row to appear for another *iPhone* could
+        // be the Wi-Fi one — and tapping it commits the game to a path that needs the network to carry
+        // peer-to-peer traffic. Plenty of networks don't: guest and hotel Wi-Fi with client isolation
+        // will happily advertise a host that can never be reached, and unlike Multipeer this path has
+        // no rendezvous, so an interrupted game can't be picked back up either.
+        //
+        // A short head start is all it takes. Multipeer usually discovers within a second or two, and
+        // when it does its row supersedes the Wi-Fi one above. What's left after the head start is a
+        // peer Multipeer genuinely can't reach — an Android phone, which is the whole reason this
+        // transport exists — and that row then appears as it always did.
+        if lanActive, offerWiFiPeers {
             for peer in lan.discoveredPeers where seen.insert(peer.name).inserted {
                 out.append(Row(id: "lan-\(peer.id)", name: peer.name,
                                overWiFi: true, connect: { lan.invite(peer) }))
@@ -87,6 +99,14 @@ struct ConnectView: View {
         }
         return out
     }
+
+    /// Wi-Fi peers found, but still inside Multipeer's head start.
+    private var holdingWiFiPeers: Bool {
+        lanActive && !offerWiFiPeers && !lan.discoveredPeers.isEmpty
+    }
+
+    /// How long Multipeer gets to find a peer before Wi-Fi rows are offered as well.
+    private static let multipeerHeadStart: Duration = .seconds(3)
 
     var body: some View {
         ZStack {
@@ -150,6 +170,14 @@ struct ConnectView: View {
             try? await Task.sleep(for: .seconds(15))
             guard !Task.isCancelled else { return }
             connectStalled = true
+        }
+        // Multipeer's head start, re-armed for each browse.
+        .task(id: uiPhase) {
+            guard uiPhase == .browsing else { return }
+            offerWiFiPeers = false
+            try? await Task.sleep(for: Self.multipeerHeadStart)
+            guard !Task.isCancelled else { return }
+            offerWiFiPeers = true
         }
     }
 
@@ -240,7 +268,7 @@ struct ConnectView: View {
                     ProgressView().tint(.white)
                     Text("Looking for nearby games…").foregroundStyle(.white)
                 }
-                if rows.isEmpty {
+                if rows.isEmpty && !holdingWiFiPeers {
                     VStack(spacing: 6) {
                         Text("No hosts yet — make sure the other phone is hosting.")
                             .font(.caption).foregroundStyle(.white.opacity(0.6))

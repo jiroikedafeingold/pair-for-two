@@ -31,6 +31,8 @@ final class GameViewModel {
     private(set) var opponentLeft = false
 
     private let transport: any GameTransport
+    /// Which path is carrying this game, for the Settings footer — see `LinkKind`.
+    var linkKind: LinkKind { transport.linkKind }
     let isHost: Bool
     let isLoopback: Bool
     /// Whether this game may be saved for relaunch "Rejoin". True for nearby (Multipeer) games; false

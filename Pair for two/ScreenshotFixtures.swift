@@ -27,6 +27,7 @@ nonisolated(unsafe) var dealsCardsInstantly = false
 nonisolated final class PreviewSnapshotTransport: GameTransport, Sendable {
 
     let isHost = false
+    let linkKind: LinkKind = .direct   // the shots are of a two-phone nearby game
     let events: AsyncStream<TransportEvent>
 
     init(_ snapshot: PlayerSnapshot) {

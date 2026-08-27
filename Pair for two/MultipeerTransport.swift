@@ -16,6 +16,7 @@ final class MultipeerSession: NSObject, NearbyTransport {
     enum Phase: Sendable { case idle, hosting, browsing, connecting, connected, reconnecting, disconnected }
 
     var isHost: Bool = false
+    let linkKind: LinkKind = .direct
     private(set) var phase: Phase = .idle
     private(set) var discoveredPeers: [MCPeerID] = []
     private(set) var connectedPeerName: String?

@@ -34,6 +34,7 @@ import GameKit
 final class GameCenterTransport: NSObject, GKMatchDelegate, GameTransport, @unchecked Sendable {
 
     let isHost: Bool
+    let linkKind: LinkKind = .online
     nonisolated let events: AsyncStream<TransportEvent>
     nonisolated private let continuation: AsyncStream<TransportEvent>.Continuation
 

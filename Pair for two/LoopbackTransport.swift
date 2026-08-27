@@ -17,6 +17,7 @@ import Foundation
 nonisolated final class LoopbackTransport: GameTransport, Sendable {
 
     let isHost = true
+    let linkKind: LinkKind = .sameDevice
     let events: AsyncStream<TransportEvent>
     private let continuation: AsyncStream<TransportEvent>.Continuation
 

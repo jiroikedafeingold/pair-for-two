@@ -6,6 +6,10 @@ import SwiftUI
 /// player sets their own on their device). The scoring mode is set by whoever hosts the game.
 struct SettingsView: View {
     var onDone: () -> Void
+    /// Set when Settings is opened from inside a game: which path is carrying it. A player whose
+    /// phones keep dropping can read this out, and it's the one thing that can't be guessed from the
+    /// outside — the same two phones pair over Bluetooth or over a Wi-Fi network, and the fix differs.
+    var linkKind: LinkKind? = nil
 
     @AppStorage("localName") private var name = "Player"
     @AppStorage("localColorID") private var colorID = 1
@@ -116,8 +120,15 @@ struct SettingsView: View {
 
                 Section {
                 } footer: {
-                    Text(verbatim: appVersionBuild)
-                        .frame(maxWidth: .infinity, alignment: .center)
+                    VStack(spacing: 2) {
+                        if let linkKind {
+                            Text("Connected over \(linkKind.name)",
+                                 comment: "Settings footer during a game; %@ is e.g. Bluetooth / Wi-Fi Direct")
+                        }
+                        Text(verbatim: appVersionBuild)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .center)
+                    .multilineTextAlignment(.center)
                 }
             }
             .navigationTitle("Settings")

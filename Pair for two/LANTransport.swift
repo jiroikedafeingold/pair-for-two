@@ -39,6 +39,7 @@ final class LANTransport: NearbyTransport {
     static let serviceType = "_pairfortwo-lan._tcp"
 
     var isHost: Bool = false
+    let linkKind: LinkKind = .wifiNetwork
     private(set) var phase: Phase = .idle
     private(set) var discoveredPeers: [Peer] = []
     private(set) var connectedPeerName: String?
