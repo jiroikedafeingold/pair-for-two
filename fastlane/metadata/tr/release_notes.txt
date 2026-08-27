@@ -1,4 +1,7 @@
-• Açılışta yeni bir görünüm — uygulama başlarken yeni bir görsel çıkıyor ve yüklenirken iki cihaz arasındaki bağlantı canlanıyor. Doğrudan menüye gitmek için ekrana dokun.
-• iPad'de daha iyi — görsel, sığdırmak için kırpılmak yerine iPad'in biçimine göre çiziliyor.
+• Yakındaki bağlantı daha sağlam — takılan bir eşleşme artık boşa dönmek yerine kendi kendine toparlanıyor ve iki iPhone, paylaşılan bir ağ yerine doğrudan Bluetooth / Wi-Fi Direct bağlantısını seçiyor.
+• Ayarlar, oyunu taşıyan bağlantıyı gösteriyor; kopma olduğunda nedenini anlatmak kolaylaşıyor.
+• iPhone'da oyun sırasındaki düğmeler büyüdü — Dağıt, Go ve Devam artık diğerleriyle aynı boyutta.
+• Sistem yazı boyutun ne olursa olsun metin yerinde kalıyor, etiketler kırpılmıyor.
+• Puanı nasıl tutacağını seçmek daha basit: uygulama sayar ya da sen sayarsın.
 
 Oynadığın için teşekkürler! Soru ya da görüşlerin için: apps@feingold5.com

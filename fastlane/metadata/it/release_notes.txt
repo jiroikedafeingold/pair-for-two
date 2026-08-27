@@ -1,4 +1,7 @@
-• Una nuova apertura: una nuova illustrazione all'avvio, e il collegamento fra i due dispositivi si anima durante il caricamento. Tocca per andare subito al menu.
-• Meglio su iPad: l'illustrazione è disegnata per il formato dell'iPad invece di essere ritagliata.
+• Connessione vicina più solida: un accoppiamento che si blocca ora si riprende da solo invece di girare a vuoto, e due iPhone preferiscono il collegamento diretto Bluetooth / Wi-Fi Direct a una rete condivisa.
+• Le impostazioni dicono quale connessione sta portando la partita, così un'interruzione è più facile da spiegare.
+• Pulsanti più grandi durante la partita su iPhone: Distribuisci, Go e Continua ora hanno la dimensione degli altri.
+• Il testo resta al suo posto con qualsiasi dimensione del carattere di sistema, invece di troncare le etichette.
+• Scegliere come contare è più semplice: conta l'app, o conti tu.
 
 Grazie per aver giocato! Domande o commenti? apps@feingold5.com

@@ -1,4 +1,7 @@
-• Neuer Auftritt beim Start — neue Grafik beim Öffnen, und die Verbindung zwischen den beiden Geräten wird lebendig, während geladen wird. Tippe, um direkt ins Menü zu gehen.
-• Besser auf dem iPad — die Grafik ist für das Format des iPads gezeichnet, statt dafür beschnitten zu werden.
+• Stabilere Verbindung in der Nähe — eine Kopplung, die hängt, erholt sich jetzt selbst, statt endlos zu drehen, und zwei iPhones nehmen lieber die direkte Bluetooth-/Wi-Fi-Direct-Verbindung als ein gemeinsames Netzwerk.
+• Die Einstellungen nennen die Verbindung, über die gespielt wird — so lässt sich ein Abbruch leichter erklären.
+• Größere Tasten im Spiel auf dem iPhone — Geben, Go und Weiter haben jetzt die Größe der übrigen.
+• Der Text bleibt an seinem Platz, egal wie groß die Systemschrift eingestellt ist, statt Beschriftungen abzuschneiden.
+• Die Wahl beim Zählen ist einfacher: die App zählt, oder du zählst.
 
 Danke fürs Spielen! Fragen oder Rückmeldungen? apps@feingold5.com

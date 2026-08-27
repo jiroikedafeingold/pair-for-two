@@ -82,6 +82,14 @@ xcrun simctl boot "$UDID" >/dev/null 2>&1 || true
 xcrun simctl bootstatus "$UDID" -b >/dev/null 2>&1 || true
 xcrun simctl install "$UDID" "$APP"
 
+# A throwaway launch first. The very first launch after an install is the slow one — dyld, the caches,
+# the first-run work — and it outran the per-shot wait below, so the first locale's first shot
+# photographed the launch screen (the splash artwork) instead of the game. Warming up costs one launch
+# and makes every capture the same speed.
+xcrun simctl launch --terminate-running-process "$UDID" "$BUNDLE_ID" -shot 1 >/dev/null
+sleep 6
+xcrun simctl terminate "$UDID" "$BUNDLE_ID" >/dev/null 2>&1 || true
+
 for locale in "${LOCALES[@]}"; do
   read -r language applelocale <<<"$(locale_language "$locale")"
   [[ -n "$language" ]] || { echo "!! unknown locale $locale — skipped"; continue; }

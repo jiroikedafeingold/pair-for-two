@@ -1,4 +1,7 @@
-• A new look on opening — new artwork when the app starts, and the link between the two phones comes alive while it loads. Tap to go straight to the menu.
-• Sharper on iPad — the opening artwork is drawn for the iPad's shape rather than cropped to fit it.
+• Steadier connections nearby — a pairing that stalls now recovers on its own instead of spinning, and two iPhones prefer their direct Bluetooth / Wi-Fi Direct link over a shared network.
+• Settings names the connection carrying the game, so a dropped link is easier to explain.
+• Bigger buttons during play on iPhone — Deal, Go and Continue are now the size of the rest.
+• Text keeps its place whatever your system text size is set to, instead of clipping labels.
+• Choosing how to score is simpler: the app counts, or you do.
 
 Thanks for playing! Questions or feedback? apps@feingold5.com

@@ -1,4 +1,7 @@
-• Une nouvelle ouverture : un nouveau visuel au lancement, et le lien entre les deux téléphones s'anime pendant le chargement. Touche l'écran pour aller directement au menu.
-• Mieux sur iPad : le visuel est dessiné pour le format de l'iPad au lieu d'être recadré.
+• Connexion à proximité plus solide : un appairage qui se bloque se rattrape maintenant tout seul au lieu de tourner sans fin, et deux iPhone préfèrent leur liaison directe Bluetooth / Wi-Fi Direct à un réseau partagé.
+• Les réglages indiquent quelle connexion porte la partie : une coupure est plus facile à expliquer.
+• Des boutons plus grands en cours de partie sur iPhone : Distribuer, Go et Continuer ont enfin la taille des autres.
+• Le texte reste en place quelle que soit la taille de police du système, au lieu de tronquer les libellés.
+• Le choix du comptage est plus simple : l'app compte, ou vous comptez.
 
 Merci de jouer ! Questions ou remarques ? apps@feingold5.com

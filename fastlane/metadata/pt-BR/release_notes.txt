@@ -1,4 +1,7 @@
-• Uma nova abertura — nova arte ao iniciar o app, e a ligação entre os dois aparelhos ganha vida enquanto carrega. Toque para ir direto ao menu.
-• Melhor no iPad — a arte é desenhada para o formato do iPad em vez de ser cortada para caber.
+• Conexão por perto mais firme: um emparelhamento travado agora se recupera sozinho em vez de girar sem fim, e dois iPhones preferem o link direto por Bluetooth / Wi-Fi Direct a uma rede compartilhada.
+• Os ajustes mostram qual conexão está levando a partida, então uma queda fica mais fácil de explicar.
+• Botões maiores durante a partida no iPhone: Distribuir, Go e Continuar agora têm o tamanho dos demais.
+• O texto fica no lugar com qualquer tamanho de fonte do sistema, em vez de cortar os rótulos.
+• Escolher como pontuar ficou mais simples: o app conta, ou você conta.
 
 Obrigado por jogar! Dúvidas ou comentários? apps@feingold5.com
