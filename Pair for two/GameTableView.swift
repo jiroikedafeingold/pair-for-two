@@ -640,10 +640,6 @@ struct GameTableView: View {
             }
             .frame(width: railWidth)
             .frame(maxHeight: .infinity)
-            // The rail is a fixed width, so its prompts and buttons ("Count it on your slider, then
-            // Continue", "Count the hands") get clipped at large accessibility text sizes. Pin this
-            // column to the default size — the game text elsewhere still scales.
-            .dynamicTypeSize(.large)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .padding(.horizontal, 4)
@@ -936,9 +932,6 @@ struct GameTableView: View {
                         }
                 }
             }
-            // These captions label cards whose size comes from the screen geometry, so there's no
-            // room for them to grow — they'd truncate ("The…", "ANN'S…") at accessibility sizes.
-            .dynamicTypeSize(.large)
         } action: {
             if vm.youAreCounting {
                 // Once points are pending the button itself says what will happen ("Add 15 & continue"),
