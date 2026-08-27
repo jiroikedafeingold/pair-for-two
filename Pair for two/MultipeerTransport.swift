@@ -32,6 +32,13 @@ final class MultipeerSession: NSObject, NearbyTransport {
     nonisolated private let continuation: AsyncStream<TransportEvent>.Continuation
 
     private let serviceType = "pairfortwo"     // Bonjour: _pairfortwo._tcp
+
+    /// `.optional`, not `.required`: requiring encryption measurably lengthens the handshake, and it is
+    /// slowest exactly where pairing already struggles — two phones with no network, negotiating over
+    /// Bluetooth. What's on the wire is a cribbage position: two display names, a color choice, and
+    /// which cards have been played. `.optional` still encrypts whenever the peer asks for it, so a
+    /// phone on 1.9 or earlier (which required it) pairs with a 2.0 phone exactly as before.
+    private static let encryption: MCEncryptionPreference = .optional
     // Confined to the main actor: it's reassigned on reconnect/rebuild, so any off-actor read while
     // it's being swapped is a data race (crashes in objc_retain). All access hops to the main actor.
     private var session: MCSession
@@ -80,7 +87,7 @@ final class MultipeerSession: NSObject, NearbyTransport {
         let trimmed = displayName.trimmingCharacters(in: .whitespaces)
         let name = String((trimmed.isEmpty ? String(localized: "Player", comment: "Fallback name shown to the other device when you have not set one") : trimmed).prefix(60))
         myPeerID = MCPeerID(displayName: name)
-        session = MCSession(peer: myPeerID, securityIdentity: nil, encryptionPreference: .required)
+        session = MCSession(peer: myPeerID, securityIdentity: nil, encryptionPreference: Self.encryption)
         var captured: AsyncStream<TransportEvent>.Continuation!
         events = AsyncStream(bufferingPolicy: .unbounded) { captured = $0 }
         continuation = captured
@@ -331,7 +338,7 @@ final class MultipeerSession: NSObject, NearbyTransport {
         pendingInviteAt = nil       // whatever was in flight belonged to the old session
         session.delegate = nil
         session.disconnect()
-        session = MCSession(peer: myPeerID, securityIdentity: nil, encryptionPreference: .required)
+        session = MCSession(peer: myPeerID, securityIdentity: nil, encryptionPreference: Self.encryption)
         session.delegate = self
     }
 
