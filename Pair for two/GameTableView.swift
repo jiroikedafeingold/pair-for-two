@@ -101,7 +101,7 @@ struct GameTableView: View {
             .onChange(of: showingSettings) { _, isShowing in
                 if !isShowing {
                     vm.updateLocalIdentity(name: localName.trimmingCharacters(in: .whitespaces), colorID: localColorID)
-                    let newMode = ScoringMode(rawValue: scoringModeRaw) ?? .off
+                    let newMode = ScoringMode.stored(scoringModeRaw)
                     // Note that WE changed it, so we don't toast ourselves when the shared state updates.
                     if newMode != vm.snapshot.scoringMode { initiatedScoringChange = true }
                     vm.setScoringMode(newMode)
@@ -412,9 +412,9 @@ struct GameTableView: View {
     private func controlButton(_ systemName: String, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             Image(systemName: systemName)
-                .font(.system(size: 15, weight: .semibold))
+                .font(.system(size: 18, weight: .semibold))
                 .foregroundStyle(.white.opacity(0.7))
-                .frame(width: 32, height: 32)
+                .frame(width: 40, height: 40)
                 .background(Circle().fill(Color.black.opacity(0.3)))
                 .attentionGlow(trigger: glowTrigger)
         }
@@ -424,9 +424,9 @@ struct GameTableView: View {
     private var quitButton: some View {
         Button { showingQuitConfirm = true } label: {
             Image(systemName: "rectangle.portrait.and.arrow.right")
-                .font(.system(size: 15, weight: .semibold))
+                .font(.system(size: 18, weight: .semibold))
                 .foregroundStyle(.white.opacity(0.7))
-                .padding(8)
+                .padding(11)
                 .background(Circle().fill(Color.black.opacity(0.3)))
         }
         .padding(.top, 6)
@@ -629,12 +629,16 @@ struct GameTableView: View {
                 // be underneath them. The action's height is measured rather than assumed, because it
                 // varies by phase (a two-line prompt over two buttons, or a lone "Go").
                 let centered = (rail.size.height - actionHeight) / 2
+                // …and never past the bottom of the rail, which on a short landscape phone is what the
+                // flags-then-centered pair would otherwise ask for: the offset is a free translation, so
+                // an overhanging Check button ran off the felt instead of being clipped or squeezed.
+                let bottomed = max(0, rail.size.height - actionHeight)
                 ZStack(alignment: .top) {
                     railFlags(s).frame(height: slot)
                     actionColumn
                         .frame(maxWidth: .infinity)
                         .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { actionHeight = $0 }
-                        .offset(y: max(slot + 8, centered))
+                        .offset(y: min(max(slot + 8, centered), bottomed))
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
             }
@@ -652,9 +656,9 @@ struct GameTableView: View {
     /// this height holds whatever the reader's text setting is.
     private static let railFlagsHeight: CGFloat = 76
 
-    /// Height the prompt + primary button need (a two-line prompt over a large button). The flags slot
-    /// gets whatever is left over, so on a short landscape phone the flags scroll rather than the
-    /// button being squeezed off the felt.
+    /// Height to assume for the prompt + primary button before the first measurement comes back. The
+    /// flags slot gets whatever is left over, so on a short landscape phone the flags scroll rather than
+    /// the button being squeezed off the felt.
     private static let railActionHeight: CGFloat = 96
 
     /// Height to give the rail's flags slot. Only the phases that actually surface scoring flags reserve
@@ -664,8 +668,11 @@ struct GameTableView: View {
     /// the flags column rather than squeezing the button.
     private func flagsSlotHeight(for s: PlayerSnapshot, railHeight: CGFloat) -> CGFloat {
         guard s.phase.surfacesScoreFlags || !s.flags.isEmpty else { return 0 }
-        return min(GameTableView.railFlagsHeight,
-                   max(0, railHeight - GameTableView.railActionHeight))
+        // The action's measured height, not the constant, once it has one: the show's prompt + Continue
+        // + Check stack is well over the assumed 96, and on a compact phone the difference is the
+        // whole margin — reserve a full-height flags slot as well and the two don't both fit.
+        let action = max(GameTableView.railActionHeight, actionHeight)
+        return min(GameTableView.railFlagsHeight, max(0, railHeight - action - 8))
     }
 
     /// The scoring flags for the current context, as a vertical column pinned to the top of the rail.
@@ -864,7 +871,7 @@ struct GameTableView: View {
                                ? String(localized: "Add \(uncommittedLocal) & count the hands",
                                         comment: "Adds the pending slider points, then starts the show; %lld is the points")
                                : String(localized: "Count the hands", comment: "Button: move from the play to the show"),
-                               railWidth: railWidth, tint: .cribGold, large: true) {
+                               railWidth: railWidth, tint: .cribGold) {
                         if uncommittedLocal > 0 {
                             GameFeedback.shared.play(.score)
                             vm.claim(uncommittedLocal, for: vm.snapshot.you)
@@ -974,10 +981,10 @@ struct GameTableView: View {
                     } label: {
                         Label("Check", systemImage: "checkmark.circle.fill")
                             .font(wideRail ? .system(size: 26, weight: .bold, design: .rounded)
-                                           : .subheadline.weight(.semibold))
+                                           : .system(size: 17, weight: .bold, design: .rounded))
                             .foregroundStyle(Color.cribGold)
-                            .padding(.horizontal, wideRail ? 22 : 12)
-                            .padding(.vertical, wideRail ? 14 : 7)
+                            .padding(.horizontal, wideRail ? 22 : 16)
+                            .padding(.vertical, wideRail ? 14 : 11)
                             .background(Capsule().fill(Color.white.opacity(0.12)))
                             .overlay(Capsule().stroke(Color.cribGold.opacity(0.6), lineWidth: 1.2))
                     }
@@ -1005,7 +1012,7 @@ struct GameTableView: View {
             // Only the next dealer starts the deal (the deal passes to the former pone).
             if vm.youStartNextDeal {
                 RailButton(title: String(localized: "Deal next hand", comment: "Button: deal the next hand"),
-                           railWidth: railWidth, tint: .cribGold, large: true) {
+                           railWidth: railWidth, tint: .cribGold) {
                     vm.advance()
                 }
             } else {
@@ -1199,13 +1206,8 @@ private struct RailButton: View {
     let railWidth: CGFloat
     let tint: Color
     var textColor: Color = .black
-    var large: Bool = false
     var disabled: Bool = false
     let action: () -> Void
-
-    /// Regular height means an iPad, where a phone-sized button looks lost against the cards.
-    @Environment(\.verticalSizeClass) private var vSizeClass
-    private var roomy: Bool { vSizeClass == .regular }
 
     /// How big the type can be is a question about the rail, not about the device: an iPad in Split
     /// View, or in portrait, has a much narrower rail than one in full-screen landscape. Sizing this
@@ -1218,12 +1220,11 @@ private struct RailButton: View {
         return .phone
     }
 
-    /// nil on a phone, which leaves the button style's own font in place.
-    private var titleFont: Font? {
+    private var titleFont: Font {
         switch room {
         case .wide:   .system(size: 34, weight: .bold, design: .rounded)
         case .medium: .system(size: 22, weight: .bold, design: .rounded)
-        case .phone:  nil
+        case .phone:  .system(size: 19, weight: .bold, design: .rounded)
         }
     }
 
@@ -1231,7 +1232,7 @@ private struct RailButton: View {
         switch room {
         case .wide:   22
         case .medium: 10
-        case .phone:  0
+        case .phone:  6
         }
     }
 
@@ -1249,7 +1250,6 @@ private struct RailButton: View {
         let width: CGFloat = min(railWidth - 8, cap)
         Button(action: action) {
             Text(title)
-                // nil inherits the button style's own font, so the phone is untouched.
                 .font(titleFont)
                 .lineLimit(2)
                 .minimumScaleFactor(0.6)
@@ -1263,7 +1263,7 @@ private struct RailButton: View {
         .buttonStyle(.borderedProminent)
         .tint(tint)
         .foregroundStyle(textColor)
-        .controlSize(large || room != .phone ? .large : .regular)
+        .controlSize(.large)
         .disabled(disabled)
         .frame(maxWidth: width)
     }

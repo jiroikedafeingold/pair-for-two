@@ -16,7 +16,6 @@ Igual ao jogo presencial: quem não deu as cartas toca no baralho para cortar, e
 CONTE DO SEU JEITO
 Escolha o que combina com sua mesa:
 • Automática: o app conta e soma cada ponto.
-• Com dicas: o app mostra cada pontuação e o total; você soma no seu controle.
 • Contagem pelos jogadores: sem dicas, você conta tudo, como num tabuleiro de madeira. É assim que as partidas novas começam.
 
 Você é avisado quando importa — quando um “Go” passa para você ou quando alguém chega a 31 — para ninguém perder ponto.

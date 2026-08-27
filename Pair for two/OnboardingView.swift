@@ -171,7 +171,7 @@ struct OnboardingView: View {
     /// discover automatic scoring by accident.
     private var scoringPicker: some View {
         VStack(spacing: 8) {
-            ForEach(ScoringMode.allCases, id: \.rawValue) { mode in
+            ForEach(ScoringMode.offered, id: \.rawValue) { mode in
                 let selected = scoringModeRaw == mode.rawValue
                 let isDefault = mode == .off
                 Button {

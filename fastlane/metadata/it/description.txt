@@ -16,7 +16,6 @@ Come dal vivo: chi non dà le carte tocca il mazzo per tagliarlo e il mazziere g
 CONTA COME PREFERISCI
 Scegli lo stile del tuo tavolo:
 • Automatico: l'app conta e aggiunge ogni punto.
-• Con suggerimenti: l'app mostra ogni punteggio e il totale; li aggiungi tu col cursore.
 • Contano i giocatori: nessun aiuto, conti tutto tu, come su un tabellone di legno. È così che iniziano le partite nuove.
 
 Un avviso arriva quando serve — quando un “Go” passa a te o quando qualcuno fa 31 — così nessuno perde un punto.

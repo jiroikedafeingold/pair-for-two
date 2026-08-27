@@ -16,7 +16,6 @@ Igual que en persona: quien no reparte toca la baraja para cortarla y quien repa
 PUNTÚA A TU MANERA
 Elige el estilo de tu mesa:
 • Automática: la app cuenta y suma todos los puntos.
-• Con ayudas: la app muestra cada puntuación y el total; tú los sumas en tu deslizador.
 • A cargo de los jugadores: sin ayudas. Cuentas tú, como en la vida real. Así empiezan las partidas nuevas.
 
 Se te avisa cuando importa —cuando te pasan un “Go” o cuando alguien llega a 31— para que nadie pierda un punto.

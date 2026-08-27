@@ -16,7 +16,6 @@ Yüz yüze oynarken olduğu gibi: dağıtmayan oyuncu desteye dokunup keser, da�
 İSTEDİĞİN GİBİ PUANLA
 Masanıza uyanı seçin:
 • Otomatik: uygulama her puanı sayar ve ekler.
-• İpuçlu: uygulama her puanı ve toplamı gösterir; sürgüyle sen eklersin.
 • Puanı oyuncular tutar: ipucu yok, her şeyi sen sayarsın — tahta bir skor tahtasında olduğu gibi. Yeni oyunlar böyle başlar.
 
 Önemli anlarda uyarılırsın — bir "Go" sana geçtiğinde ya da biri 31'e ulaştığında — kimse puan kaçırmaz.

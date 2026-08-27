@@ -18,7 +18,7 @@ struct SettingsView: View {
     @AppStorage("replayBeforeWin") private var replayBeforeWin = true
     @AppStorage("scoreTrackEnabled") private var scoreTrackEnabled = true
 
-    private var scoringMode: ScoringMode { ScoringMode(rawValue: scoringModeRaw) ?? .off }
+    private var scoringMode: ScoringMode { ScoringMode.stored(scoringModeRaw) }
 
     @State private var showOnboarding = false
 
@@ -63,7 +63,7 @@ struct SettingsView: View {
                 }
 
                 Section {
-                    ForEach(ScoringMode.allCases, id: \.rawValue) { mode in
+                    ForEach(ScoringMode.offered, id: \.rawValue) { mode in
                         Button {
                             scoringModeRaw = mode.rawValue
                         } label: {

@@ -88,6 +88,19 @@ nonisolated enum ScoringMode: Int, Codable, Sendable, CaseIterable {
     var showsFlags: Bool { self != .off }
     var isAuto: Bool { self == .auto }
 
+    /// The modes actually offered in Settings and the welcome tour. Feedback is withdrawn for now —
+    /// commented out rather than deleted, because the case still has to decode: a saved game, or a
+    /// peer on an older build, can hand us raw value 1.
+    static let offered: [ScoringMode] = [.auto, /* .feedback, */ .off]
+
+    /// Reads the stored `scoringMode` setting, folded onto a mode that's still offered. Anyone left
+    /// on Feedback lands on Player responsibility — the nearer of the two, since you enter the
+    /// points yourself either way — instead of sitting on a mode with no row to show it.
+    static func stored(_ rawValue: Int) -> ScoringMode {
+        let mode = ScoringMode(rawValue: rawValue) ?? .off
+        return offered.contains(mode) ? mode : .off
+    }
+
     var title: String {
         switch self {
         case .auto:     return String(localized: "Automatic", comment: "Scoring mode name")

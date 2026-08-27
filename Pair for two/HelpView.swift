@@ -91,7 +91,8 @@ struct HelpView: View {
                     bullet("**Check my count:** the ✓ next to Continue shows the correct count and breakdown — double runs, pair royal, and so on.")
                     helpText("Scoring mode (Settings) applies to the whole game:")
                     bullet("**Automatic** — the app counts and adds every point.")
-                    bullet("**Feedback** — the app shows each score; you add it yourself.")
+                    // Feedback is withdrawn for now; see `ScoringMode.offered`.
+                    // bullet("**Feedback** — the app shows each score; you add it yourself.")
                     bullet("**Player responsibility** — no hints; count it all yourself.")
                 }
 

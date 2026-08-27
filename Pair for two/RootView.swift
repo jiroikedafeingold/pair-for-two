@@ -252,7 +252,7 @@ struct RootView: View {
         } else {
             vm = GameViewModel.networked(transport: transport,
                                          localName: playerName, localColorID: colorID,
-                                         scoringMode: ScoringMode(rawValue: scoringModeRaw) ?? .off,
+                                         scoringMode: ScoringMode.stored(scoringModeRaw),
                                          isOnline: true,
                                          onlineOpponentID: marker.opponentGamePlayerID,
                                          onlineOpponentName: marker.opponentName)
@@ -275,7 +275,7 @@ struct RootView: View {
         let opponent = match.players.first
         vm = GameViewModel.networked(transport: transport,
                                      localName: playerName, localColorID: colorID,
-                                     scoringMode: ScoringMode(rawValue: scoringModeRaw) ?? .off,
+                                     scoringMode: ScoringMode.stored(scoringModeRaw),
                                      isOnline: true,
                                      onlineOpponentID: opponent?.gamePlayerID,
                                      onlineOpponentName: opponent?.displayName)
@@ -301,7 +301,7 @@ struct RootView: View {
                                 vm = GameViewModel.networked(transport: session,
                                                              localName: playerName,
                                                              localColorID: colorID,
-                                                             scoringMode: ScoringMode(rawValue: scoringModeRaw) ?? .off)
+                                                             scoringMode: ScoringMode.stored(scoringModeRaw))
                             } else {
                                 // Fresh game — isHost was already set by Host/Join. Starting a new game
                                 // forgets any other in-progress game on this device (the new game writes
@@ -311,7 +311,7 @@ struct RootView: View {
                                 vm = GameViewModel.networked(transport: session,
                                                              localName: playerName,
                                                              localColorID: colorID,
-                                                             scoringMode: ScoringMode(rawValue: scoringModeRaw) ?? .off)
+                                                             scoringMode: ScoringMode.stored(scoringModeRaw))
                             }
                             screen = .game
                         },

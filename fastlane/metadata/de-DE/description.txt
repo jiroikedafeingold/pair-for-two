@@ -16,7 +16,6 @@ Genau wie in echt: wer nicht gibt, tippt auf den Stapel und hebt ab, der Geber d
 ZÄHLE, WIE DU MAGST
 Wähle, was zu euch passt:
 • Automatisch: die App zählt und addiert jeden Punkt.
-• Mit Hinweisen: die App zeigt jede Zählung und die Summe; eingetragen wird mit dem Schieber.
 • Spieler zählen selbst: keine Hinweise, du zählst alles – wie auf einem Holzbrett. So beginnen neue Partien.
 
 Wenn es darauf ankommt, wirst du erinnert: wenn ein „Go“ an dich geht oder jemand 31 trifft. So verschenkt niemand einen Punkt.

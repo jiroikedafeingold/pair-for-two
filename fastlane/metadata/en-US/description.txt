@@ -16,7 +16,6 @@ Just like at the kitchen table: the non-dealer taps the deck to cut it, and the 
 SCORE YOUR WAY
 Pick the style that fits your table:
 • Automatic — the app counts and pegs every point for you.
-• Feedback — the app shows each score and the running total; you slide the points onto your own board.
 • Player responsibility — no hints. Count it yourself, just like the real thing. This is how new games start.
 
 You’re nudged when it matters — when a “Go” passes to you, or when someone hits 31 — so nobody misses a point.

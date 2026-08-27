@@ -837,6 +837,7 @@
       }
     },
     "**Feedback** — the app shows each score; you add it yourself." : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {

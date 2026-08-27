@@ -16,7 +16,6 @@ Comme à la maison : celui qui ne distribue pas touche le paquet pour le couper,
 COMPTEZ COMME VOUS VOULEZ
 Choisissez ce qui convient à votre table :
 • Automatique : l'app compte et ajoute chaque point.
-• Avec indications : l'app affiche chaque score et le total ; vous les ajoutez sur votre curseur.
 • Aux joueurs de compter : aucune aide, vous comptez tout, comme sur une planche en bois. C'est ainsi que commencent les nouvelles parties.
 
 L'app vous prévient quand ça compte — un « Go » qui vous revient, un 31 — pour que personne ne perde un point.
