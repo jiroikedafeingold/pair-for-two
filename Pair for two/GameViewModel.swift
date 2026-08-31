@@ -138,6 +138,7 @@ final class GameViewModel {
         if !isLoopback {
             startInboundWatchdog()
             if !isHost { startKeepalive() }
+            if state != nil { shareMatchToken() }   // a resumed host already knows its match
         }
     }
 
@@ -226,6 +227,7 @@ final class GameViewModel {
             }
         } else if snapshot.phase != .connecting, snapshot.phase != .gameOver {
             GamePersistence.saveMarker(isHost: false, summary: snapshotSummary(snapshot),
+                                       matchID: snapshot.matchID.uuidString,
                                        online: isOnline,
                                        opponentGamePlayerID: onlineOpponentID,
                                        opponentName: onlineOpponentName)
@@ -430,12 +432,14 @@ final class GameViewModel {
                 let previousPhase = snapshot.phase
                 snapshot = snap
                 fixedPlayer = snap.you
+                if snap.phase != .connecting { shareMatchToken() }
                 if snap.phase != previousPhase { selectedForDiscard.removeAll() }
                 trackProgress(from: previousPhase, to: snap.phase)
                 // Guest marker so this device can also offer "Rejoin game" (nearby games only).
                 if snap.phase == .gameOver { GamePersistence.clear() }
                 else if resumable, snap.phase != .connecting {
                     GamePersistence.saveMarker(isHost: false, summary: snapshotSummary(snap),
+                                               matchID: snap.matchID.uuidString,
                                                online: isOnline,
                                                opponentGamePlayerID: onlineOpponentID,
                                                opponentName: onlineOpponentName)
@@ -448,6 +452,14 @@ final class GameViewModel {
         }
     }
 
+    /// Keep the transport's idea of which game it is carrying in step with ours — it puts that in the
+    /// invitations it sends and checks the ones it receives, so a rejoin can't land in someone else's
+    /// interrupted game. Cheap and idempotent, so it's called wherever the match becomes known.
+    private func shareMatchToken() {
+        let id = state?.matchID ?? snapshot.matchID
+        transport.setMatchToken(id.uuidString)
+    }
+
     private func startHostedGame(guestName: String, guestColorID: Int) {
         var s = GameState.newMatch(matchID: UUID(), seed: seed,
                                    names: [.one: localName, .two: guestName],
@@ -455,6 +467,7 @@ final class GameViewModel {
                                    scoringMode: scoringMode)
         CribbageEngine.begin(&s)
         state = s
+        shareMatchToken()
         Task { await transport.send(.assignSeat(.two)) }
         refreshAndBroadcast()
         startHeartbeat()

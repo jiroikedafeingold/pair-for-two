@@ -15,6 +15,7 @@ nonisolated enum GamePersistence {
     private static let kOnline = "resume.online"
     private static let kOpponentID = "resume.opponentGamePlayerID"
     private static let kOpponentName = "resume.opponentName"
+    private static let kMatchID = "resume.matchID"
 
     /// What a device knows about the game it was in the middle of when it last closed.
     ///
@@ -28,6 +29,10 @@ nonisolated enum GamePersistence {
         var isOnline = false
         var opponentGamePlayerID: String?
         var opponentName: String?
+        /// Which game this is, as `GameState.matchID`. Carried so a rejoining phone can prove to the
+        /// other end that they are picking up the *same* game — see `MultipeerSession.matchToken`.
+        /// Absent in markers written before that check existed, which simply skips it.
+        var matchID: String?
     }
 
     private static var url: URL? {
@@ -65,6 +70,7 @@ nonisolated enum GamePersistence {
         do {
             try JSONEncoder().encode(state).write(to: url, options: .atomic)
             saveMarker(isHost: true, summary: summary(of: state),
+                       matchID: state.matchID.uuidString,
                        online: online,
                        opponentGamePlayerID: opponentGamePlayerID,
                        opponentName: opponentName)
@@ -92,6 +98,7 @@ nonisolated enum GamePersistence {
     /// gone, and it's matched against Game Center's recent-players list at rejoin time.
     static func saveMarker(isHost: Bool,
                            summary: String,
+                           matchID: String? = nil,
                            online: Bool = false,
                            opponentGamePlayerID: String? = nil,
                            opponentName: String? = nil) {
@@ -100,6 +107,7 @@ nonisolated enum GamePersistence {
         d.set(isHost, forKey: kIsHost)
         d.set(summary, forKey: kSummary)
         d.set(online, forKey: kOnline)
+        if let matchID { d.set(matchID, forKey: kMatchID) }
         if let opponentGamePlayerID { d.set(opponentGamePlayerID, forKey: kOpponentID) }
         if let opponentName { d.set(opponentName, forKey: kOpponentName) }
         // A guest never holds full state — drop any stale file left over from a game it once hosted,
@@ -114,7 +122,8 @@ nonisolated enum GamePersistence {
                             summary: d.string(forKey: kSummary) ?? "",
                             isOnline: d.bool(forKey: kOnline),
                             opponentGamePlayerID: d.string(forKey: kOpponentID),
-                            opponentName: d.string(forKey: kOpponentName))
+                            opponentName: d.string(forKey: kOpponentName),
+                            matchID: d.string(forKey: kMatchID))
     }
 
     // MARK: Clear
@@ -122,7 +131,7 @@ nonisolated enum GamePersistence {
     static func clear() {
         if let url { try? FileManager.default.removeItem(at: url) }
         let d = UserDefaults.standard
-        for key in [kActive, kIsHost, kSummary, kOnline, kOpponentID, kOpponentName] {
+        for key in [kActive, kIsHost, kSummary, kOnline, kOpponentID, kOpponentName, kMatchID] {
             d.removeObject(forKey: key)
         }
     }

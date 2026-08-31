@@ -18,6 +18,10 @@ struct ConnectView: View {
     let localName: String
     let localColorID: Int
     var resumeRole: ResumeRole? = nil    // set → auto-(re)connect in that role for a saved game
+    /// The saved game's `matchID`, when resuming. Handed to the transport before it starts looking, so
+    /// its invitations name the game they're for and it can turn down invitations meant for another —
+    /// see `MultipeerSession.matchToken`.
+    var resumeMatchID: String? = nil
     var onConnected: (any NearbyTransport) -> Void
     var onCancel: () -> Void
 
@@ -35,11 +39,13 @@ struct ConnectView: View {
     private var lanActive: Bool { !resuming }
 
     init(localName: String, localColorID: Int, resumeRole: ResumeRole? = nil,
+         resumeMatchID: String? = nil,
          onConnected: @escaping (any NearbyTransport) -> Void,
          onCancel: @escaping () -> Void) {
         self.localName = localName
         self.localColorID = localColorID
         self.resumeRole = resumeRole
+        self.resumeMatchID = resumeMatchID
         self.onConnected = onConnected
         self.onCancel = onCancel
         _mc = State(initialValue: MultipeerSession(displayName: localName))
@@ -159,7 +165,10 @@ struct ConnectView: View {
             // Resuming: both phones advertise *and* browse and auto-pair, regardless of their stored
             // role — so a stale "both are host" marker state can't deadlock. The host is decided by
             // who holds the saved state (in onConnected), not by who advertises.
-            if resuming, mc.phase == .idle { mc.startRendezvous() }
+            if resuming, mc.phase == .idle {
+                mc.setMatchToken(resumeMatchID)   // before it looks, so the first invitation carries it
+                mc.startRendezvous()
+            }
         }
         // Pairing now retries by itself rather than failing after one timed-out invitation, so
         // "Connecting…" can legitimately last a while. Offer an escape hatch (and the likely fixes)

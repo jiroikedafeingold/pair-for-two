@@ -289,6 +289,7 @@ struct RootView: View {
 
         case .connect:
             ConnectView(localName: playerName, localColorID: colorID, resumeRole: resumeRole,
+                        resumeMatchID: resumeRole != nil ? GamePersistence.loadMarker()?.matchID : nil,
                         onConnected: { session in
                             // For a resume, the host is whichever phone actually holds the saved
                             // state — not the (possibly stale) role marker. This keeps the two phones

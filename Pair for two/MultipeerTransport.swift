@@ -107,6 +107,19 @@ final class MultipeerSession: NSObject, NearbyTransport {
     /// read back from the browser, so exactly one side invites even then.
     private let launchToken = String(UUID().uuidString.prefix(8))
     private var peerTokens: [String: String] = [:]   // display name → their launch token
+    /// Which game this session is for (`GameState.matchID`), when it is known: sent with every
+    /// invitation and checked against every invitation received.
+    ///
+    /// Advertising now runs for the whole game so a suspended partner can be found again the moment it
+    /// returns — which also means an in-game phone can be *invited* by anything nearby, where before it
+    /// couldn't even be seen. A live link is protected by the staleness check, but two interrupted
+    /// games in one room were not: a phone rejoining game A could have been answered by a stale phone
+    /// from game B, leaving both pairs joined to the wrong partner and neither game working. Matching
+    /// the token keeps each rejoin inside its own game.
+    private var matchToken: String?
+
+    func setMatchToken(_ token: String?) { matchToken = token }
+
     /// Display names of peers whose advertisement says they are mid-game — see `makeAdvertiser`.
     private var inGamePeers: Set<String> = []
     /// Display names of peers whose advertisement says they are *looking to pair*, as opposed to
@@ -368,7 +381,9 @@ final class MultipeerSession: NSObject, NearbyTransport {
         pendingInviteAt = Date()
         handshakeStartedAt = nil
         deferredToPeerSince = nil
-        browser?.invitePeer(peer, to: session, withContext: nil, timeout: Self.inviteTimeout)
+        browser?.invitePeer(peer, to: session,
+                            withContext: matchToken?.data(using: .utf8),
+                            timeout: Self.inviteTimeout)
         // Follow it up. This is also the path a tap on the join list takes, and a tap used to be a
         // one-shot: if MC answered with a failure we recovered in `handleDrop`, but if it never
         // answered at all the screen spun forever with nothing behind it. `isPairing` is true now that
@@ -671,7 +686,24 @@ extension MultipeerSession: MCNearbyServiceAdvertiserDelegate {
                                 invitationHandler: @escaping (Bool, MCSession?) -> Void) {
         // Auto-accept: this is a two-player game, first invitation wins. Read `session` on the main
         // actor (it may be mid-rebuild); the handler can be invoked from any thread.
+        let offeredToken = context.flatMap { String(data: $0, encoding: .utf8) }
         Task { @MainActor in
+            // An invitation naming a game we aren't in. Two shapes, both wrong to accept:
+            //
+            //  - we're in (or resuming) a different game — the cross-pairing that advertising through
+            //    a whole game newly makes possible;
+            //  - we're setting a *fresh* game up and someone is resuming an old one. That pairing was
+            //    always broken, since both sides then act as host and the position never syncs, and
+            //    both players got a frozen table rather than an honest "still looking".
+            //
+            // An invitation with **no** token is left alone: it is a first connection, or a phone on a
+            // build from before this check, or a game interrupted before markers recorded the id, and
+            // all of those deserve the answer they always got.
+            if let theirs = offeredToken, theirs != self.matchToken,
+               self.matchToken != nil || !self.didConnect {
+                invitationHandler(false, nil)
+                return
+            }
             if self.session.connectedPeers.isEmpty {
                 invitationHandler(true, self.session)
             } else if self.didConnect, self.linkLooksStale {

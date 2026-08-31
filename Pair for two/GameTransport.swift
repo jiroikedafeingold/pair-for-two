@@ -88,12 +88,18 @@ protocol GameTransport: Sendable {
     /// advertises for the whole game, and one left running would answer a partner's invitation on
     /// behalf of a game that no longer exists.
     func stop()
+
+    /// Tell the transport which game it is carrying (`GameState.matchID`). A nearby transport puts it
+    /// in the invitations it sends and checks it against the ones it receives, so two interrupted games
+    /// within radio range of each other can't cross-pair.
+    func setMatchToken(_ token: String?)
 }
 
 extension GameTransport {
     func reconnect(force: Bool) {}   // no-op by default (e.g. loopback)
     func reconnect() { reconnect(force: false) }
     func stop() {}                   // no-op by default (e.g. loopback, Game Center)
+    func setMatchToken(_ token: String?) {}   // only the nearby transports pair by invitation
 }
 
 // MARK: - Nearby transports
