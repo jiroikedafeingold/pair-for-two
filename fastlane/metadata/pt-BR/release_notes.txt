@@ -1,7 +1,6 @@
-• Conexão por perto mais firme: um emparelhamento travado agora se recupera sozinho em vez de girar sem fim, e dois iPhones preferem o link direto por Bluetooth / Wi-Fi Direct a uma rede compartilhada.
-• Os ajustes mostram qual conexão está levando a partida, então uma queda fica mais fácil de explicar.
-• Botões maiores durante a partida no iPhone: Distribuir, Go e Continuar agora têm o tamanho dos demais.
-• O texto fica no lugar com qualquer tamanho de fonte do sistema, em vez de cortar os rótulos.
-• Escolher como pontuar ficou mais simples: o app conta, ou você conta.
+• Bem mais rápido para voltar a se conectar. Se um jogador troca de app no meio da partida, o outro aparelho percebe em segundos em vez de esperar, e os dois seguem se procurando até parear.
+• Retomar uma partida é mais rápido e firme, e só reconecta você à sua própria partida, mesmo que haja outra interrompida por perto.
+• Um aparelho que já está em partida não aparece mais na lista de partidas que os outros podem entrar.
+• Se este aparelho não tem permissão para procurar aparelhos por perto, o app avisa e aponta o ajuste, em vez de procurar sem parar.
 
 Obrigado por jogar! Dúvidas ou comentários? apps@feingold5.com

@@ -1,7 +1,6 @@
-• Stabilere Verbindung in der Nähe — eine Kopplung, die hängt, erholt sich jetzt selbst, statt endlos zu drehen, und zwei iPhones nehmen lieber die direkte Bluetooth-/Wi-Fi-Direct-Verbindung als ein gemeinsames Netzwerk.
-• Die Einstellungen nennen die Verbindung, über die gespielt wird — so lässt sich ein Abbruch leichter erklären.
-• Größere Tasten im Spiel auf dem iPhone — Geben, Go und Weiter haben jetzt die Größe der übrigen.
-• Der Text bleibt an seinem Platz, egal wie groß die Systemschrift eingestellt ist, statt Beschriftungen abzuschneiden.
-• Die Wahl beim Zählen ist einfacher: die App zählt, oder du zählst.
+• Deutlich schneller wieder zusammen. Wechselt ein Spieler mitten im Spiel die App, merkt das andere Telefon es in Sekunden statt zu warten, und beide suchen weiter, bis sie verbunden sind.
+• Eine Partie wieder aufzunehmen geht schneller und stabiler — und verbindet dich nur mit deiner eigenen Partie, auch wenn in der Nähe eine andere unterbrochene läuft.
+• Ein Telefon, das schon in einer Partie ist, erscheint nicht mehr in der Liste der Spiele, denen andere beitreten können.
+• Darf dieses Telefon nicht nach Geräten in der Nähe suchen, sagt die App das jetzt und zeigt auf die Einstellung, statt endlos zu suchen.
 
 Danke fürs Spielen! Fragen oder Rückmeldungen? apps@feingold5.com

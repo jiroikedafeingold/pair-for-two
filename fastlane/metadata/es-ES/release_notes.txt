@@ -1,7 +1,6 @@
-• Conexión cercana más estable: un emparejamiento que se queda colgado ahora se recupera solo en vez de girar sin fin, y dos iPhone prefieren su enlace directo por Bluetooth / Wi-Fi Direct antes que una red compartida.
-• Los ajustes indican qué conexión lleva la partida, así es más fácil explicar un corte.
-• Botones más grandes durante la partida en el iPhone: Repartir, Go y Continuar ya son del tamaño de los demás.
-• El texto se queda en su sitio con cualquier tamaño de letra del sistema, en vez de recortar las etiquetas.
-• Elegir cómo puntuar es más sencillo: cuenta la app, o cuentas tú.
+• Mucho más rápido volver a conectar. Si alguien cambia de app en plena partida, el otro móvil se da cuenta en segundos en vez de esperar, y ambos siguen buscándose hasta emparejarse.
+• Retomar una partida es más rápido y estable, y solo te reconecta a tu propia partida, aunque haya otra interrumpida cerca.
+• Un móvil que ya está en una partida deja de aparecer en la lista de partidas a las que otros pueden unirse.
+• Si este móvil no tiene permiso para buscar dispositivos cercanos, la app lo dice y señala el ajuste, en vez de buscar sin fin.
 
 ¡Gracias por jugar! ¿Preguntas o comentarios? apps@feingold5.com

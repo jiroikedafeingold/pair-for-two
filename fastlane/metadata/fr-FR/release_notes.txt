@@ -1,7 +1,6 @@
-• Connexion à proximité plus solide : un appairage qui se bloque se rattrape maintenant tout seul au lieu de tourner sans fin, et deux iPhone préfèrent leur liaison directe Bluetooth / Wi-Fi Direct à un réseau partagé.
-• Les réglages indiquent quelle connexion porte la partie : une coupure est plus facile à expliquer.
-• Des boutons plus grands en cours de partie sur iPhone : Distribuer, Go et Continuer ont enfin la taille des autres.
-• Le texte reste en place quelle que soit la taille de police du système, au lieu de tronquer les libellés.
-• Le choix du comptage est plus simple : l'app compte, ou vous comptez.
+• Bien plus rapide à se retrouver. Si un joueur change d'app en pleine partie, l'autre téléphone s'en aperçoit en quelques secondes au lieu d'attendre, et les deux continuent à se chercher jusqu'à être appairés.
+• Reprendre une partie est plus rapide et plus solide : vous êtes reconnecté à votre partie et à aucune autre, même s'il y en a une autre interrompue à proximité.
+• Un téléphone déjà en partie n'apparaît plus dans la liste des parties que les autres peuvent rejoindre.
+• Si ce téléphone n'a pas l'autorisation de chercher les appareils à proximité, l'app le dit et indique le réglage, au lieu de chercher indéfiniment.
 
 Merci de jouer ! Questions ou remarques ? apps@feingold5.com

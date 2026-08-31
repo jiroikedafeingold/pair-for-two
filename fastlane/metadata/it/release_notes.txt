@@ -1,7 +1,6 @@
-• Connessione vicina più solida: un accoppiamento che si blocca ora si riprende da solo invece di girare a vuoto, e due iPhone preferiscono il collegamento diretto Bluetooth / Wi-Fi Direct a una rete condivisa.
-• Le impostazioni dicono quale connessione sta portando la partita, così un'interruzione è più facile da spiegare.
-• Pulsanti più grandi durante la partita su iPhone: Distribuisci, Go e Continua ora hanno la dimensione degli altri.
-• Il testo resta al suo posto con qualsiasi dimensione del carattere di sistema, invece di troncare le etichette.
-• Scegliere come contare è più semplice: conta l'app, o conti tu.
+• Molto più rapido ritrovarsi. Se un giocatore passa a un'altra app durante la partita, l'altro telefono se ne accorge in pochi secondi invece di aspettare, e continuano a cercarsi finché non sono connessi.
+• Riprendere una partita è più rapido e stabile, e ti riconnette solo alla tua partita, anche se ce n'è un'altra interrotta lì vicino.
+• Un telefono già in partita non compare più nell'elenco delle partite a cui gli altri possono unirsi.
+• Se questo telefono non ha il permesso di cercare dispositivi vicini, l'app lo dice e indica l'impostazione, invece di cercare all'infinito.
 
 Grazie per aver giocato! Domande o commenti? apps@feingold5.com

@@ -1,7 +1,6 @@
-• Steadier connections nearby — a pairing that stalls now recovers on its own instead of spinning, and two iPhones prefer their direct Bluetooth / Wi-Fi Direct link over a shared network.
-• Settings names the connection carrying the game, so a dropped link is easier to explain.
-• Bigger buttons during play on iPhone — Deal, Go and Continue are now the size of the rest.
-• Text keeps its place whatever your system text size is set to, instead of clipping labels.
-• Choosing how to score is simpler: the app counts, or you do.
+• Much quicker to get back together. If one player switches apps mid-game, the other phone notices within seconds instead of waiting, and both keep looking for each other until they're paired.
+• Picking a game back up is faster and steadier — and it only ever reconnects you to your own game, even if another interrupted game is nearby.
+• A phone that's already in a game no longer appears in someone else's list of games to join.
+• If this phone isn't allowed to look for nearby devices, the app now says so and points at the setting, instead of searching forever.
 
 Thanks for playing! Questions or feedback? apps@feingold5.com
