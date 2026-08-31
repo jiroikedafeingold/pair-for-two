@@ -93,6 +93,11 @@ protocol GameTransport: Sendable {
     /// in the invitations it sends and checks it against the ones it receives, so two interrupted games
     /// within radio range of each other can't cross-pair.
     func setMatchToken(_ token: String?)
+
+    /// Stand discovery back up. Worth calling whenever the app returns to the foreground: a browser or
+    /// advertiser can come back from a suspend dead, and a recovery already under way won't restart
+    /// one — so without this a game could sit "reconnecting" having quietly stopped looking.
+    func resumeSearch()
 }
 
 extension GameTransport {
@@ -100,6 +105,7 @@ extension GameTransport {
     func reconnect() { reconnect(force: false) }
     func stop() {}                   // no-op by default (e.g. loopback, Game Center)
     func setMatchToken(_ token: String?) {}   // only the nearby transports pair by invitation
+    func resumeSearch() {}                   // only the nearby transports search
 }
 
 // MARK: - Nearby transports

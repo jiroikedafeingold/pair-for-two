@@ -19,6 +19,10 @@ final class MultipeerSession: NSObject, NearbyTransport {
     let linkKind: LinkKind = .direct
     private(set) var phase: Phase = .idle
     private(set) var discoveredPeers: [MCPeerID] = []
+    /// Set when iOS refused to start browsing or advertising at all. Denied Local Network access is the
+    /// usual reason — and the one worth telling the player about, because nothing else in the app can
+    /// hint at it: both radios look fine and the screen just searches forever.
+    private(set) var searchBlocked = false
     private(set) var connectedPeerName: String?
     /// When something last arrived from the peer. `MCSession.connectedPeers` keeps listing a peer for
     /// its whole keep-alive window after the other app is suspended, and a `send` to that ghost
@@ -681,6 +685,11 @@ extension MultipeerSession: MCSessionDelegate {
 
 extension MultipeerSession: MCNearbyServiceAdvertiserDelegate {
     nonisolated func advertiser(_ advertiser: MCNearbyServiceAdvertiser,
+                                didNotStartAdvertisingPeer error: Error) {
+        Task { @MainActor in self.noteSearchFailure() }
+    }
+
+    nonisolated func advertiser(_ advertiser: MCNearbyServiceAdvertiser,
                                 didReceiveInvitationFromPeer peerID: MCPeerID,
                                 withContext context: Data?,
                                 invitationHandler: @escaping (Bool, MCSession?) -> Void) {
@@ -688,6 +697,8 @@ extension MultipeerSession: MCNearbyServiceAdvertiserDelegate {
         // actor (it may be mid-rebuild); the handler can be invoked from any thread.
         let offeredToken = context.flatMap { String(data: $0, encoding: .utf8) }
         Task { @MainActor in
+            // An invitation arriving at all means the service is up.
+            self.searchBlocked = false
             // An invitation naming a game we aren't in. Two shapes, both wrong to accept:
             //
             //  - we're in (or resuming) a different game — the cross-pairing that advertising through
@@ -736,6 +747,40 @@ extension MultipeerSession: MCNearbyServiceAdvertiserDelegate {
     }
 }
 
+// MARK: - When the service can't start
+//
+// Both of these were unimplemented, so a service that never started looked exactly like a room with
+// nobody in it: a spinner, forever. They fire for denied Local Network access and for transient
+// failures (a radio coming up, the app returning to the foreground), so the response is both to say so
+// and to try again — the flag clears the moment a start succeeds.
+
+extension MultipeerSession {
+    private func noteSearchFailure() {
+        searchBlocked = true
+        // Transient failures are common and clear on their own, so keep trying rather than giving the
+        // player a dead end. Rate-limited by `startRole`/`startBoth`'s own floor.
+        Task { @MainActor [weak self] in
+            try? await Task.sleep(for: .seconds(3))
+            guard let self, self.searchBlocked else { return }
+            self.resumeSearch()
+        }
+    }
+
+    /// Stand this side's discovery back up. Used when the app returns to the foreground — a browser can
+    /// come back from a suspend dead, and nothing else would ever restart it — and while a search is
+    /// getting nowhere.
+    func resumeSearch() {
+        switch phase {
+        case .hosting, .browsing:
+            startRole()
+        case .connecting, .reconnecting:
+            startBoth(force: true)
+        case .idle, .connected, .disconnected:
+            return
+        }
+    }
+}
+
 // MARK: - Browser (guest)
 
 extension MultipeerSession: MCNearbyServiceBrowserDelegate {
@@ -745,6 +790,7 @@ extension MultipeerSession: MCNearbyServiceBrowserDelegate {
         let inGame = info?["g"] == "1"
         let pairing = info?["p"] == "1"
         Task { @MainActor in
+            self.searchBlocked = false                                   // clearly not blocked after all
             if let token { self.peerTokens[peer.displayName] = token }   // for the display-name tiebreak
             if inGame {
                 self.inGamePeers.insert(peer.displayName)
@@ -769,5 +815,9 @@ extension MultipeerSession: MCNearbyServiceBrowserDelegate {
     nonisolated func browser(_ browser: MCNearbyServiceBrowser, lostPeer peerID: MCPeerID) {
         let peer = peerID
         Task { @MainActor in self.removePeer(peer) }
+    }
+
+    nonisolated func browser(_ browser: MCNearbyServiceBrowser, didNotStartBrowsingForPeers error: Error) {
+        Task { @MainActor in self.noteSearchFailure() }
     }
 }

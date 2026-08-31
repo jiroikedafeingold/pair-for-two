@@ -30,6 +30,7 @@ struct ConnectView: View {
     @State private var connectStalled = false  // surfaced after a while so a stuck connect isn't a silent spinner
     @State private var handedOff = false       // both transports can report .connected; only hand up once
     @State private var offerWiFiPeers = false  // see `rows`: Multipeer gets first refusal
+    @Environment(\.scenePhase) private var scenePhase
 
     private var resuming: Bool { resumeRole != nil }
 
@@ -115,6 +116,8 @@ struct ConnectView: View {
 
     /// How long Multipeer gets to find a peer before Wi-Fi rows are offered as well.
     private static let multipeerHeadStart: Duration = .seconds(3)
+    /// How often a search that has turned up nothing is stood back up.
+    private static let searchRefresh: Duration = .seconds(25)
 
     var body: some View {
         ZStack {
@@ -190,6 +193,26 @@ struct ConnectView: View {
             guard !Task.isCancelled else { return }
             offerWiFiPeers = true
         }
+        // Coming back to the app is the moment a search most often needs standing back up: a browser
+        // or advertiser can return from a suspend dead, and nothing here would ever have restarted it,
+        // so the screen would search forever having stopped looking.
+        .onChange(of: scenePhase) { _, phase in
+            guard phase == .active else { return }
+            mc.resumeSearch()
+            if lanActive { lan.resumeSearch() }
+        }
+        // And a long wait shouldn't die quietly. Only while nothing has been found — re-arming under a
+        // list the player is reading would make rows flicker, and MultipeerConnectivity punishes
+        // discovery being restarted for no reason.
+        .task(id: uiPhase) {
+            guard uiPhase == .hosting || uiPhase == .browsing else { return }
+            while !Task.isCancelled {
+                try? await Task.sleep(for: Self.searchRefresh)
+                guard !Task.isCancelled, rows.isEmpty else { return }
+                mc.resumeSearch()
+                if lanActive { lan.resumeSearch() }
+            }
+        }
     }
 
     // MARK: - Actions
@@ -242,6 +265,7 @@ struct ConnectView: View {
         case .hosting:
             VStack(spacing: 14) {
                 ProgressView().tint(.white).controlSize(.large)
+                blockedNotice
                 Group {
                     if resuming {
                         Text("Waiting for the other player to rejoin…", comment: "Host is waiting during a resume")
@@ -281,6 +305,7 @@ struct ConnectView: View {
                 }
                 if rows.isEmpty && !holdingWiFiPeers {
                     VStack(spacing: 6) {
+                        blockedNotice
                         Text("No hosts yet — make sure the other phone is hosting.")
                             .font(.caption).foregroundStyle(.white.opacity(0.6))
                         Text("For an Android phone, both devices must be on the same Wi-Fi network.")
@@ -359,6 +384,19 @@ struct ConnectView: View {
                 Button("Try again", action: startBrowsing)
                     .buttonStyle(.borderedProminent).tint(.cribGold).foregroundStyle(.black)
             }
+        }
+    }
+
+    /// Shown when iOS has refused to start the search. Worth its own message because nothing else on
+    /// this screen can hint at it: both radios look fine, and searching forever is what a quiet room
+    /// looks like too.
+    @ViewBuilder private var blockedNotice: some View {
+        if mc.searchBlocked {
+            Text("This phone isn't allowed to look for nearby devices. In Settings, check that **Local Network** access is on for Pair for Two, and that Wi-Fi or Bluetooth is switched on.",
+                 comment: "Shown when iOS refuses to start the nearby search; the bold words match the Settings switch")
+                .font(.caption).foregroundStyle(Color.cribGold)
+                .multilineTextAlignment(.center)
+                .frame(maxWidth: 400)
         }
     }
 

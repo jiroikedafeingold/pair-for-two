@@ -23917,6 +23917,71 @@
         }
       }
     },
+    "This phone isn't allowed to look for nearby devices. In Settings, check that **Local Network** access is on for Pair for Two, and that Wi-Fi or Bluetooth is switched on." : {
+      "comment" : "Shown when iOS refuses to start the nearby search; the bold words match the Settings switch",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dieses Telefon darf nicht nach Geräten in der Nähe suchen. Prüfe in den Einstellungen, ob **Lokales Netzwerk** für Pair for Two erlaubt ist und ob WLAN oder Bluetooth eingeschaltet ist."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Este teléfono no tiene permiso para buscar dispositivos cercanos. En Ajustes, comprueba que **Red local** esté activado para Pair for Two y que el Wi-Fi o el Bluetooth estén encendidos."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ce téléphone n'a pas l'autorisation de chercher les appareils à proximité. Dans Réglages, vérifiez que l'accès au **réseau local** est activé pour Pair for Two, et que le Wi-Fi ou le Bluetooth est allumé."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Questo telefono non ha il permesso di cercare dispositivi vicini. In Impostazioni, controlla che **Rete locale** sia attivo per Pair for Two e che il Wi-Fi o il Bluetooth sia acceso."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "この端末は近くのデバイスを検索する許可がありません。「設定」でPair for Twoの**ローカルネットワーク**がオンになっているか、Wi-FiまたはBluetoothがオンになっているかを確認してください。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "이 기기는 근처 기기를 찾을 권한이 없습니다. 설정에서 Pair for Two의 **로컬 네트워크** 접근이 켜져 있는지, Wi-Fi 또는 Bluetooth가 켜져 있는지 확인하세요."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Este telefone não tem permissão para procurar aparelhos por perto. Em Ajustes, verifique se a **Rede local** está liberada para o Pair for Two e se o Wi-Fi ou o Bluetooth está ligado."
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bu telefonun yakındaki cihazları arama izni yok. Ayarlar'da Pair for Two için **Yerel Ağ** erişiminin açık olduğunu ve Wi-Fi ya da Bluetooth'un açık olduğunu kontrol et."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "这台手机没有查找附近设备的权限。请在“设置”中确认 Pair for Two 的**本地网络**权限已开启，并且 Wi-Fi 或蓝牙已打开。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "這台手機沒有尋找附近裝置的權限。請在「設定」中確認 Pair for Two 的**區域網路**權限已開啟，並且 Wi-Fi 或藍牙已開啟。"
+          }
+        }
+      }
+    },
     "This side" : {
       "comment" : "Header when editing the near player on the shared board",
       "localizations" : {

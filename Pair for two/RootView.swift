@@ -136,6 +136,7 @@ struct RootView: View {
                     // report it connected — force a rebuild so we re-pair in seconds, not ~30s. A mere
                     // transient inactive (control center, a banner) does a plain, non-destructive nudge.
                     vm?.reconnect(force: wasBackgrounded)
+                    vm?.resumeSearch()
                     wasBackgrounded = false
                 case .background:
                     wasBackgrounded = true

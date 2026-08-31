@@ -120,10 +120,31 @@ final class LANTransport: NearbyTransport {
         }
         listener.stateUpdateHandler = { [weak self] state in
             guard case .failed = state else { return }
-            Task { @MainActor in self?.fail() }
+            // Was terminal, which meant a host whose listener failed to start sat on "waiting for a
+            // player" that could never arrive. Stand it back up instead, and only give up on the
+            // hosting attempt if the player leaves the screen.
+            Task { @MainActor in self?.restartListenerAfterFailure() }
         }
         listener.start(queue: queue)
         self.listener = listener
+    }
+
+    private func restartListenerAfterFailure() {
+        guard phase == .hosting || phase == .reconnecting else { fail(); return }
+        Task { @MainActor [weak self] in
+            try? await Task.sleep(for: .seconds(3))
+            guard let self, self.phase == .hosting || self.phase == .reconnecting else { return }
+            self.startListener()
+        }
+    }
+
+    /// Stand this side's discovery back up, for a return to the foreground or a search going nowhere.
+    func resumeSearch() {
+        switch phase {
+        case .hosting: startListener()
+        case .browsing: startBrowser()
+        default: return
+        }
     }
 
     private func startBrowser() {
@@ -135,8 +156,26 @@ final class LANTransport: NearbyTransport {
             let peers = results.compactMap(Self.peer(from:))
             Task { @MainActor in self?.updatePeers(peers) }
         }
+        // A browser can fail to start — denied local network access, most often — and this went
+        // unwatched, so the failure was indistinguishable from an empty room. Try again rather than
+        // searching forever; `waiting` covers the permission prompt still being open.
+        browser.stateUpdateHandler = { [weak self] state in
+            guard case .failed = state else { return }
+            Task { @MainActor in self?.restartBrowserAfterFailure() }
+        }
         browser.start(queue: queue)
         self.browser = browser
+    }
+
+    /// A failed browser is dead: `NWBrowser` doesn't recover, it has to be replaced. Paced so a
+    /// permanently refused permission doesn't turn into a spin.
+    private func restartBrowserAfterFailure() {
+        guard phase == .browsing || phase == .reconnecting else { return }
+        Task { @MainActor [weak self] in
+            try? await Task.sleep(for: .seconds(3))
+            guard let self, self.phase == .browsing || self.phase == .reconnecting else { return }
+            self.startBrowser()
+        }
     }
 
     /// Only Bonjour service results are joinable, and the service name is the host's display

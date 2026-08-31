@@ -875,6 +875,11 @@ final class GameViewModel {
     /// so we don't wait out the OS's slow drop detection.
     func reconnect(force: Bool = false) { transport.reconnect(force: force) }
 
+    /// Returning to the foreground. Beyond nudging the link, make sure the transport is still *looking*:
+    /// a recovery that began before the app was suspended won't restart discovery by itself, and MC's
+    /// browser and advertiser can come back from a suspend dead. No-op on a healthy link.
+    func resumeSearch() { transport.resumeSearch() }
+
     func sayGo() { submit(.intentGo) }
     func claim(_ amount: Int, for player: PlayerID) { submit(.claimPoints(player: player, amount: amount)) }
     func undo(for player: PlayerID) { submit(.undo(player: player)) }
