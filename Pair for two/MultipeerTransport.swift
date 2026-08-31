@@ -282,6 +282,11 @@ final class MultipeerSession: NSObject, NearbyTransport {
     private func refreshDiscovery() {
         if let last = lastDiscoveryRestartAt,
            Date().timeIntervalSince(last) < Self.minDiscoveryRestartInterval { return }
+        // If a half that should be running isn't, this is a start rather than a refresh.
+        if browser == nil || (symmetricPairing && advertiser == nil) {
+            startBoth(force: true)
+            return
+        }
         lastDiscoveryRestartAt = Date()
         browser?.stopBrowsingForPeers()
         browser = makeBrowser()
@@ -388,7 +393,12 @@ final class MultipeerSession: NSObject, NearbyTransport {
         continuation.yield(.reconnecting)
         pendingInviteAt = nil
         rebuildSession()
-        startBoth()
+        // Forced: the rate limiter exists to stop the retry loop thrashing discovery, and this is the
+        // *start* of recovery, where both halves have to be running. Unforced, it silently did nothing
+        // whenever the last restart was inside the floor — discovery is stopped the moment a game
+        // connects, but the timestamp isn't, so a link that dropped soon after connecting left this
+        // phone "recovering" while neither advertising nor browsing.
+        startBoth(force: true)
         startPairingRetry()   // keep re-inviting until paired, instead of hoping the first invite lands
     }
 
@@ -420,10 +430,16 @@ final class MultipeerSession: NSObject, NearbyTransport {
         continuation.finish()
     }
 
+    /// Stop looking, and *drop the objects*, so `advertiser == nil` reliably means "not advertising"
+    /// — `refreshDiscovery` reads it that way. Clearing the restart timestamp matters just as much:
+    /// nothing is running, so the "don't restart discovery too often" floor has nothing to protect and
+    /// must not stand in the way of the next start.
     private func stopDiscovery() {
-        advertiser?.stopAdvertisingPeer()
-        browser?.stopBrowsingForPeers()
+        advertiser?.stopAdvertisingPeer(); advertiser = nil
+        browser?.stopBrowsingForPeers(); browser = nil
+        lastDiscoveryRestartAt = nil
         discoveredPeers.removeAll()
+        peerTokens.removeAll()
     }
 
     // MARK: GameTransport

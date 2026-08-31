@@ -84,11 +84,14 @@ final class GameViewModel {
     /// When anything last arrived from the peer. Both sides send on a timer — the host its snapshot,
     /// the guest a keepalive — so this is a liveness signal either way. See `startInboundWatchdog`.
     private var lastInboundAt = Date()
-    /// How long silence is tolerated before assuming the link is dead. Several missed beats.
-    private static let inboundSilenceLimit: TimeInterval = 10
-    /// A guest's keepalive interval. Comfortably inside `inboundSilenceLimit`, so the host has to miss
-    /// two before it acts.
-    private static let keepaliveInterval: TimeInterval = 4
+    /// How long silence is tolerated before assuming the link is dead. This is the whole cost of a
+    /// drop for the phone that *stayed*: nothing else tells it the other end is gone, and until it
+    /// knows, it is neither advertising nor browsing, so the returning phone has nothing to find.
+    /// Short enough to matter, long enough to ride out a couple of missed beats — the host sends every
+    /// two seconds, the guest every three.
+    private static let inboundSilenceLimit: TimeInterval = 8
+    /// A guest's keepalive interval, comfortably inside `inboundSilenceLimit`.
+    private static let keepaliveInterval: TimeInterval = 3
     nonisolated(unsafe) private var keepaliveTask: Task<Void, Never>?
     /// Set once a guest's mid-game keepalive has been seen. A guest on an older build never sends one
     /// and legitimately goes quiet for minutes at a time, so the host's watchdog stays disarmed until
