@@ -961,8 +961,22 @@ final class GameViewModel {
         heartbeatTask?.cancel()
         watchdogTask?.cancel()
         keepaliveTask?.cancel()
+        transport.stop()
         GamePersistence.clear()
         ended = true
+    }
+
+    /// Leaving the game screen *without* ending the game — the opponent-left notice, a rematch that
+    /// couldn't be set up. The saved game stays where it is, so "Rejoin" is still offered, but the
+    /// transport must go: it advertises for the whole game now, and an advertiser that outlives this
+    /// object would accept the partner's invitation into a session nothing is listening to, leaving
+    /// them apparently connected to a game that isn't running.
+    func close() {
+        eventsTask?.cancel()
+        heartbeatTask?.cancel()
+        watchdogTask?.cancel()
+        keepaliveTask?.cancel()
+        transport.stop()
     }
 
     deinit {

@@ -107,6 +107,21 @@ final class MultipeerSession: NSObject, NearbyTransport {
     /// read back from the browser, so exactly one side invites even then.
     private let launchToken = String(UUID().uuidString.prefix(8))
     private var peerTokens: [String: String] = [:]   // display name → their launch token
+    /// Display names of peers whose advertisement says they are mid-game — see `makeAdvertiser`.
+    private var inGamePeers: Set<String> = []
+    /// Display names of peers whose advertisement says they are *looking to pair*, as opposed to
+    /// merely staying findable through a game. Only these take part in the inviter election.
+    private var pairingPeers: Set<String> = []
+
+    /// The peers a player may actually join: everyone advertising who isn't already in a game.
+    ///
+    /// An in-game advertisement isn't an offer. It exists so the phone's *own* partner can find it
+    /// again after a suspend, and putting it in a stranger's join list would only offer a row that
+    /// declines them (see the advertiser delegate). Rejoining and reconnecting read the unfiltered
+    /// `discoveredPeers`, which is the whole point.
+    var joinablePeers: [MCPeerID] {
+        discoveredPeers.filter { !inGamePeers.contains($0.displayName) }
+    }
 
     init(displayName: String) {
         let trimmed = displayName.trimmingCharacters(in: .whitespaces)
@@ -292,11 +307,24 @@ final class MultipeerSession: NSObject, NearbyTransport {
         browser = makeBrowser()
     }
 
+    /// Whether this phone is advertising in order to be *rejoined* rather than joined: it is in a
+    /// game, or picking one back up.
+    private var advertisingInGame: Bool { didConnect || rendezvousActive }
+
     /// The advertisement carries `launchToken` so the other side can break a display-name tie — see
-    /// `shouldInvite`.
+    /// `shouldInvite` — and, once there's a game on, a flag saying so.
+    ///
+    /// `discoveryInfo` is fixed when the advertiser is built, which is why the advertiser is rebuilt
+    /// rather than left running whenever that flag changes.
     private func makeAdvertiser() -> MCNearbyServiceAdvertiser {
+        var info = ["t": launchToken]
+        if advertisingInGame { info["g"] = "1" }
+        // "I am trying to pair", distinct from "I am in a game": a phone mid-game advertises to be
+        // findable and will not invite anyone, so the other side must not wait for it to. See
+        // `shouldInvite`.
+        if isPairing { info["p"] = "1" }
         let adv = MCNearbyServiceAdvertiser(peer: myPeerID,
-                                            discoveryInfo: ["t": launchToken],
+                                            discoveryInfo: info,
                                             serviceType: serviceType)
         adv.delegate = self
         adv.startAdvertisingPeer()
@@ -327,6 +355,8 @@ final class MultipeerSession: NSObject, NearbyTransport {
     private func discardDiscoveries() {
         discoveredPeers.removeAll()
         peerTokens.removeAll()
+        inGamePeers.removeAll()
+        pairingPeers.removeAll()
         pendingInviteAt = nil
         handshakeStartedAt = nil
         deferredToPeerSince = nil
@@ -368,6 +398,11 @@ final class MultipeerSession: NSObject, NearbyTransport {
         // whenever the guest's name sorted after the host's, nobody would ever send an invitation.
         guard symmetricPairing else { return !isHost }
         let mine = myPeerID.displayName, theirs = peer.displayName
+        // Only elect between phones that are *both* pairing. One that is merely advertising its way
+        // through a game — the partner who never noticed the link die — is not going to invite
+        // anybody, and deferring to it is the deadlock the grace period in the retry loop exists to
+        // break. Its advertisement says so, so there's no need to wait out the grace at all.
+        if !pairingPeers.contains(theirs) { return true }
         if mine != theirs { return mine < theirs }
         guard let theirToken = peerTokens[theirs] else { return true }   // no token seen: fall back to inviting
         return launchToken <= theirToken
@@ -420,26 +455,43 @@ final class MultipeerSession: NSObject, NearbyTransport {
         session.delegate = self
     }
 
+    /// Tear everything down. Now that advertising runs for the whole game, this has to be called when
+    /// the game screen is left — an advertiser outliving its `GameViewModel` would answer the partner's
+    /// invitation and pair them to a session nobody is listening to.
     func stop() {
         rendezvousActive = false
         recovering = false
         rendezvousTask?.cancel(); rendezvousTask = nil
-        advertiser?.stopAdvertisingPeer()
-        browser?.stopBrowsingForPeers()
+        advertiser?.stopAdvertisingPeer(); advertiser = nil
+        browser?.stopBrowsingForPeers(); browser = nil
         session.disconnect()
         continuation.finish()
     }
 
-    /// Stop looking, and *drop the objects*, so `advertiser == nil` reliably means "not advertising"
-    /// — `refreshDiscovery` reads it that way. Clearing the restart timestamp matters just as much:
-    /// nothing is running, so the "don't restart discovery too often" floor has nothing to protect and
-    /// must not stand in the way of the next start.
-    private func stopDiscovery() {
-        advertiser?.stopAdvertisingPeer(); advertiser = nil
+    /// Paired: stop looking, but **keep advertising for the whole game**.
+    ///
+    /// This is what makes a returning phone fast. Discovery used to stop altogether on connect, so
+    /// when one app was suspended the other was neither advertising nor browsing — the returning phone
+    /// had nothing to find, and nothing could happen until its partner independently noticed the
+    /// silence. Staying advertised means the phone that comes back finds its partner immediately and
+    /// invites it; the partner's advertiser answers, and the stale-link check accepts.
+    ///
+    /// The advertiser is rebuilt rather than left alone because it now has to carry the in-game flag
+    /// (`makeAdvertiser`), which keeps this advertisement out of strangers' join lists.
+    ///
+    /// The browser's objects are dropped, so `browser == nil` reliably means "not browsing" —
+    /// `refreshDiscovery` reads it that way. Clearing the restart timestamp matters as much: browsing
+    /// isn't running, so the "don't restart discovery too often" floor has nothing to protect and must
+    /// not stand in the way of the next start.
+    private func stayAdvertisedAndStopBrowsing() {
         browser?.stopBrowsingForPeers(); browser = nil
         lastDiscoveryRestartAt = nil
         discoveredPeers.removeAll()
         peerTokens.removeAll()
+        inGamePeers.removeAll()
+        pairingPeers.removeAll()
+        advertiser?.stopAdvertisingPeer()
+        advertiser = makeAdvertiser()      // now flagged as in-game
     }
 
     // MARK: GameTransport
@@ -509,7 +561,7 @@ final class MultipeerSession: NSObject, NearbyTransport {
         pendingInviteAt = nil
         failedInviteCount = 0
         recovering = false
-        stopDiscovery()
+        stayAdvertisedAndStopBrowsing()
         flushOutbox()               // deliver anything queued during the gap
         continuation.yield(.connected)
     }
@@ -658,8 +710,20 @@ extension MultipeerSession: MCNearbyServiceBrowserDelegate {
     nonisolated func browser(_ browser: MCNearbyServiceBrowser, foundPeer peerID: MCPeerID, withDiscoveryInfo info: [String: String]?) {
         let peer = peerID
         let token = info?["t"]
+        let inGame = info?["g"] == "1"
+        let pairing = info?["p"] == "1"
         Task { @MainActor in
             if let token { self.peerTokens[peer.displayName] = token }   // for the display-name tiebreak
+            if inGame {
+                self.inGamePeers.insert(peer.displayName)
+            } else {
+                self.inGamePeers.remove(peer.displayName)
+            }
+            if pairing {
+                self.pairingPeers.insert(peer.displayName)
+            } else {
+                self.pairingPeers.remove(peer.displayName)
+            }
             self.addPeer(peer)
             // Auto-pair during a reconnect or a rendezvous resume (both sides browse). The single
             // inviter rule stops the two phones racing two half-open connections, and `invite` itself

@@ -75,8 +75,10 @@ struct ConnectView: View {
     private var rows: [Row] {
         var seen = Set<String>()
         var out: [Row] = []
-        // Multipeer first, so it wins the dedupe: it works with no network present.
-        for peer in mc.discoveredPeers where seen.insert(peer.displayName).inserted {
+        // Multipeer first, so it wins the dedupe: it works with no network present. `joinablePeers`,
+        // not every discovery: a phone advertises through its whole game now so its own partner can
+        // find it again, and those advertisements aren't offers to join.
+        for peer in mc.joinablePeers where seen.insert(peer.displayName).inserted {
             out.append(Row(id: "mc-\(peer.displayName)", name: peer.displayName,
                            overWiFi: false, connect: { mc.invite(peer) }))
         }

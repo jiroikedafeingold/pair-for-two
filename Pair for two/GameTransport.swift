@@ -82,11 +82,18 @@ protocol GameTransport: Sendable {
     /// `force` rebuilds the session even if it still *believes* it is connected — needed after a
     /// background/foreground cycle, where the OS often hasn't yet detected that the link dropped.
     func reconnect(force: Bool)
+
+    /// Shut the transport down for good. Declared here, not just on `NearbyTransport`, so a view model
+    /// holding `any GameTransport` can release the radios when its game is over — a nearby transport
+    /// advertises for the whole game, and one left running would answer a partner's invitation on
+    /// behalf of a game that no longer exists.
+    func stop()
 }
 
 extension GameTransport {
     func reconnect(force: Bool) {}   // no-op by default (e.g. loopback)
     func reconnect() { reconnect(force: false) }
+    func stop() {}                   // no-op by default (e.g. loopback, Game Center)
 }
 
 // MARK: - Nearby transports

@@ -329,6 +329,7 @@ struct RootView: View {
         case .game:
             if let vm {
                 GameTableView(vm: vm, onExit: {
+                    self.vm?.close()   // release the radios; the saved game (if any) stays
                     self.vm = nil
                     onlineTransport = nil
                     resumeRole = nil
