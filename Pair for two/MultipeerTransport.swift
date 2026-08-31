@@ -20,6 +20,12 @@ final class MultipeerSession: NSObject, NearbyTransport {
     private(set) var phase: Phase = .idle
     private(set) var discoveredPeers: [MCPeerID] = []
     private(set) var connectedPeerName: String?
+    /// When something last arrived from the peer. `MCSession.connectedPeers` keeps listing a peer for
+    /// its whole keep-alive window after the other app is suspended, and a `send` to that ghost
+    /// succeeds locally, so traffic is the only honest evidence the link is alive.
+    nonisolated(unsafe) private var lastInboundAt = Date()
+    /// Silence longer than this and we stop believing `connectedPeers`.
+    private static let inboundSilenceLimit: TimeInterval = 6
     private var didConnect = false   // once true, a drop triggers auto-rejoin rather than a plain disconnect
     private var recovering = false   // a reconnect is under way; further nudges shouldn't restart it
     private var rendezvousActive = false   // a "Rejoin" is in progress: keep retrying discovery+invite until connected
@@ -62,9 +68,21 @@ final class MultipeerSession: NSObject, NearbyTransport {
     /// One invitation at a time. A second invite to the same peer while the first is still open makes
     /// MC fail *both*, which reads as "it just won't connect".
     private var pendingInviteAt: Date?
+    /// When MC reported `.connecting` for the invitation in flight, i.e. the peer answered and a
+    /// handshake is genuinely under way. Nil means nobody has answered yet.
+    private var handshakeStartedAt: Date?
     /// Generous on purpose: the old 10s was shorter than a cold Bluetooth-only handshake, so the
     /// first attempt timed out even when the peers could see each other perfectly well.
     private static let inviteTimeout: TimeInterval = 20
+    /// But that generosity is for a *slow handshake*, not for an invitation nobody answered — and
+    /// those are what a reconnect runs into, because the peer's advertiser may not be up yet. MC says
+    /// `.connecting` the moment the other side accepts, so its silence tells the two apart: with no
+    /// answer at all there is nothing to wait for, and waiting the full 20s just delays the next try.
+    private static let unansweredInviteTimeout: TimeInterval = 8
+    /// How long the invitation in flight gets before it counts as gone.
+    private var currentInviteTimeout: TimeInterval {
+        handshakeStartedAt == nil ? Self.unansweredInviteTimeout : Self.inviteTimeout
+    }
     /// A failed invite leaves MCSession unusable, so recovery rebuilds it — but rebuilding on every
     /// failure thrashes. Rebuild at most this often.
     private var lastRebuildAt: Date?
@@ -77,6 +95,12 @@ final class MultipeerSession: NSObject, NearbyTransport {
     /// retry rebuilds the session first, which is what makes retrying worth anything.
     private var failedInviteCount = 0
     private static let maxInviteAttempts = 4
+
+    /// When we first declined to invite a discovered peer because the election said the other side
+    /// should. See the retry loop: that deferral cannot be open-ended.
+    private var deferredToPeerSince: Date?
+    /// How long to leave the invitation to the peer the election picked before sending one anyway.
+    private static let electionGrace: TimeInterval = 5
 
     /// Tiebreaker for `shouldInvite` when both phones show the same display name — which is the
     /// default case, since everyone starts out called "Player". Advertised in `discoveryInfo` and
@@ -148,7 +172,15 @@ final class MultipeerSession: NSObject, NearbyTransport {
         pairingGeneration += 1
         let generation = pairingGeneration
         rendezvousTask = Task { @MainActor [weak self] in
-            defer { if self?.pairingGeneration == generation { self?.rendezvousTask = nil } }
+            defer {
+                if let self, self.pairingGeneration == generation {
+                    self.rendezvousTask = nil
+                    // `recovering` exists to stop every failed heartbeat restarting recovery while
+                    // this loop is working. Once the loop is gone it would only block the next
+                    // attempt — `reconnect` returns early on it — so leaving it set bricks recovery.
+                    if self.session.connectedPeers.isEmpty { self.recovering = false }
+                }
+            }
             while true {
                 try? await Task.sleep(for: .seconds(2))
                 if Task.isCancelled { return }
@@ -167,7 +199,25 @@ final class MultipeerSession: NSObject, NearbyTransport {
                 }
                 if let peer = self.discoveredPeers.last(where: { self.shouldInvite($0) }) {
                     self.invite(peer)
-                } else if self.discoveredPeers.isEmpty {
+                } else if let peer = self.discoveredPeers.last {
+                    // Found the peer, but the election says it invites us. That holds only while the
+                    // other phone is *also* trying to pair — and in the case that matters most it
+                    // isn't: a phone whose partner switched apps carries on believing the link is
+                    // live until MC's own keep-alive expires, so it isn't inviting anyone. Deferring
+                    // to it forever is the deadlock, and the loop won't refresh discovery either
+                    // because the peer list isn't empty. Wait out the grace period, then invite
+                    // regardless. Two invitations crossing is the risk; both sides silent is worse,
+                    // and by then the elected inviter has had its chance.
+                    if let since = self.deferredToPeerSince {
+                        if Date().timeIntervalSince(since) >= Self.electionGrace {
+                            self.deferredToPeerSince = nil
+                            self.invite(peer)
+                        }
+                    } else {
+                        self.deferredToPeerSince = Date()
+                    }
+                } else {
+                    self.deferredToPeerSince = nil
                     self.refreshDiscovery()   // no one found yet (rate-limited)
                 }
             }
@@ -177,7 +227,7 @@ final class MultipeerSession: NSObject, NearbyTransport {
     /// Whether an invitation is still within its timeout, and so should be left to resolve.
     private var inviteInFlight: Bool {
         guard let sent = pendingInviteAt else { return false }
-        return Date().timeIntervalSince(sent) < Self.inviteTimeout
+        return Date().timeIntervalSince(sent) < currentInviteTimeout
     }
 
     /// An invitation that outlived its timeout with MC never reporting anything, either way. Derived
@@ -186,7 +236,7 @@ final class MultipeerSession: NSObject, NearbyTransport {
     /// invite — clears this with it.
     private var inviteWentQuiet: Bool {
         guard let sent = pendingInviteAt else { return false }
-        return Date().timeIntervalSince(sent) >= Self.inviteTimeout
+        return Date().timeIntervalSince(sent) >= currentInviteTimeout
     }
 
     /// (Re)create and start the advertiser (host) or browser (guest). Fresh instances are used so a
@@ -221,12 +271,20 @@ final class MultipeerSession: NSObject, NearbyTransport {
         browser = makeBrowser()
     }
 
-    /// Nothing found yet — stand discovery back up, rate-limited. Symmetric pairing needs both halves
-    /// running; a plain join only needs this side's role, so it doesn't start advertising as a guest.
+    /// Nothing found yet — stand discovery back up, rate-limited.
+    ///
+    /// Only the **browser** is replaced. Browsing is what has failed to turn anything up; the
+    /// advertiser is the half a peer needs in order to invite *us*, and tearing it down and standing
+    /// it back up every few seconds is a good way to make an inbound invitation land on an advertiser
+    /// that no longer exists — the other phone then waits out its own invite timeout for nothing.
+    /// (The advertiser does get replaced when recovery starts, in `startBoth`, which is where a
+    /// resume-after-background needs it.) A plain join has no advertiser to keep.
     private func refreshDiscovery() {
         if let last = lastDiscoveryRestartAt,
            Date().timeIntervalSince(last) < Self.minDiscoveryRestartInterval { return }
-        if symmetricPairing { startBoth(force: true) } else { startRole() }
+        lastDiscoveryRestartAt = Date()
+        browser?.stopBrowsingForPeers()
+        browser = makeBrowser()
     }
 
     /// The advertisement carries `launchToken` so the other side can break a display-name tie — see
@@ -265,18 +323,27 @@ final class MultipeerSession: NSObject, NearbyTransport {
         discoveredPeers.removeAll()
         peerTokens.removeAll()
         pendingInviteAt = nil
+        handshakeStartedAt = nil
+        deferredToPeerSince = nil
     }
 
     func invite(_ peer: MCPeerID) {
         guard !inviteInFlight else { return }   // never two open invitations — MC fails both
         phase = .connecting
         pendingInviteAt = Date()
+        handshakeStartedAt = nil
+        deferredToPeerSince = nil
         browser?.invitePeer(peer, to: session, withContext: nil, timeout: Self.inviteTimeout)
         // Follow it up. This is also the path a tap on the join list takes, and a tap used to be a
         // one-shot: if MC answered with a failure we recovered in `handleDrop`, but if it never
         // answered at all the screen spun forever with nothing behind it. `isPairing` is true now that
         // the phase is `.connecting`, so the loop stays alive until we're paired or the player leaves.
         startPairingRetry()
+    }
+
+    /// Nothing has arrived from the peer for a while, so `connectedPeers` listing it means little.
+    private var linkLooksStale: Bool {
+        Date().timeIntervalSince(lastInboundAt) > Self.inboundSilenceLimit
     }
 
     /// Whether both phones are browsing, so the inviter has to be elected: a rendezvous ("Rejoin" on
@@ -431,7 +498,12 @@ final class MultipeerSession: NSObject, NearbyTransport {
         continuation.yield(.connected)
     }
 
-    private func markConnecting() { if phase != .reconnecting { phase = .connecting } }
+    /// MC reached `.connecting` for a peer: our invitation was accepted, or we accepted theirs. Either
+    /// way a handshake is under way and deserves the longer of the two invite timeouts.
+    private func markConnecting() {
+        handshakeStartedAt = Date()
+        if phase != .reconnecting { phase = .connecting }
+    }
 
     /// A session state drop. If we had already connected, treat it as a temporary drop and keep
     /// trying to rejoin the peer (advertise/browse again, guest auto-invites on rediscovery).
@@ -510,6 +582,7 @@ extension MultipeerSession: MCSessionDelegate {
     }
 
     nonisolated func session(_ session: MCSession, didReceive data: Data, fromPeer peerID: MCPeerID) {
+        lastInboundAt = Date()
         negotiator.observe(data)   // upgrade to v1 once the peer's hello announces it
         if let message = WireCodec.decode(data) {
             continuation.yield(.received(message))
@@ -530,28 +603,33 @@ extension MultipeerSession: MCNearbyServiceAdvertiserDelegate {
                                 invitationHandler: @escaping (Bool, MCSession?) -> Void) {
         // Auto-accept: this is a two-player game, first invitation wins. Read `session` on the main
         // actor (it may be mid-rebuild); the handler can be invoked from any thread.
-        let name = peerID.displayName
         Task { @MainActor in
             if self.session.connectedPeers.isEmpty {
                 invitationHandler(true, self.session)
-            } else if self.didConnect, self.connectedPeerName == name {
-                // Our own partner, asking to pair again while we still believe they're here. That
-                // invitation is proof the link is dead — they only send one after tearing their side
-                // down — so it's better evidence than `connectedPeers`, which MC can keep reporting for
-                // its whole keep-alive window after a background/foreground cycle.
+            } else if self.didConnect, self.linkLooksStale {
+                // We still believe we have a peer, but nothing has arrived from it for a while and now
+                // somebody is asking to pair. That invitation is far better evidence than
+                // `connectedPeers`, which MC keeps reporting for its whole keep-alive window after the
+                // other app is suspended.
                 //
                 // Accepting into the stale session (what used to happen) got us nowhere: MC already has
                 // that peer, so the handshake fails, and the failure can't start a recovery either
                 // because `reconnect` sees a non-empty `connectedPeers` and returns. Both phones then
                 // wait for the other. Rebuild first and accept into the fresh session instead.
+                //
+                // Judged on silence rather than on the peer's name, which was the first attempt at
+                // this: a phone that has been force-quit comes back with a *new* `MCPeerID` carrying
+                // whatever name its owner has since set in Settings, and a name that no longer matched
+                // was declined — the very reconnect this branch exists to allow.
                 self.recovering = false
                 self.rebuildSession(force: true)
                 self.phase = .connecting
                 self.continuation.yield(.reconnecting)
                 invitationHandler(true, self.session)
             } else {
-                // A third device. The seat is taken — declining leaves the game alone, where accepting
-                // would hand a second peer to a session the game believes is a pair.
+                // Traffic is still flowing, so this is a third device and the seat is taken. Declining
+                // leaves the game alone, where accepting would hand a second peer to a session the
+                // game believes is a pair.
                 invitationHandler(false, nil)
             }
         }

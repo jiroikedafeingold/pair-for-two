@@ -81,11 +81,19 @@ final class GameViewModel {
     /// knowable while it's being played — so it's tracked as the scores move and handed to Game Center.
     private var worstDeficit = 0
 
-    /// When anything last arrived from the peer. The host re-broadcasts its snapshot every couple of
-    /// seconds, so on a guest this doubles as a liveness signal — see `startInboundWatchdog`.
+    /// When anything last arrived from the peer. Both sides send on a timer — the host its snapshot,
+    /// the guest a keepalive — so this is a liveness signal either way. See `startInboundWatchdog`.
     private var lastInboundAt = Date()
-    /// How long a guest tolerates silence before assuming the link is dead. Four-ish missed heartbeats.
+    /// How long silence is tolerated before assuming the link is dead. Several missed beats.
     private static let inboundSilenceLimit: TimeInterval = 10
+    /// A guest's keepalive interval. Comfortably inside `inboundSilenceLimit`, so the host has to miss
+    /// two before it acts.
+    private static let keepaliveInterval: TimeInterval = 4
+    nonisolated(unsafe) private var keepaliveTask: Task<Void, Never>?
+    /// Set once a guest's mid-game keepalive has been seen. A guest on an older build never sends one
+    /// and legitimately goes quiet for minutes at a time, so the host's watchdog stays disarmed until
+    /// this device knows the other end is one that reports in.
+    private var sawGuestKeepalive = false
 
     // MARK: Init / factories
 
@@ -124,7 +132,10 @@ final class GameViewModel {
         // Resuming host: state is pre-loaded, so start the heartbeat now (normally started once the
         // guest joins). The guest resyncs on reconnect.
         if isHost, state != nil, !isLoopback { startHeartbeat() }
-        if !isHost, !isLoopback { startInboundWatchdog() }
+        if !isLoopback {
+            startInboundWatchdog()
+            if !isHost { startKeepalive() }
+        }
     }
 
 #if DEBUG
@@ -328,15 +339,21 @@ final class GameViewModel {
         GameCenterAwards.report(game: record, summary: StatsStore.summary(), worstDeficit: worstDeficit)
     }
 
-    /// A guest can't tell a quiet link from a dead one by itself: it sends only when the player acts,
-    /// so nothing of its own ever fails, and MultipeerConnectivity will happily report a
-    /// background/foreground-killed link as connected for its full keep-alive window (or, on the
-    /// evidence, indefinitely). The host's snapshot heartbeat is the tell — it arrives every couple of
-    /// seconds, so silence past `inboundSilenceLimit` means the link is gone whatever the OS says.
+    /// Neither side can tell a quiet link from a dead one by itself, so each listens for the other's
+    /// timer: the host's snapshot every couple of seconds, the guest's keepalive every four. Silence
+    /// past `inboundSilenceLimit` means the link is gone whatever the OS says — MultipeerConnectivity
+    /// reports a suspended peer as connected for its whole keep-alive window (or, on the evidence,
+    /// indefinitely), and a `send` into that ghost succeeds locally, so nothing here fails on its own.
     ///
-    /// Forcing a re-pair from this side also wakes the host: tearing down the old session hands it a
+    /// Forcing a re-pair also wakes the other phone: tearing down the old session hands it a
     /// disconnect, which starts its own recovery. Without this the pair could sit "connected" forever,
-    /// each phone waiting for the other.
+    /// each waiting for the other.
+    ///
+    /// **The host used to be exempt from this**, on the theory that its heartbeat would fail and report
+    /// the drop. It doesn't: `MCSession.send` to a peer MC still lists succeeds, so the host sat there
+    /// believing all was well until MC's keep-alive finally expired — up to half a minute during which
+    /// the other phone was already hunting for it, and, since the inviter is elected between two
+    /// *pairing* phones, quite possibly deferring to a host that wasn't looking.
     private func startInboundWatchdog() {
         watchdogTask?.cancel()
         watchdogTask = Task { @MainActor [weak self] in
@@ -345,9 +362,29 @@ final class GameViewModel {
                 guard let self else { return }
                 guard self.connection == .connected, !self.ended,
                       self.snapshot.phase != .connecting, self.snapshot.phase != .gameOver else { continue }
+                // On the host, only once the guest has shown it reports in (see `sawGuestKeepalive`).
+                guard !self.isHost || self.sawGuestKeepalive else { continue }
                 guard Date().timeIntervalSince(self.lastInboundAt) > Self.inboundSilenceLimit else { continue }
                 self.lastInboundAt = Date()   // one nudge per silent window, not one per tick
                 self.transport.reconnect(force: true)
+            }
+        }
+    }
+
+    /// A guest sends nothing between taps, which left the host with no way to notice a dead link (see
+    /// `startInboundWatchdog`). `hello` is what it repeats: the host already treats a mid-game hello as
+    /// a resync request, so this needs no new message and an older host simply answers with the
+    /// snapshot it was already sending.
+    private func startKeepalive() {
+        guard !isHost, !isLoopback else { return }
+        keepaliveTask?.cancel()
+        keepaliveTask = Task { @MainActor [weak self] in
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .seconds(Self.keepaliveInterval))
+                guard let self, !self.ended else { return }
+                guard self.connection == .connected else { continue }
+                await self.transport.send(.hello(name: self.localName, colorID: self.localColorID,
+                                                 playerToken: UUID()))
             }
         }
     }
@@ -375,7 +412,10 @@ final class GameViewModel {
                 if state == nil {
                     startHostedGame(guestName: name, guestColorID: colorID)   // first join
                 } else {
-                    refreshAndBroadcast()                                     // reconnect resync
+                    // Mid-game hello: a resync request, and also the guest's keepalive — so it's the
+                    // proof the watchdog waits for that this guest reports in at all.
+                    sawGuestKeepalive = true
+                    refreshAndBroadcast()
                 }
             default:
                 hostApply(message, from: fixedPlayer.opponent)   // the peer is the other player
@@ -917,6 +957,7 @@ final class GameViewModel {
         guard !ended else { return }
         heartbeatTask?.cancel()
         watchdogTask?.cancel()
+        keepaliveTask?.cancel()
         GamePersistence.clear()
         ended = true
     }
@@ -925,5 +966,6 @@ final class GameViewModel {
         eventsTask?.cancel()
         heartbeatTask?.cancel()
         watchdogTask?.cancel()
+        keepaliveTask?.cancel()
     }
 }
