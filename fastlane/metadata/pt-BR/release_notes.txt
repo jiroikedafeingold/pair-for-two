@@ -1,6 +1,6 @@
-• Bem mais rápido para voltar a se conectar. Se um jogador troca de app no meio da partida, o outro aparelho percebe em segundos em vez de esperar, e os dois seguem se procurando até parear.
-• Retomar uma partida é mais rápido e firme, e só reconecta você à sua própria partida, mesmo que haja outra interrompida por perto.
-• Um aparelho que já está em partida não aparece mais na lista de partidas que os outros podem entrar.
-• Se este aparelho não tem permissão para procurar aparelhos por perto, o app avisa e aponta o ajuste, em vez de procurar sem parar.
+• Um corte empatado agora é anunciado — "Empate: os dois cortaram um 7. Cortem de novo." — em vez de limpar as cartas em silêncio, o que podia parecer um erro.
+• His Heels tem seu momento: se a carta virada é um J, um lembrete aponta os 2 pontos do carteador.
+• Novidade nos Ajustes: Lembretes de pontos. Desligue os avisos (his heels, go, 31, última carta) se preferir contar em paz. Ligado por padrão.
+• O crib agora leva um ponto na cor do carteador — de quem ele é fica claro a mão inteira.
 
 Obrigado por jogar! Dúvidas ou comentários? apps@feingold5.com

@@ -1,6 +1,6 @@
-• Much quicker to get back together. If one player switches apps mid-game, the other phone notices within seconds instead of waiting, and both keep looking for each other until they're paired.
-• Picking a game back up is faster and steadier — and it only ever reconnects you to your own game, even if another interrupted game is nearby.
-• A phone that's already in a game no longer appears in someone else's list of games to join.
-• If this phone isn't allowed to look for nearby devices, the app now says so and points at the setting, instead of searching forever.
+• A tied cut for the deal now says so — "Tie — both cut a 7. Cut again." — instead of silently clearing the cards, which could look like the app losing track.
+• His Heels gets its moment: when the starter comes up a Jack, a reminder points out the dealer's 2 points.
+• New in Settings: Score reminders. Turn off the points-to-take pop-ups (his heels, a go, 31, the last card) if you'd rather count in peace. On by default.
+• The crib now carries a dot in the dealer's color, so whose crib it is stays obvious all hand.
 
 Thanks for playing! Questions or feedback? apps@feingold5.com

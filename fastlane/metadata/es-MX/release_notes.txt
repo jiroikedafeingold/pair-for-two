@@ -1,6 +1,6 @@
-• Mucho más rápido volver a conectar. Si alguien cambia de app en plena partida, el otro teléfono se da cuenta en segundos en vez de esperar, y ambos siguen buscándose hasta emparejarse.
-• Retomar una partida es más rápido y estable, y solo te reconecta a tu propia partida, aunque haya otra interrumpida cerca.
-• Un teléfono que ya está en una partida deja de aparecer en la lista de partidas a las que otros pueden unirse.
-• Si este teléfono no tiene permiso para buscar dispositivos cercanos, la app lo dice y señala el ajuste, en vez de buscar sin fin.
+• Un empate al cortar para repartir ahora se anuncia — «Empate: los dos cortaron un 7. Corten otra vez.» — en vez de limpiar las cartas en silencio, que podía parecer una falla.
+• His Heels tiene su momento: si la carta inicial es una J, un aviso recuerda los 2 puntos del repartidor.
+• Nuevo en Ajustes: Avisos de puntos. Desactiva los mensajes emergentes (his heels, go, 31, última carta) si prefieres contar tranquilo. Activado por defecto.
+• El crib lleva ahora un punto del color del repartidor, así se ve de quién es durante toda la mano.
 
 ¡Gracias por jugar! ¿Preguntas o comentarios? apps@feingold5.com

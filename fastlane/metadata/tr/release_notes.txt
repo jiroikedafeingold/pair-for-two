@@ -1,6 +1,6 @@
-• Yeniden bir araya gelmek çok daha hızlı. Oyunun ortasında biri başka bir uygulamaya geçerse, diğer telefon beklemek yerine saniyeler içinde farkediyor ve ikisi eşleşene kadar birbirini aramayı sürdürüyor.
-• Bir oyuna kaldığı yerden dönmek daha hızlı ve sağlam — ve yakında başka bir yarım kalmış oyun olsa bile seni yalnızca kendi oyununa bağlıyor.
-• Zaten oyunda olan bir telefon, başkalarının katılabileceği oyunlar listesinde artık görünmüyor.
-• Bu telefonun yakındaki cihazları arama izni yoksa, uygulama sonsuza kadar aramak yerine bunu söylüyor ve ilgili ayarı gösteriyor.
+• Berabere biten kesme artık söyleniyor — "Berabere — ikiniz de 7 kestiniz. Yeniden kesin." — kartların sessizce silinip hata gibi görünmesi bitti.
+• His Heels da hakkını alıyor: açılan kart J ise, dağıtıcının 2 puanını bir hatırlatma gösteriyor.
+• Ayarlarda yeni: Puan hatırlatmaları. His heels, go, 31 ve son kart bildirimlerini kapatabilirsin. Varsayılan olarak açık.
+• Crib artık dağıtıcının renginde bir nokta taşıyor — kimin crib'i olduğu el boyunca belli.
 
 Oynadığın için teşekkürler! Soru ya da görüşlerin için: apps@feingold5.com

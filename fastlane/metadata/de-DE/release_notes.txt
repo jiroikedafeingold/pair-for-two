@@ -1,6 +1,6 @@
-• Deutlich schneller wieder zusammen. Wechselt ein Spieler mitten im Spiel die App, merkt das andere Telefon es in Sekunden statt zu warten, und beide suchen weiter, bis sie verbunden sind.
-• Eine Partie wieder aufzunehmen geht schneller und stabiler — und verbindet dich nur mit deiner eigenen Partie, auch wenn in der Nähe eine andere unterbrochene läuft.
-• Ein Telefon, das schon in einer Partie ist, erscheint nicht mehr in der Liste der Spiele, denen andere beitreten können.
-• Darf dieses Telefon nicht nach Geräten in der Nähe suchen, sagt die App das jetzt und zeigt auf die Einstellung, statt endlos zu suchen.
+• Ein Gleichstand beim Abheben wird jetzt angesagt — „Gleichstand – beide haben eine 7 abgehoben. Hebt noch einmal ab." — statt die Karten stumm zu leeren, was wie ein Fehler wirken konnte.
+• His Heels bekommt seinen Auftritt: Wird ein Bube aufgedeckt, erinnert ein Hinweis an die 2 Punkte für den Geber.
+• Neu in den Einstellungen: Punkte-Hinweise. Schalte die Einblendungen (His Heels, Go, 31, letzte Karte) ab, wenn du lieber in Ruhe zählst. Standardmäßig an.
+• Der Crib trägt jetzt einen Punkt in der Farbe des Gebers — wessen Crib es ist, bleibt die ganze Hand sichtbar.
 
 Danke fürs Spielen! Fragen oder Rückmeldungen? apps@feingold5.com

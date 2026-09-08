@@ -26,5 +26,12 @@ platform :ios do
       run_precheck_before_submit: false,
       force: true
     )
+
+    # deliver's overwrite is not enough: three releases running, the tail of the upload registered a
+    # few screenshots twice (same file, same bytes, COMPLETE, nothing in the log). Count what actually
+    # landed and prune the duplicates, failing the lane if a set still looks wrong.
+    unless options[:skip_screenshots]
+      sh("cd .. && tools/verify-screenshots.rb #{options[:version] || ""}")
+    end
   end
 end
