@@ -24,6 +24,10 @@ struct GameTableView: View {
     @State private var clearScoreSignal = 0
 
     // Transient "Go / 31 — take the score" alert, shown for a couple of seconds when the event fires.
+    /// The gold pop-ups that point at points: his heels, a go, 31, the last card. On by default —
+    /// they're most valuable to someone still learning what's theirs to take — and a local preference,
+    /// so each player decides for their own screen.
+    @AppStorage("scoreReminders") private var scoreReminders = true
     @State private var pegAlert: String? = nil
     @State private var pegAlertTask: Task<Void, Never>? = nil
 
@@ -67,6 +71,7 @@ struct GameTableView: View {
                                        onCutTap: { GameFeedback.shared.play(.cutTap) },
                                        onDeckLift: { GameFeedback.shared.play(.deckLift) },
                                        onPhase: handlePhaseChange,
+                                       onCutForDeal: handleCutForDealChange,
                                        onPegEvent: handlePegEvent,
                                        onClaimTick: previewOpponentClaim,
                                        onOpponentOut: handleOpponentOut,
@@ -223,6 +228,24 @@ struct GameTableView: View {
         }
     }
 
+    /// Both cut cards vanished while the phase stayed put: a rank tie, reshuffled for a recut by the
+    /// engine. Real cribbage — a tie cuts again — but the table just silently reset, so it read as the
+    /// app losing the plot ("I cut, you cut… why am I cutting again?"). Say what happened. The rank
+    /// comes from whichever tied card this device had seen; the other was equal, that's the tie.
+    ///
+    /// Detected from the snapshot rather than carried on the wire, so it works against any host.
+    private func handleCutForDealChange(_ old: [PlayerID: Card], _ new: [PlayerID: Card]) {
+        guard new.isEmpty, !old.isEmpty, vm.snapshot.phase == .cutForDeal else { return }
+        GameFeedback.shared.play(.go)
+        if let rank = old.values.first?.rank.label {
+            showPegAlert(String(localized: "Tie — both cut a \(rank). Cut again.",
+                                comment: "Toast after a tied cut for deal; %@ is a card rank like 7 or J"))
+        } else {
+            showPegAlert(String(localized: "Tie — cut again.",
+                                comment: "Toast after a tied cut for deal"))
+        }
+    }
+
     /// Routes a phase change to the right feedback / replay trigger.
     private func handlePhaseChange(_ old: GamePhase, _ new: GamePhase) {
         if new == .discardToCrib {
@@ -231,7 +254,23 @@ struct GameTableView: View {
             preWinReplayShown = false
             showManualReplay = false
         }
-        else if old == .cutStarter && new == .pegging { GameFeedback.shared.play(.starterReveal) }
+        else if old == .cutStarter && new == .pegging {
+            GameFeedback.shared.play(.starterReveal)
+            // His heels: a Jack turned up as the starter is 2 for the dealer, and it's the score most
+            // often missed at a real table — the cut happens and everyone's eyes are on their hands.
+            if scoreReminders, vm.snapshot.starter?.rank == .jack {
+                let s = vm.snapshot
+                let auto = s.scoringMode == .auto
+                let mine = s.dealer == s.you || vm.isLoopback
+                if auto || !mine {
+                    showPegAlert(String(localized: "His Heels — 2 for \(vm.name(of: s.dealer))",
+                                        comment: "Toast when the starter is a Jack; %@ is the dealer's name"))
+                } else {
+                    showPegAlert(String(localized: "His Heels — take 2",
+                                        comment: "Toast telling the dealer to peg 2 for a Jack starter"))
+                }
+            }
+        }
         else if new == .gameOver && replayBeforeWin && !vm.scoreLog.isEmpty {
             // The pre-win replay shows via `fullScreenOverlays` (computed from state); arm a watchdog
             // so the win screen still appears if the replay's async self-dismiss gets interrupted.
@@ -270,6 +309,11 @@ struct GameTableView: View {
     /// the point knows to take it.
     private func handlePegEvent() {
         guard let event = vm.lastPegEvent else { return }
+        // With reminders off, the *scoring* pop-ups go quiet. "X said Go — your play" stays: that's
+        // whose-turn information, not a score, and without it the play genuinely stalls.
+        if !scoreReminders {
+            if case .go = event.kind, event.points == 0 {} else { return }
+        }
         let auto = vm.snapshot.scoringMode == .auto
         let mine = event.scorer == vm.snapshot.you || vm.isLoopback
         let who = vm.name(of: event.scorer)
@@ -1347,6 +1391,7 @@ private struct FeedbackHandlers: ViewModifier {
     let onCutTap: () -> Void
     let onDeckLift: () -> Void
     let onPhase: (GamePhase, GamePhase) -> Void
+    let onCutForDeal: ([PlayerID: Card], [PlayerID: Card]) -> Void
     let onPegEvent: () -> Void
     let onClaimTick: () -> Void
     let onOpponentOut: () -> Void
@@ -1360,6 +1405,9 @@ private struct FeedbackHandlers: ViewModifier {
             // Tactile + audio feedback, driven by the state so BOTH devices feel each moment of play.
             .onChange(of: vm.snapshot.playSequence.count) { old, new in if new > old { onCardPlay() } }
             .onChange(of: vm.snapshot.cutForDeal.count) { old, new in if new > old { onCutTap() } }
+            // The whole dict, not the count: a tie is a non-empty → empty transition, and telling the
+            // players about it needs the tied card, not just that something changed.
+            .onChange(of: vm.snapshot.cutForDeal) { old, new in onCutForDeal(old, new) }
             .onChange(of: vm.snapshot.starterCutLifted) { old, new in if new && !old { onDeckLift() } }
             .onChange(of: vm.snapshot.phase) { old, new in onPhase(old, new) }
             .onChange(of: vm.pegEventTick) { old, new in if new > old { onPegEvent() } }

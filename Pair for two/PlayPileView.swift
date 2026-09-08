@@ -95,7 +95,17 @@ struct PlayPileView: View {
 
     private var cribStack: some View {
         VStack(spacing: 6) {
-            Text("Crib").font(.caption2.weight(.semibold)).foregroundStyle(Color.cribGold)
+            // The dot is the dealer's color — the same language as the bars under the played cards,
+            // so "whose crib is that?" has the same answer as "who played that card?".
+            HStack(spacing: 4) {
+                Circle()
+                    .fill(vm.theme(for: snapshot.dealer).primary)
+                    .frame(width: 7, height: 7)
+                Text("Crib").font(.caption2.weight(.semibold)).foregroundStyle(Color.cribGold)
+            }
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(Text("\(vm.name(of: snapshot.dealer))'s crib",
+                                     comment: "VoiceOver label for the crib pile; %@ is the dealer's name"))
             ZStack {
                 if let crib = snapshot.crib {          // revealed at the show
                     HStack(spacing: -cardWidth * 0.6) {

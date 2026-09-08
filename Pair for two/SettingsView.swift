@@ -17,6 +17,7 @@ struct SettingsView: View {
     @AppStorage("scoringMode") private var scoringModeRaw = ScoringMode.off.rawValue
     @AppStorage("cardBackID") private var cardBackID = 0
     @AppStorage("hapticsEnabled") private var hapticsEnabled = true
+    @AppStorage("scoreReminders") private var scoreReminders = true
     @AppStorage("soundEnabled") private var soundEnabled = true
     @AppStorage("celebrationEffects") private var celebrationEffects = true
     @AppStorage("replayBeforeWin") private var replayBeforeWin = true
@@ -101,13 +102,14 @@ struct SettingsView: View {
 
                 Section {
                     Toggle("Haptics", isOn: $hapticsEnabled)
+                    Toggle("Score reminders", isOn: $scoreReminders)
                     Toggle("Sound effects", isOn: $soundEnabled)
                     Toggle("Celebration effects", isOn: $celebrationEffects)
                     Toggle("Score progress rings", isOn: $scoreTrackEnabled)
                 } header: {
                     Text("Feel & effects")
                 } footer: {
-                    Text("Haptics are the vibrations during play and on a win. Sound effects are the in-game sounds. Celebration effects are the fireworks and flash on the win screen (the win screen itself still shows). Score progress rings trace each player's color around the scores, closing the loop at 121.")
+                    Text("Haptics are the vibrations during play and on a win. Score reminders are the pop-ups when points are yours to take — his heels, a go, 31, the last card. Sound effects are the in-game sounds. Celebration effects are the fireworks and flash on the win screen (the win screen itself still shows). Score progress rings trace each player's color around the scores, closing the loop at 121.")
                 }
 
                 Section {
