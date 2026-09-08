@@ -42,13 +42,16 @@ struct RootView: View {
     @AppStorage("localColorID") private var colorID = 1
     @AppStorage("scoringMode") private var scoringModeRaw = ScoringMode.off.rawValue
 
-    /// One menu button. Fixed width so the captions beside them line up into a column.
+    /// One menu button. Fixed width so the captions beside them line up into a column. `scale`
+    /// multiplies every dimension — the menu is drawn at the largest scale that fits the screen
+    /// (see `menu`), so four rows fill a landscape phone and a fifth row shrinks everything to fit.
     private func menuButton(_ title: Text,
                             systemImage: String,
                             tint: Color,
                             foreground: Color,
                             swatch: Color? = nil,
                             disabled: Bool = false,
+                            scale: CGFloat = 1,
                             action: @escaping () -> Void) -> some View {
         Button(action: action) {
             HStack(spacing: 8) {
@@ -66,15 +69,18 @@ struct RootView: View {
                         Image(systemName: systemImage)
                     }
                 }
-                .frame(width: roomy ? 30 : 24)
+                .frame(width: (roomy ? 30 : 24) * scale)
                 title.fontWeight(.bold)
                 Spacer(minLength: 0)
             }
-            .font(roomy ? .title3 : .headline)
+            // Sized in points rather than text styles so the fitting scale can multiply them —
+            // 17/semibold and 20/regular are what .headline and .title3 resolve to.
+            .font(.system(size: (roomy ? 20 : 17) * scale, weight: roomy ? .regular : .semibold))
             .lineLimit(1)
             .minimumScaleFactor(0.8)
-            .frame(width: roomy ? 250 : 168, alignment: .leading)
-            .padding(.horizontal, roomy ? 22 : 16).padding(.vertical, roomy ? 16 : 7)
+            .frame(width: (roomy ? 250 : 168) * scale, alignment: .leading)
+            .padding(.horizontal, (roomy ? 22 : 16) * scale)
+            .padding(.vertical, (roomy ? 16 : 7) * scale)
         }
         .buttonStyle(.borderedProminent)
         .tint(tint)
@@ -83,23 +89,24 @@ struct RootView: View {
     }
 
     /// The right-hand column: what the button beside it actually does. Literals, so **bold** works.
-    private func menuCaption(_ text: LocalizedStringKey) -> some View {
-        captionStyle(Text(text))
+    private func menuCaption(_ text: LocalizedStringKey, scale: CGFloat = 1) -> some View {
+        captionStyle(Text(text), scale: scale)
     }
 
     /// Same, for a caption that comes from a value (an already-localized error message) rather than
     /// a literal.
-    private func menuCaption(verbatim text: String) -> some View {
-        captionStyle(Text(verbatim: text))
+    private func menuCaption(verbatim text: String, scale: CGFloat = 1) -> some View {
+        captionStyle(Text(verbatim: text), scale: scale)
     }
 
-    private func captionStyle(_ text: Text) -> some View {
+    private func captionStyle(_ text: Text, scale: CGFloat) -> some View {
         text
-            .font(roomy ? .callout : .caption)
+            // 12 and 16 are .caption and .callout at the default Dynamic Type size.
+            .font(.system(size: (roomy ? 16 : 12) * scale))
             .foregroundStyle(.white.opacity(0.62))
             .multilineTextAlignment(.leading)
             .fixedSize(horizontal: false, vertical: true)
-            .frame(maxWidth: roomy ? 480 : 400, alignment: .leading)
+            .frame(maxWidth: (roomy ? 480 : 400) * scale, alignment: .leading)
     }
 
     /// What to call the device in copy that points at it ("use the iPad as the board").
@@ -418,19 +425,19 @@ struct RootView: View {
     /// "Pair for Two" over its line of explanation. Two layouts rather than one that bends: an iPad
     /// stacks them with the title big, a phone in landscape puts them on a single line, because there
     /// the height belongs to the buttons — with a "Rejoin game" row there are five of them.
-    @ViewBuilder private var masthead: some View {
+    @ViewBuilder private func masthead(scale: CGFloat) -> some View {
         if roomy {
             VStack(spacing: 2) {
-                embossedTitle(size: 46)
+                embossedTitle(size: 46 * scale)
                 Text("Two-phone cribbage")
-                    .font(.title3).foregroundStyle(Color.cribGold)
+                    .font(.system(size: 20 * scale)).foregroundStyle(Color.cribGold)
             }
             .padding(.bottom, 2)
         } else {
             HStack(alignment: .firstTextBaseline, spacing: 9) {
-                embossedTitle(size: 27)
+                embossedTitle(size: 27 * scale)
                 Text("Two-phone cribbage")
-                    .font(.footnote.weight(.semibold)).foregroundStyle(Color.cribGold)
+                    .font(.system(size: 13 * scale, weight: .semibold)).foregroundStyle(Color.cribGold)
             }
             .lineLimit(1)
             .minimumScaleFactor(0.65)      // a longer translation shrinks rather than wraps
@@ -451,32 +458,57 @@ struct RootView: View {
             .shadow(color: .white.opacity(0.25), radius: 0.5, x: 0, y: -size * 0.03)
     }
 
+    /// The scales the menu is offered at, biggest first. `ViewThatFits` keeps the first that fits the
+    /// height, so four rows draw large enough to fill a landscape phone, a fifth (Rejoin) drops the
+    /// menu a size or two, and a long translation that wraps its captions does the same. 1 — today's
+    /// layout — is the floor, with a scrolling copy behind it as the safety net.
+    private var menuScales: [CGFloat] { roomy ? [1.4, 1.25, 1.1, 1.0] : [1.6, 1.45, 1.3, 1.15, 1.0] }
+
     private var menu: some View {
         ZStack {
             FeltSurface()
                 .ignoresSafeArea()
 
-            // One row per thing you can do: the control on the left, what it does on the right. The
-            // buttons alone weren't self-explanatory — "Play nearby" versus "Play online" versus a
-            // scoreboard is a real choice, and the answer shouldn't be buried in the help.
-            GeometryReader { geo in
-              ScrollView {
-                VStack(spacing: roomy ? 26 : 10) {
-                    // Centered vertically when the screen has the height for it (iPad), which is most of
-                    // the screen: without these the menu sat in the top third with a sea of felt below.
-                    if roomy { Spacer(minLength: 0) }
+            ViewThatFits(in: .vertical) {
+                ForEach(menuScales, id: \.self) { menuContent(scale: $0) }
+                ScrollView { menuContent(scale: 1) }
+                    .scrollBounceBehavior(.basedOnSize)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)   // center whichever size won
+        }
+        .overlay(alignment: .topTrailing) {
+            menuChrome
+        }
+        .onAppear {
+            resumeMarker = GamePersistence.loadMarker()
+            boardResumeAvailable = BoardGameStore.load() != nil
+        }
+        .sheet(isPresented: $showingStats) {
+            StatsView(onDone: { showingStats = false })
+        }
+        .sheet(isPresented: $showingSettings) {
+            SettingsView(onDone: { showingSettings = false })
+        }
+    }
 
-                    masthead
+    /// The whole menu at one scale — intrinsically sized, so `ViewThatFits` can judge it honestly.
+    /// One row per thing you can do: the control on the left, what it does on the right. The
+    /// buttons alone weren't self-explanatory — "Play nearby" versus "Play online" versus a
+    /// scoreboard is a real choice, and the answer shouldn't be buried in the help.
+    private func menuContent(scale: CGFloat) -> some View {
+                VStack(spacing: (roomy ? 26 : 10) * scale) {
+                    masthead(scale: scale)
 
-                    Grid(alignment: .leading, horizontalSpacing: roomy ? 26 : 18,
-                         verticalSpacing: roomy ? 16 : 7) {
+                    Grid(alignment: .leading, horizontalSpacing: (roomy ? 26 : 18) * scale,
+                         verticalSpacing: (roomy ? 16 : 7) * scale) {
                         GridRow {
                             menuButton(Text(verbatim: playerName), systemImage: "person.crop.circle",
                                        tint: Color.white.opacity(0.18), foreground: .white,
-                                       swatch: playerTheme(colorID: colorID).primary) {
+                                       swatch: playerTheme(colorID: colorID).primary, scale: scale) {
                                 showingSettings = true
                             }
-                            menuCaption("Your name, color and all the app's settings. Tap to edit.")
+                            menuCaption("Your name, color and all the app's settings. Tap to edit.",
+                                        scale: scale)
                         }
 
                         if let resumeMarker {
@@ -486,7 +518,8 @@ struct RootView: View {
                                            : Text("Rejoin game", comment: "Menu: pick up an interrupted nearby game"),
                                            systemImage: resumeMarker.isOnline ? "globe" : "arrow.clockwise.circle.fill",
                                            tint: .cribGold, foreground: .black,
-                                           disabled: resumeMarker.isOnline && !gameCenter.isAuthenticated) {
+                                           disabled: resumeMarker.isOnline && !gameCenter.isAuthenticated,
+                                           scale: scale) {
                                     if resumeMarker.isOnline {
                                         rejoinOnlineGame(resumeMarker)
                                     } else {
@@ -496,7 +529,8 @@ struct RootView: View {
                                 }
                                 menuCaption(resumeMarker.isOnline
                                             ? "Pick up the game **\(resumeMarker.summary)** — we'll invite them back."
-                                            : "Pick up the game **\(resumeMarker.summary)** — both phones tap this.")
+                                            : "Pick up the game **\(resumeMarker.summary)** — both phones tap this.",
+                                            scale: scale)
                             }
                         }
 
@@ -506,13 +540,14 @@ struct RootView: View {
                                        : Text("New nearby", comment: "Menu: start a fresh nearby game, discarding the saved one"),
                                        systemImage: "dot.radiowaves.left.and.right",
                                        tint: resumeMarker == nil ? .cribGold : Color.white.opacity(0.18),
-                                       foreground: resumeMarker == nil ? .black : .white) {
+                                       foreground: resumeMarker == nil ? .black : .white, scale: scale) {
                                 resumeRole = nil
                                 GamePersistence.clear()   // fresh game supersedes any saved one
                                 resumeMarker = nil
                                 screen = .connect
                             }
-                            menuCaption("Two phones in the same room, a hand each. No internet or account — leave Wi-Fi on and it pairs faster.")
+                            menuCaption("Two phones in the same room, a hand each. No internet or account — leave Wi-Fi on and it pairs faster.",
+                                        scale: scale)
                         }
 
                         GridRow {
@@ -521,7 +556,7 @@ struct RootView: View {
                                        : Text("Play online", comment: "Menu: start a game over Game Center"),
                                        systemImage: "globe",
                                        tint: Color.white.opacity(0.18), foreground: .white,
-                                       disabled: !gameCenter.isAuthenticated) {
+                                       disabled: !gameCenter.isAuthenticated, scale: scale) {
                                 // Asking for a new online game supersedes any saved one, exactly like the
                                 // nearby button. It also has to clear the marker *before* a match arrives:
                                 // an online marker is what tells the match handler "this is a rejoin", so
@@ -531,10 +566,11 @@ struct RootView: View {
                                 showingInvite = true
                             }
                             if gameCenter.isAuthenticated {
-                                menuCaption("Invite a Game Center friend, wherever they are. A hand each, same as nearby.")
+                                menuCaption("Invite a Game Center friend, wherever they are. A hand each, same as nearby.",
+                                            scale: scale)
                             } else {
                                 menuCaption(verbatim: gameCenter.unavailableReason
-                                            ?? "Sign in to Game Center to play online.")
+                                            ?? "Sign in to Game Center to play online.", scale: scale)
                             }
                         }
 
@@ -542,26 +578,23 @@ struct RootView: View {
                             // The board on its own: one device between two players, real cards in hand.
                             // Not the pass-and-play mode that was removed — nothing is dealt here.
                             menuButton(Text("Scoreboard", comment: "Menu: use the device as a cribbage board"), systemImage: "rectangle.split.2x1",
-                                       tint: Color.white.opacity(0.18), foreground: .white) {
+                                       tint: Color.white.opacity(0.18), foreground: .white, scale: scale) {
                                 screen = .board
                             }
                             menuCaption(boardResumeAvailable
                                         ? "Game in progress. Real cards, this \(deviceWord()) between you as the board."
-                                        : "Playing with real cards? Lay this \(deviceWord()) between you and it keeps score.")
+                                        : "Playing with real cards? Lay this \(deviceWord()) between you and it keeps score.",
+                                        scale: scale)
                         }
                     }
-                    .frame(maxWidth: roomy ? 820 : 660)
-
-                    if roomy { Spacer(minLength: 0) }
+                    .frame(maxWidth: (roomy ? 820 : 660) * scale)
                 }
-                .frame(maxWidth: .infinity, minHeight: geo.size.height)
                 .padding(.horizontal, 24)
                 .padding(.vertical, roomy ? 14 : 6)
-              }
-              .scrollBounceBehavior(.basedOnSize)
-            }
-        }
-        .overlay(alignment: .topTrailing) {
+    }
+
+    /// The stats/help buttons in the top corner. Unscaled on purpose: chrome, not menu.
+    private var menuChrome: some View {
             HStack(spacing: 14) {
                 Button { showingStats = true } label: {
                     Image(systemName: "chart.bar.fill")
@@ -580,18 +613,8 @@ struct RootView: View {
                 .accessibilityLabel("How to play")
             }
             .padding(.top, 8).padding(.trailing, 14)
-        }
-        .onAppear {
-            resumeMarker = GamePersistence.loadMarker()
-            boardResumeAvailable = BoardGameStore.load() != nil
-        }
-        .sheet(isPresented: $showingStats) {
-            StatsView(onDone: { showingStats = false })
-        }
-        .sheet(isPresented: $showingSettings) {
-            SettingsView(onDone: { showingSettings = false })
-        }
     }
+
 }
 
 #Preview("Menu", traits: .landscapeLeft) {
