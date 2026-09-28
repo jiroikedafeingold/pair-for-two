@@ -126,6 +126,8 @@ nonisolated enum WireCodec {
             return ["t": "claimPoints", "player": player.rawValue, "amount": amount]
         case let .undo(player):
             return ["t": "undo", "player": player.rawValue]
+        case let .undoStep(player, stepsBack):
+            return ["t": "undoStep", "player": player.rawValue, "stepsBack": stepsBack]
         case .advance:
             return ["t": "advance"]
         case .playAgain:
@@ -179,6 +181,9 @@ nonisolated enum WireCodec {
         case "undo":
             guard let p = player(o["player"]) else { return nil }
             return .undo(player: p)
+        case "undoStep":
+            guard let p = player(o["player"]), let steps = o["stepsBack"] as? Int else { return nil }
+            return .undoStep(player: p, stepsBack: steps)
         case "advance":
             return .advance
         case "playAgain":
@@ -311,6 +316,7 @@ nonisolated enum WireCodec {
             "yourColorID": s.yourColorID,
             "opponentColorID": s.opponentColorID,
             "playersWithClaims": playerSet(s.playersWithClaims),
+            "recentClaims": s.recentClaims.map(claimObject),
             "claimTick": s.claimTick,
             "lastClaimAmount": s.lastClaimAmount,
             "pegEventTick": s.pegEventTick,
@@ -393,6 +399,8 @@ nonisolated enum WireCodec {
             yourColorID: yourColorID,
             opponentColorID: opponentColorID,
             playersWithClaims: Set(claimsRaw.compactMap(PlayerID.init(rawValue:))),
+            // Optional on the wire: a host on an older build never sends it.
+            recentClaims: (o["recentClaims"] as? [[String: Any]])?.compactMap(claim) ?? [],
             claimTick: claimTick,
             lastClaimPlayer: player(o["lastClaimPlayer"]),
             lastClaimAmount: lastClaimAmount,

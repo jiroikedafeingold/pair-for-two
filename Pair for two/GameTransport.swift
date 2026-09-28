@@ -19,6 +19,7 @@ nonisolated enum GameMessage: Codable, Sendable {
     case intentRevealStarter                // dealer turns up the starter
     case claimPoints(player: PlayerID, amount: Int)
     case undo(player: PlayerID)
+    case undoStep(player: PlayerID, stepsBack: Int)   // undo the last stepsBack + 1 claims (0 = as `undo`)
     case advance                            // "continue" through cut-for-deal recut / show steps / next deal
     case playAgain
     case updateIdentity(name: String, colorID: Int)   // live name/color change from Settings

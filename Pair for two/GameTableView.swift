@@ -612,7 +612,9 @@ struct GameTableView: View {
             clearSignal: isLocal ? clearScoreSignal : 0,
             onAdd: { GameFeedback.shared.play(.score); vm.claim($0, for: player) },
             onPlusOne: { GameFeedback.shared.play(.score); vm.claim(1, for: player) },
-            onUndo: { vm.undo(for: player) }
+            onUndo: { vm.undo(for: player) },
+            undoHistory: vm.recentClaims(for: player).map(\.amount),
+            onUndoStep: { vm.undo(for: player, stepsBack: $0) }
         )
     }
 

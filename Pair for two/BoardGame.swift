@@ -61,18 +61,33 @@ nonisolated struct BoardGame: Codable, Sendable, Equatable {
         pegs.append(Peg(side: side, amount: applied))
     }
 
-    /// Take back this side's most recent peg. Works after the game has been won, so a mis-tapped
-    /// winning peg can be corrected — the same latitude the in-game undo has.
-    mutating func undo(_ side: BoardSide) {
-        guard let index = pegs.lastIndex(where: { $0.side == side }) else { return }
-        let peg = pegs.remove(at: index)
-        switch side {
-        case .bottom: bottom = max(0, bottom - peg.amount)
-        case .top:    top = max(0, top - peg.amount)
+    /// Take back this side's most recent peg — or, with `stepsBack`, that many more of its pegs as
+    /// well (1 = the last two; see `recentPegs`), so a run of mis-taps can be cleared in one go and
+    /// recounted. The other side's pegs are untouched. Works after the game has been won, so a
+    /// mis-tapped winning peg can be corrected — the same latitude the in-game undo has.
+    mutating func undo(_ side: BoardSide, stepsBack: Int = 0) {
+        guard stepsBack >= 0, stepsBack < pegs.filter({ $0.side == side }).count else { return }
+        for _ in 0...stepsBack {
+            guard let index = pegs.lastIndex(where: { $0.side == side }) else { break }
+            let peg = pegs.remove(at: index)
+            switch side {
+            case .bottom: bottom = max(0, bottom - peg.amount)
+            case .top:    top = max(0, top - peg.amount)
+            }
         }
     }
 
     func canUndo(_ side: BoardSide) -> Bool { pegs.contains { $0.side == side } }
+
+    /// This side's last few pegs, newest first — what the undo button's long-press lists. The
+    /// position in this array is the `stepsBack` that takes back that peg and every later one.
+    func recentPegs(_ side: BoardSide) -> [Peg] {
+        Array(pegs.reversed().filter { $0.side == side }.prefix(Self.recentPegLimit))
+    }
+
+    /// How far back the undo list reaches. Enough to find the tap that went wrong a moment ago;
+    /// anything older is better fixed with a fresh peg.
+    static let recentPegLimit = 5
 }
 
 // MARK: - Store

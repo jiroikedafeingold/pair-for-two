@@ -115,6 +115,7 @@ Every message is a JSON object with a `"t"` discriminator:
 | `intentRevealStarter` | — |
 | `claimPoints` | `player` PlayerID, `amount` Int |
 | `undo` | `player` PlayerID |
+| `undoStep` | `player` PlayerID, `stepsBack` Int — undo the player's last `stepsBack + 1` claims (0 = just the latest, same as `undo`); the other player's claims stay |
 | `advance` | — |
 | `playAgain` | — |
 | `updateIdentity` | `name` String, `colorID` Int |
@@ -163,6 +164,7 @@ only in that player's own snapshot until a reveal phase.
 | `yourColorID` | Int | |
 | `opponentColorID` | Int | |
 | `playersWithClaims` | Set<PlayerID> | sorted array |
+| `recentClaims` | [Claim] | each player's last 5 claims, oldest first; optional (older hosts omit it) |
 | `claimTick` | Int | |
 | `lastClaimPlayer` | PlayerID | optional |
 | `lastClaimAmount` | Int | |

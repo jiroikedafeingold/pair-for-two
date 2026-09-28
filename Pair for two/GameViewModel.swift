@@ -254,7 +254,7 @@ final class GameViewModel {
                        opponentName: String(localized: "Opponent",
                                             comment: "Stand-in for the other player's name until it arrives"),
                        yourColorID: colorID, opponentColorID: you == .one ? 7 : 1,
-                       playersWithClaims: [],
+                       playersWithClaims: [], recentClaims: [],
                        claimTick: 0, lastClaimPlayer: nil, lastClaimAmount: 0,
                        pegEventTick: 0, lastPegEvent: nil, scoreLog: [])
     }
@@ -829,6 +829,12 @@ final class GameViewModel {
         snapshot.playersWithClaims.contains(player)
     }
 
+    /// A player's last few claims, newest first. The index of an entry is the `stepsBack` that
+    /// `undo(for:stepsBack:)` takes to remove it along with every later one of theirs.
+    func recentClaims(for player: PlayerID) -> [Claim] {
+        snapshot.recentClaims.reversed().filter { $0.player == player }
+    }
+
     var winnerInfo: (winner: PlayerID, skunk: SkunkLevel)? {
         guard let winner = snapshot.winner else { return nil }
         return (winner, computeSkunk(loserScore: score(of: winner.opponent)))
@@ -882,7 +888,11 @@ final class GameViewModel {
 
     func sayGo() { submit(.intentGo) }
     func claim(_ amount: Int, for player: PlayerID) { submit(.claimPoints(player: player, amount: amount)) }
-    func undo(for player: PlayerID) { submit(.undo(player: player)) }
+    /// Take back the most recent claim, or the last `stepsBack + 1` of them. Plain `undo` stays the message
+    /// for the common case so a peer on an older build still understands it.
+    func undo(for player: PlayerID, stepsBack: Int = 0) {
+        submit(stepsBack == 0 ? .undo(player: player) : .undoStep(player: player, stepsBack: stepsBack))
+    }
     func advance() { submit(.advance) }
     func playAgain() { submit(.playAgain) }
 
@@ -944,6 +954,9 @@ final class GameViewModel {
         case .undo(let undoPlayer):
             let target = isLoopback ? undoPlayer : player
             CribbageEngine.undo(&s, player: target)
+        case .undoStep(let undoPlayer, let stepsBack):
+            let target = isLoopback ? undoPlayer : player
+            CribbageEngine.undo(&s, player: target, stepsBack: stepsBack)
         case .advance:
             CribbageEngine.advance(&s)
         case .playAgain:

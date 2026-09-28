@@ -178,6 +178,12 @@ struct BoardView: View {
                        face(side)   // correcting your own score counts too — face the person doing it
                        game.undo(side)
                    },
+                   undoHistory: game.recentPegs(side).map(\.amount),
+                   onUndoStep: { stepsBack in
+                       GameFeedback.shared.play(.advance)
+                       face(side)
+                       game.undo(side, stepsBack: stepsBack)
+                   },
                    onActivity: { face(side) })   // sliding, tapping, undoing: all of it turns the score
     }
 

@@ -297,15 +297,21 @@ nonisolated enum CribbageEngine {
         return true
     }
 
-    /// Undo a player's most recent claim (restores the pre-win phase if it had ended the game).
+    /// Undo a player's most recent claim — or, with `stepsBack`, that many more of theirs as well
+    /// (1 = the last two), so a run of mis-taps can be cleared in one go and recounted. The other
+    /// player's claims are untouched. Restores the pre-win phase if it had ended the game.
     @discardableResult
-    static func undo(_ s: inout GameState, player: PlayerID) -> Bool {
-        guard let idx = s.claimHistory.lastIndex(where: { $0.player == player }) else { return false }
-        let claim = s.claimHistory.remove(at: idx)
-        s.scores[player, default: 0] -= claim.amount
-        if s.winner == player, (s.scores[player] ?? 0) < 121 {
-            s.winner = nil
-            if s.phase == .gameOver { s.phase = claim.phase }
+    static func undo(_ s: inout GameState, player: PlayerID, stepsBack: Int = 0) -> Bool {
+        let mine = s.claimHistory.filter { $0.player == player }.count
+        guard stepsBack >= 0, stepsBack < mine else { return false }
+        for _ in 0...stepsBack {
+            guard let idx = s.claimHistory.lastIndex(where: { $0.player == player }) else { break }
+            let claim = s.claimHistory.remove(at: idx)
+            s.scores[player, default: 0] -= claim.amount
+            if s.winner == player, (s.scores[player] ?? 0) < 121 {
+                s.winner = nil
+                if s.phase == .gameOver { s.phase = claim.phase }
+            }
         }
         return true
     }

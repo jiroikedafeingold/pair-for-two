@@ -107,6 +107,21 @@ nonisolated struct GameState: Codable, Sendable {
         unplayed(of: .one).isEmpty && unplayed(of: .two).isEmpty
     }
 
+    /// How many of each player's claims the snapshot carries for the undo list — enough to find the
+    /// entry that went wrong a moment ago, without shipping the whole history in every heartbeat.
+    static let recentClaimLimit = 5
+
+    /// Each player's last few claims, oldest first, for `PlayerSnapshot.recentClaims`.
+    var recentClaims: [Claim] {
+        var remaining: [PlayerID: Int] = [.one: Self.recentClaimLimit, .two: Self.recentClaimLimit]
+        var newestFirst: [Claim] = []
+        for claim in claimHistory.reversed() where remaining[claim.player, default: 0] > 0 {
+            remaining[claim.player, default: 0] -= 1
+            newestFirst.append(claim)
+        }
+        return newestFirst.reversed()
+    }
+
     /// A fresh state for a brand-new match. `dealer` here is provisional; the real dealer is decided
     /// by the cut-for-deal phase.
     static func newMatch(matchID: UUID,
@@ -198,6 +213,7 @@ extension GameState {
             yourColorID: colorIDs[you] ?? 0,
             opponentColorID: colorIDs[opponent] ?? 1,
             playersWithClaims: Set(claimHistory.map(\.player)),
+            recentClaims: recentClaims,
             claimTick: claimTick,
             lastClaimPlayer: claimHistory.last?.player,
             lastClaimAmount: claimHistory.last?.amount ?? 0,
@@ -257,6 +273,10 @@ nonisolated struct PlayerSnapshot: Codable, Hashable, Sendable {
     /// Players that currently have at least one undoable claim (so the guest, which holds no
     /// authoritative state, can still enable/disable its undo button).
     let playersWithClaims: Set<PlayerID>
+
+    /// Each player's last few claims (see `GameState.recentClaimLimit`), oldest first, so either
+    /// device can list what its undo button would take back.
+    let recentClaims: [Claim]
 
     /// Increments on each claim; the most recent claim's player + amount, so the *other* device can
     /// preview "+X" next to that player's score before it lands.

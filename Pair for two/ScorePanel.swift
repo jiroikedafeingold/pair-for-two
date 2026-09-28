@@ -35,6 +35,11 @@ struct ScorePanel: View {
     let onAdd: (Int) -> Void
     let onPlusOne: () -> Void
     let onUndo: () -> Void
+    /// This player's last few scored amounts, newest first, listed when the undo button is long-pressed.
+    /// Picking one calls `onUndoStep` with its position (0 = the latest), taking back that entry and
+    /// every one after it, so a run of mis-taps can be recounted.
+    var undoHistory: [Int] = []
+    var onUndoStep: (Int) -> Void = { _ in }
     /// Fired whenever this player touches the panel at all — dragging the slider, tapping +1, undoing.
     /// The board uses it to turn the shared score to face whoever is using it, which has to happen the
     /// moment they start, not when they finish. No-op everywhere else.
@@ -206,6 +211,21 @@ struct ScorePanel: View {
                                 .fill(Color.white.opacity(0.08))
                                 .overlay(Circle().stroke(Color.white.opacity(0.15), lineWidth: 1))
                         )
+                }
+                // Long-press to take back several entries at once: everything back to the one picked.
+                .contextMenu {
+                    if pending == 0, !undoHistory.isEmpty {
+                        Section("Undo back to and including") {
+                            ForEach(Array(undoHistory.enumerated()), id: \.offset) { index, amount in
+                                Button {
+                                    onActivity()
+                                    onUndoStep(index)
+                                } label: {
+                                    Text(verbatim: "+\(amount)")
+                                }
+                            }
+                        }
+                    }
                 }
                 .disabled((!canUndo && pending == 0) || disabled)
                 .opacity(((!canUndo && pending == 0) || disabled) ? 0.30 : 1.0)
