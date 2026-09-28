@@ -81,6 +81,16 @@ final class GameViewModel {
     /// knowable while it's being played — so it's tracked as the scores move and handed to Game Center.
     private var worstDeficit = 0
 
+    /// Set when the game just recorded is a good moment to ask for an App Store rating: a win, with a
+    /// few games behind them, and not already asked in this version. The win screen asks and then
+    /// calls `reviewPromptShown()`. iOS still decides whether the prompt appears (three a year at most).
+    private(set) var reviewPromptDue = false
+    private static let reviewPromptMinimumGames = 3
+    private static let reviewPromptVersionKey = "reviewPromptVersion"
+    private static var appVersion: String {
+        Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? ""
+    }
+
     /// When anything last arrived from the peer. Both sides send on a timer — the host its snapshot,
     /// the guest a keepalive — so this is a liveness signal either way. See `startInboundWatchdog`.
     private var lastInboundAt = Date()
@@ -339,9 +349,20 @@ final class GameViewModel {
                                 hands: max(handsObserved, 1),
                                 yourBestHand: best)
         StatsStore.record(record)
+        let summary = StatsStore.summary()
         // Achievements and the wins leaderboard are derived from the same history, so they're reported
         // once it includes this game.
-        GameCenterAwards.report(game: record, summary: StatsStore.summary(), worstDeficit: worstDeficit)
+        GameCenterAwards.report(game: record, summary: summary, worstDeficit: worstDeficit)
+        if s.winner == s.you, summary.games >= Self.reviewPromptMinimumGames,
+           UserDefaults.standard.string(forKey: Self.reviewPromptVersionKey) != Self.appVersion {
+            reviewPromptDue = true
+        }
+    }
+
+    /// The win screen has asked for a rating; don't ask again until the next version.
+    func reviewPromptShown() {
+        reviewPromptDue = false
+        UserDefaults.standard.set(Self.appVersion, forKey: Self.reviewPromptVersionKey)
     }
 
     /// Neither side can tell a quiet link from a dead one by itself, so each listens for the other's

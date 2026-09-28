@@ -1,4 +1,5 @@
 import SwiftUI
+import StoreKit
 
 /// The root game screen. Landscape: top ~1/3 is the scoreboard + coach banner + flag chips + manual
 /// scoring; bottom ~2/3 is the shared play area and the current player's hand. Card sizes scale off
@@ -57,6 +58,7 @@ struct GameTableView: View {
     // foreground), so players notice where to find help and change scoring mid-game.
     @State private var glowTrigger = 0
     @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.requestReview) private var requestReview
     @Environment(\.horizontalSizeClass) private var hSizeClass
     /// Regular *height* is the iPad test (a big iPhone in landscape is regular-width but compact-height).
     @Environment(\.verticalSizeClass) private var vSizeClass
@@ -1199,6 +1201,14 @@ struct GameTableView: View {
                     onReplay: { withAnimation { showManualReplay = true } },
                     onExit: { vm.quit() }
                 )
+                // Ask for a rating on a win, once the celebration has had a moment to land.
+                .task {
+                    guard vm.reviewPromptDue else { return }
+                    try? await Task.sleep(for: .seconds(2.5))
+                    guard !Task.isCancelled, vm.reviewPromptDue else { return }
+                    vm.reviewPromptShown()
+                    requestReview()
+                }
             } else {
                 LoserOverlay(
                     winnerName: vm.name(of: info.winner),
