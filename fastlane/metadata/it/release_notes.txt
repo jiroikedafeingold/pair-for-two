@@ -1,6 +1,3 @@
-• Un taglio in pareggio ora viene annunciato — «Pareggio: avete tagliato entrambi un 7. Tagliate di nuovo.» — invece di svuotare le carte in silenzio, che poteva sembrare un errore.
-• His Heels ha il suo momento: se la carta iniziale è un J, un avviso ricorda i 2 punti del mazziere.
-• Novità nelle impostazioni: Promemoria punti. Disattiva gli avvisi (his heels, go, 31, ultima carta) se preferisci contare in pace. Attivo di default.
-• Il crib ora porta un punto del colore del mazziere: di chi è resta chiaro per tutta la mano.
+• Hai inserito qualche punteggio di troppo? Tieni premuto il pulsante Annulla per vedere i tuoi ultimi cinque punteggi: scegline uno e verrà annullato insieme a tutti quelli aggiunti dopo, così puoi ricontare da lì. Un semplice tocco annulla ancora solo l'ultimo.
 
 Grazie per aver giocato! Domande o commenti? apps@feingold5.com

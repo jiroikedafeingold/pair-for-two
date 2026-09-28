@@ -1,6 +1,3 @@
-• Um corte empatado agora é anunciado — "Empate: os dois cortaram um 7. Cortem de novo." — em vez de limpar as cartas em silêncio, o que podia parecer um erro.
-• His Heels tem seu momento: se a carta virada é um J, um lembrete aponta os 2 pontos do carteador.
-• Novidade nos Ajustes: Lembretes de pontos. Desligue os avisos (his heels, go, 31, última carta) se preferir contar em paz. Ligado por padrão.
-• O crib agora leva um ponto na cor do carteador — de quem ele é fica claro a mão inteira.
+• Marcou pontos a mais? Toque e segure o botão de desfazer para ver suas cinco últimas pontuações; escolha uma e ela é desfeita junto com todas as que você adicionou depois, para recontar a partir dali. Um toque simples continua desfazendo só a última.
 
 Obrigado por jogar! Dúvidas ou comentários? apps@feingold5.com

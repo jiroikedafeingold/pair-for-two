@@ -1,6 +1,3 @@
-• Une coupe à égalité est maintenant annoncée — « Égalité : vous avez tous deux coupé un 7. Coupez à nouveau. » — au lieu d'effacer les cartes en silence, ce qui pouvait passer pour un bug.
-• His Heels a droit à son moment : si la carte retournée est un valet, un rappel signale les 2 points du donneur.
-• Nouveau dans les réglages : Rappels de points. Désactivez les messages (his heels, go, 31, dernière carte) si vous préférez compter tranquille. Activé par défaut.
-• Le crib porte désormais un point à la couleur du donneur : on voit à qui il est pendant toute la main.
+• Quelques points de trop ? Maintenez le bouton Annuler pour voir vos cinq derniers scores : choisissez-en un, il est annulé avec tous ceux ajoutés après, et vous recomptez à partir de là. Un simple toucher annule toujours seulement le dernier.
 
 Merci de jouer ! Questions ou remarques ? apps@feingold5.com

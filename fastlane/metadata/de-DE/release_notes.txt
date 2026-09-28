@@ -1,6 +1,3 @@
-• Ein Gleichstand beim Abheben wird jetzt angesagt — „Gleichstand – beide haben eine 7 abgehoben. Hebt noch einmal ab." — statt die Karten stumm zu leeren, was wie ein Fehler wirken konnte.
-• His Heels bekommt seinen Auftritt: Wird ein Bube aufgedeckt, erinnert ein Hinweis an die 2 Punkte für den Geber.
-• Neu in den Einstellungen: Punkte-Hinweise. Schalte die Einblendungen (His Heels, Go, 31, letzte Karte) ab, wenn du lieber in Ruhe zählst. Standardmäßig an.
-• Der Crib trägt jetzt einen Punkt in der Farbe des Gebers — wessen Crib es ist, bleibt die ganze Hand sichtbar.
+• Ein paar Punkte zu viel eingetippt? Halte die Rückgängig-Taste gedrückt, um deine letzten fünf Einträge zu sehen. Wähle einen aus, und er wird zusammen mit allen danach eingetragenen Punkten zurückgenommen, sodass du von dort neu zählen kannst. Ein einfaches Tippen nimmt weiterhin nur den letzten zurück.
 
 Danke fürs Spielen! Fragen oder Rückmeldungen? apps@feingold5.com

@@ -1,6 +1,3 @@
-• A tied cut for the deal now says so — "Tie — both cut a 7. Cut again." — instead of silently clearing the cards, which could look like the app losing track.
-• His Heels gets its moment: when the starter comes up a Jack, a reminder points out the dealer's 2 points.
-• New in Settings: Score reminders. Turn off the points-to-take pop-ups (his heels, a go, 31, the last card) if you'd rather count in peace. On by default.
-• The crib now carries a dot in the dealer's color, so whose crib it is stays obvious all hand.
+• Tapped in a few scores too many? Press and hold the undo button to see your last five scores, pick one, and it goes back along with every score you added after it, so you can recount from there. A single tap still takes back just the latest.
 
 Thanks for playing! Questions or feedback? apps@feingold5.com

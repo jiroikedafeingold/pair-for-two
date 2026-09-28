@@ -1,6 +1,3 @@
-• Un empate al cortar para repartir ahora se anuncia — «Empate: los dos habéis cortado un 7. Cortad otra vez.» — en vez de limpiar las cartas en silencio, que podía parecer un fallo.
-• His Heels tiene su momento: si la carta inicial es una J, un aviso recuerda los 2 puntos del repartidor.
-• Nuevo en Ajustes: Avisos de puntos. Desactiva los mensajes emergentes (his heels, go, 31, última carta) si prefieres contar tranquilo. Activado por defecto.
-• El crib lleva ahora un punto del color del repartidor, así se ve de quién es durante toda la mano.
+• ¿Has marcado alguna puntuación de más? Mantén pulsado el botón de deshacer para ver tus cinco últimas puntuaciones; elige una y se deshará junto con todas las que añadiste después, para que vuelvas a contar desde ahí. Un toque sencillo sigue deshaciendo solo la última.
 
 ¡Gracias por jugar! ¿Preguntas o comentarios? apps@feingold5.com
