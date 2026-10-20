@@ -138,6 +138,8 @@ nonisolated enum WireCodec {
             return ["t": "setScoringMode", "mode": mode]
         case .quitGame:
             return ["t": "quitGame"]
+        case .requestWiFiAwarePairing:
+            return ["t": "requestWiFiAwarePairing"]
         }
     }
 
@@ -196,6 +198,8 @@ nonisolated enum WireCodec {
             return .setScoringMode(mode)
         case "quitGame":
             return .quitGame
+        case "requestWiFiAwarePairing":
+            return .requestWiFiAwarePairing
         default:
             return nil   // unknown message from a newer peer — ignore rather than crash
         }

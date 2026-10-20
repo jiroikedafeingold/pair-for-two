@@ -6,6 +6,12 @@ enum ConnectionState: Sendable {
     case connecting, connected, reconnecting, disconnected
 }
 
+/// Which side of the one-time Wi-Fi Aware pairing this phone takes: the host makes itself
+/// discoverable, the guest picks it. See `GameViewModel.considerWiFiAwarePairing`.
+enum WiFiAwarePairingRole: Sendable {
+    case advertise, pick
+}
+
 /// Bridges the game engine/transport to the UI. `@MainActor @Observable`, and deliberately imports
 /// no SwiftUI — views stay thin and read this model.
 ///
@@ -107,6 +113,34 @@ final class GameViewModel {
     /// and legitimately goes quiet for minutes at a time, so the host's watchdog stays disarmed until
     /// this device knows the other end is one that reports in.
     private var sawGuestKeepalive = false
+
+    // MARK: Wi-Fi Aware pairing
+    //
+    // Wi-Fi Aware makes connecting and reconnecting near-instant, but only between phones that have
+    // been paired once through the system's own sheet, which a person has to confirm on both. The
+    // app can't do that for them; what it can do is put the sheet up on both phones at the same
+    // moment, the first time two capable phones meet, so nobody has to find an option for it.
+
+    /// Which system pairing sheet the screen should be showing, if any. The screen presents it and
+    /// reports back through `wiFiAwarePairingFinished`.
+    private(set) var wiFiAwarePairing: WiFiAwarePairingRole?
+    private var wiFiAwarePairingConsidered = false
+
+    private static var wiFiAwareAvailable: Bool {
+        if #available(iOS 26, *) { return WiFiAwareTransport.isSupported }
+        return false
+    }
+
+    /// A paired partner was seen while connecting, so Multipeer only won the race — no sheet needed.
+    private static var pairedPeerSeenRecently: Bool {
+        if #available(iOS 26, *), let seen = WiFiAwareTransport.lastPairedPeerSighting {
+            return Date().timeIntervalSince(seen) < 60
+        }
+        return false
+    }
+
+    /// Remembered per opponent, so a declined sheet isn't offered again every game with them.
+    private static func declinedPairingKey(with name: String) -> String { "wifiAwarePairingDeclined.\(name)" }
 
     // MARK: Init / factories
 
@@ -443,6 +477,8 @@ final class GameViewModel {
                     sawGuestKeepalive = true
                     refreshAndBroadcast()
                 }
+            case .requestWiFiAwarePairing:
+                offerWiFiAwarePairing()
             default:
                 hostApply(message, from: fixedPlayer.opponent)   // the peer is the other player
                 refreshAndBroadcast()
@@ -453,7 +489,7 @@ final class GameViewModel {
                 let previousPhase = snapshot.phase
                 snapshot = snap
                 fixedPlayer = snap.you
-                if snap.phase != .connecting { shareMatchToken() }
+                if snap.phase != .connecting { shareMatchToken(); considerWiFiAwarePairing() }
                 if snap.phase != previousPhase { selectedForDiscard.removeAll() }
                 trackProgress(from: previousPhase, to: snap.phase)
                 // Guest marker so this device can also offer "Rejoin game" (nearby games only).
@@ -470,6 +506,38 @@ final class GameViewModel {
             default:
                 break
             }
+        }
+    }
+
+    /// The guest's side of the one-time pairing, once the game is actually on. The guest decides
+    /// because only the browsing side learned whether the host's phone has the radio (see
+    /// `GameTransport.peerSupportsWiFiAware`). It asks the host to show its sheet, then shows its own.
+    private func considerWiFiAwarePairing() {
+        guard !wiFiAwarePairingConsidered else { return }
+        wiFiAwarePairingConsidered = true
+        guard !isHost, !isLoopback, transport.linkKind == .direct, transport.peerSupportsWiFiAware,
+              Self.wiFiAwareAvailable, !Self.pairedPeerSeenRecently,
+              !UserDefaults.standard.bool(forKey: Self.declinedPairingKey(with: snapshot.opponentName))
+        else { return }
+        Task { await transport.send(.requestWiFiAwarePairing) }
+        wiFiAwarePairing = .pick
+    }
+
+    /// The host's side: the guest has asked, so make this phone discoverable — unless this player
+    /// has already turned the pairing down with this opponent.
+    private func offerWiFiAwarePairing() {
+        guard isHost, wiFiAwarePairing == nil, Self.wiFiAwareAvailable,
+              !UserDefaults.standard.bool(forKey: Self.declinedPairingKey(with: snapshot.opponentName))
+        else { return }
+        wiFiAwarePairing = .advertise
+    }
+
+    /// The screen has taken the pairing sheet down. A sheet that produced no pairing counts as a
+    /// decline for this opponent.
+    func wiFiAwarePairingFinished(paired: Bool) {
+        wiFiAwarePairing = nil
+        if !paired {
+            UserDefaults.standard.set(true, forKey: Self.declinedPairingKey(with: snapshot.opponentName))
         }
     }
 
@@ -987,7 +1055,7 @@ final class GameViewModel {
             s.colorIDs[player] = colorID
         case .setScoringMode(let raw):
             s.scoringMode = ScoringMode(rawValue: raw) ?? s.scoringMode
-        case .hello, .assignSeat, .snapshot, .quitGame:
+        case .hello, .assignSeat, .snapshot, .quitGame, .requestWiFiAwarePairing:
             break
         }
         state = s

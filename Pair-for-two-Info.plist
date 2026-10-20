@@ -13,5 +13,17 @@
 		     browser never discovers a Multipeer advertisement. See PROTOCOL.md. -->
 		<string>_pairfortwo-lan._tcp</string>
 	</array>
+	<!-- WiFiAwareTransport: iPhone 12 and later, paired once through the system sheet, then
+	     connecting directly without discovery. Published by the host, subscribed by the guest. -->
+	<key>WiFiAwareServices</key>
+	<dict>
+		<key>_pairfortwo-wa._tcp</key>
+		<dict>
+			<key>Publishable</key>
+			<dict/>
+			<key>Subscribable</key>
+			<dict/>
+		</dict>
+	</dict>
 </dict>
 </plist>

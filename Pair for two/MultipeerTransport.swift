@@ -53,7 +53,9 @@ final class MultipeerSession: NSObject, NearbyTransport {
     // Confined to the main actor: it's reassigned on reconnect/rebuild, so any off-actor read while
     // it's being swapped is a data race (crashes in objc_retain). All access hops to the main actor.
     private var session: MCSession
-    nonisolated(unsafe) private let myPeerID: MCPeerID
+    /// Replaced, along with the session, at the start of each recovery — see `rebuildSession`.
+    nonisolated(unsafe) private var myPeerID: MCPeerID
+    private let displayName: String
     private var advertiser: MCNearbyServiceAdvertiser?
     private var browser: MCNearbyServiceBrowser?
 
@@ -129,6 +131,10 @@ final class MultipeerSession: NSObject, NearbyTransport {
     /// Display names of peers whose advertisement says they are *looking to pair*, as opposed to
     /// merely staying findable through a game. Only these take part in the inviter election.
     private var pairingPeers: Set<String> = []
+    /// Display names of peers whose advertisement says their phone can pair over Wi-Fi Aware.
+    private var wiFiAwarePeers: Set<String> = []
+    /// See `GameTransport.peerSupportsWiFiAware`. Only ever true on the side that browsed.
+    private(set) var peerSupportsWiFiAware = false
 
     /// The peers a player may actually join: everyone advertising who isn't already in a game.
     ///
@@ -143,8 +149,10 @@ final class MultipeerSession: NSObject, NearbyTransport {
     init(displayName: String) {
         let trimmed = displayName.trimmingCharacters(in: .whitespaces)
         let name = String((trimmed.isEmpty ? String(localized: "Player", comment: "Fallback name shown to the other device when you have not set one") : trimmed).prefix(60))
-        myPeerID = MCPeerID(displayName: name)
-        session = MCSession(peer: myPeerID, securityIdentity: nil, encryptionPreference: Self.encryption)
+        self.displayName = name
+        let peer = MCPeerID(displayName: name)
+        myPeerID = peer
+        session = MCSession(peer: peer, securityIdentity: nil, encryptionPreference: Self.encryption)
         var captured: AsyncStream<TransportEvent>.Continuation!
         events = AsyncStream(bufferingPolicy: .unbounded) { captured = $0 }
         continuation = captured
@@ -225,7 +233,9 @@ final class MultipeerSession: NSObject, NearbyTransport {
                 // otherwise the loop re-invites the same dead peer every 20 seconds, forever.
                 if self.inviteWentQuiet {
                     self.pendingInviteAt = nil
-                    self.rebuildSession(force: true)
+                    // Everything is replaced here — session, advertiser, browser — so the identity can
+                    // be too, and a peer that has us on file as a dead advertiser sees a new one.
+                    self.rebuildSession(force: true, freshIdentity: true)
                     if self.symmetricPairing { self.startBoth(force: true) } else { self.startRole() }
                     continue
                 }
@@ -340,6 +350,9 @@ final class MultipeerSession: NSObject, NearbyTransport {
         // findable and will not invite anyone, so the other side must not wait for it to. See
         // `shouldInvite`.
         if isPairing { info["p"] = "1" }
+        // "This phone can pair over Wi-Fi Aware." The browsing side reads it, and only then does the
+        // game offer the one-time pairing — a system sheet that finds nothing is worse than none.
+        if #available(iOS 26, *), WiFiAwareTransport.isSupported { info["w"] = "1" }
         let adv = MCNearbyServiceAdvertiser(peer: myPeerID,
                                             discoveryInfo: info,
                                             serviceType: serviceType)
@@ -374,6 +387,7 @@ final class MultipeerSession: NSObject, NearbyTransport {
         peerTokens.removeAll()
         inGamePeers.removeAll()
         pairingPeers.removeAll()
+        wiFiAwarePeers.removeAll()
         pendingInviteAt = nil
         handshakeStartedAt = nil
         deferredToPeerSince = nil
@@ -446,12 +460,21 @@ final class MultipeerSession: NSObject, NearbyTransport {
         phase = .reconnecting
         continuation.yield(.reconnecting)
         pendingInviteAt = nil
-        rebuildSession()
-        // Forced: the rate limiter exists to stop the retry loop thrashing discovery, and this is the
-        // *start* of recovery, where both halves have to be running. Unforced, it silently did nothing
-        // whenever the last restart was inside the floor — discovery is stopped the moment a game
-        // connects, but the timestamp isn't, so a link that dropped soon after connecting left this
-        // phone "recovering" while neither advertising nor browsing.
+        // Forced, and under a fresh identity. This is the *start* of recovery, so the rate limiters —
+        // there to stop the retry loop thrashing — have nothing to protect; unforced, the rebuild was
+        // skipped whenever another had happened within the floor, leaving a session that still listed
+        // the ghost peer, which made the retry loop give up on its first pass with `recovering` stuck.
+        //
+        // The fresh `MCPeerID` is what makes a reconnect look like a first connection to the other
+        // phone. Reusing the old one meant the partner's browser could still hold our *previous*
+        // advertiser on file — same peer, dead endpoint — and invite that, getting no answer at all
+        // for the whole unanswered-invite timeout before a rebuild found the live one. A relaunch
+        // never has that problem because every launch mints a new peer; now a recovery does too.
+        rebuildSession(force: true, freshIdentity: true)
+        // Same reasoning for discovery: both halves have to be running from here. Unforced, it
+        // silently did nothing whenever the last restart was inside the floor — discovery is stopped
+        // the moment a game connects, but the timestamp isn't, so a link that dropped soon after
+        // connecting left this phone "recovering" while neither advertising nor browsing.
         startBoth(force: true)
         startPairingRetry()   // keep re-inviting until paired, instead of hoping the first invite lands
     }
@@ -463,13 +486,18 @@ final class MultipeerSession: NSObject, NearbyTransport {
     /// worse than not rebuilding at all: it pulls the session out from under an invitation that is
     /// still being negotiated, so the peer completes a handshake into a session we have already thrown
     /// away — one side then believes it is connected while the other is still hunting.
-    private func rebuildSession(force: Bool = false) {
+    ///
+    /// `freshIdentity` also mints a new `MCPeerID`. Only for callers that go on to replace the
+    /// advertiser and browser as well: an advertiser answers invitations addressed to the peer it
+    /// was built with, so accepting one into a session under a different peer is not an option.
+    private func rebuildSession(force: Bool = false, freshIdentity: Bool = false) {
         if !force, let last = lastRebuildAt,
            Date().timeIntervalSince(last) < Self.minRebuildInterval { return }
         lastRebuildAt = Date()
         pendingInviteAt = nil       // whatever was in flight belonged to the old session
         session.delegate = nil
         session.disconnect()
+        if freshIdentity { myPeerID = MCPeerID(displayName: displayName) }
         session = MCSession(peer: myPeerID, securityIdentity: nil, encryptionPreference: Self.encryption)
         session.delegate = self
     }
@@ -509,6 +537,7 @@ final class MultipeerSession: NSObject, NearbyTransport {
         peerTokens.removeAll()
         inGamePeers.removeAll()
         pairingPeers.removeAll()
+        wiFiAwarePeers.removeAll()
         advertiser?.stopAdvertisingPeer()
         advertiser = makeAdvertiser()      // now flagged as in-game
     }
@@ -580,6 +609,7 @@ final class MultipeerSession: NSObject, NearbyTransport {
         pendingInviteAt = nil
         failedInviteCount = 0
         recovering = false
+        peerSupportsWiFiAware = wiFiAwarePeers.contains(peerName)   // before the discoveries are cleared
         stayAdvertisedAndStopBrowsing()
         flushOutbox()               // deliver anything queued during the gap
         continuation.yield(.connected)
@@ -715,13 +745,20 @@ extension MultipeerSession: MCNearbyServiceAdvertiserDelegate {
                 invitationHandler(false, nil)
                 return
             }
+            // An invitation naming *our* game. Only our partner can know that id, so whoever sends it
+            // is the other phone coming back — however alive the old link still looks from here.
+            let partnerRejoining = offeredToken != nil && offeredToken == self.matchToken
             if self.session.connectedPeers.isEmpty {
                 invitationHandler(true, self.session)
-            } else if self.didConnect, self.linkLooksStale {
-                // We still believe we have a peer, but nothing has arrived from it for a while and now
-                // somebody is asking to pair. That invitation is far better evidence than
-                // `connectedPeers`, which MC keeps reporting for its whole keep-alive window after the
-                // other app is suspended.
+            } else if self.didConnect, self.linkLooksStale || partnerRejoining {
+                // We still believe we have a peer, but either nothing has arrived from it for a while
+                // or the invitation carries our match id, and now somebody is asking to pair. That
+                // invitation is far better evidence than `connectedPeers`, which MC keeps reporting
+                // for its whole keep-alive window after the other app is suspended.
+                //
+                // Waiting for the silence alone (what used to happen) cost the returning phone the
+                // whole silence window: it was back, had found us and had invited, and we turned it
+                // down as a third device until our own clock said the old link was dead.
                 //
                 // Accepting into the stale session (what used to happen) got us nowhere: MC already has
                 // that peer, so the handshake fails, and the failure can't start a recovery either
@@ -774,6 +811,10 @@ extension MultipeerSession {
         case .hosting, .browsing:
             startRole()
         case .connecting, .reconnecting:
+            // Foregrounding calls `reconnect(force:)` and then this, back to back. The reconnect has
+            // just stood fresh discovery up; replacing it again a moment later only throws away the
+            // advertisement the partner may already be resolving.
+            if let last = lastDiscoveryRestartAt, Date().timeIntervalSince(last) < 2 { return }
             startBoth(force: true)
         case .idle, .connected, .disconnected:
             return
@@ -789,6 +830,7 @@ extension MultipeerSession: MCNearbyServiceBrowserDelegate {
         let token = info?["t"]
         let inGame = info?["g"] == "1"
         let pairing = info?["p"] == "1"
+        let wifiAware = info?["w"] == "1"
         Task { @MainActor in
             self.searchBlocked = false                                   // clearly not blocked after all
             if let token { self.peerTokens[peer.displayName] = token }   // for the display-name tiebreak
@@ -801,6 +843,11 @@ extension MultipeerSession: MCNearbyServiceBrowserDelegate {
                 self.pairingPeers.insert(peer.displayName)
             } else {
                 self.pairingPeers.remove(peer.displayName)
+            }
+            if wifiAware {
+                self.wiFiAwarePeers.insert(peer.displayName)
+            } else {
+                self.wiFiAwarePeers.remove(peer.displayName)
             }
             self.addPeer(peer)
             // Auto-pair during a reconnect or a rendezvous resume (both sides browse). The single

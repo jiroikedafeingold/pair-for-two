@@ -24,50 +24,47 @@ struct PlayerTheme: Identifiable, Hashable {
     /// English name, used as the localization key — see `localizedName`. The stored `id` is what
     /// persists, so translating a color never migrates anyone's saved choice.
     let displayName: String
-    let primary: Color
-    let deep: Color
+    /// Base color as 0xRRGGBB. `primary` and `deep` are derived from it.
+    let hex: UInt32
 
     /// The color's name for display.
     var localizedName: LocalizedStringKey { LocalizedStringKey(displayName) }
+
+    var primary: Color { Self.color(hex, brightness: 1 + Self.brightnessBoost) }
+    /// A darker shade of `primary`, for gradients.
+    var deep: Color { Self.color(hex, brightness: (1 + Self.brightnessBoost) * 0.72) }
+
+    /// TEMPORARY: the Settings "Color brightness" boost (0, 10…50%), read straight from defaults so
+    /// every theme lookup picks it up without threading it through the views.
+    static var brightnessBoost: Double {
+        Double(UserDefaults.standard.integer(forKey: "colorBrightnessBoost")) / 100
+    }
+
+    /// `hex` with its HSB brightness scaled by `brightness` (capped at full brightness).
+    private static func color(_ hex: UInt32, brightness factor: Double) -> Color {
+        let ui = UIColor(red: CGFloat((hex >> 16) & 0xFF) / 255,
+                         green: CGFloat((hex >> 8) & 0xFF) / 255,
+                         blue: CGFloat(hex & 0xFF) / 255, alpha: 1)
+        var h: CGFloat = 0, s: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
+        ui.getHue(&h, saturation: &s, brightness: &b, alpha: &a)
+        return Color(hue: h, saturation: s, brightness: min(1, b * factor))
+    }
 }
 
+/// Deep, jewel-toned palette built around Plum #4D1821 and Mint #1B7931.
 let playerThemes: [PlayerTheme] = [
-    .init(id: "crimson",   displayName: "Crimson",
-          primary: Color(red: 1.00, green: 0.18, blue: 0.28),
-          deep:    Color(red: 0.78, green: 0.06, blue: 0.14)),
-    .init(id: "coral",     displayName: "Coral",
-          primary: Color(red: 1.00, green: 0.50, blue: 0.30),
-          deep:    Color(red: 0.82, green: 0.30, blue: 0.10)),
-    .init(id: "tangerine", displayName: "Tangerine",
-          primary: Color(red: 1.00, green: 0.62, blue: 0.10),
-          deep:    Color(red: 0.85, green: 0.40, blue: 0.04)),
-    .init(id: "gold",      displayName: "Gold",
-          primary: Color(red: 1.00, green: 0.85, blue: 0.15),
-          deep:    Color(red: 0.78, green: 0.58, blue: 0.02)),
-    .init(id: "lime",      displayName: "Lime",
-          primary: Color(red: 0.55, green: 0.95, blue: 0.18),
-          deep:    Color(red: 0.30, green: 0.65, blue: 0.08)),
-    .init(id: "mint",      displayName: "Mint",
-          primary: Color(red: 0.16, green: 0.92, blue: 0.50),
-          deep:    Color(red: 0.05, green: 0.62, blue: 0.30)),
-    .init(id: "teal",      displayName: "Teal",
-          primary: Color(red: 0.10, green: 0.88, blue: 0.85),
-          deep:    Color(red: 0.02, green: 0.55, blue: 0.62)),
-    .init(id: "sky",       displayName: "Sky",
-          primary: Color(red: 0.18, green: 0.66, blue: 1.00),
-          deep:    Color(red: 0.06, green: 0.36, blue: 0.85)),
-    .init(id: "indigo",    displayName: "Indigo",
-          primary: Color(red: 0.40, green: 0.36, blue: 1.00),
-          deep:    Color(red: 0.20, green: 0.16, blue: 0.80)),
-    .init(id: "plum",      displayName: "Plum",
-          primary: Color(red: 0.78, green: 0.28, blue: 1.00),
-          deep:    Color(red: 0.55, green: 0.10, blue: 0.80)),
-    .init(id: "magenta",   displayName: "Magenta",
-          primary: Color(red: 1.00, green: 0.22, blue: 0.82),
-          deep:    Color(red: 0.78, green: 0.06, blue: 0.58)),
-    .init(id: "rose",      displayName: "Rose",
-          primary: Color(red: 1.00, green: 0.45, blue: 0.68),
-          deep:    Color(red: 0.82, green: 0.20, blue: 0.45)),
+    .init(id: "crimson",   displayName: "Crimson",   hex: 0x8E1B24),
+    .init(id: "coral",     displayName: "Coral",     hex: 0xA5442F),
+    .init(id: "tangerine", displayName: "Tangerine", hex: 0xB5621A),
+    .init(id: "gold",      displayName: "Gold",      hex: 0xB08A1E),
+    .init(id: "lime",      displayName: "Lime",      hex: 0x5E7A1A),
+    .init(id: "mint",      displayName: "Mint",      hex: 0x1B7931),
+    .init(id: "teal",      displayName: "Teal",      hex: 0x156B66),
+    .init(id: "sky",       displayName: "Sky",       hex: 0x1D5A8C),
+    .init(id: "indigo",    displayName: "Indigo",    hex: 0x2E3480),
+    .init(id: "plum",      displayName: "Plum",      hex: 0x4D1821),
+    .init(id: "magenta",   displayName: "Magenta",   hex: 0x7A1D5C),
+    .init(id: "rose",      displayName: "Rose",      hex: 0x9E3A5E),
 ]
 
 /// Maps the model's integer `colorID` onto a theme (wraps around the palette).
@@ -202,7 +199,24 @@ struct AttentionGlow: ViewModifier {
     }
 }
 
+// MARK: - Player-color legibility
+
+/// A thin cream rim and soft light halo for text drawn in a player color, so the deep palette still
+/// reads against the dark felt. Two tight shadows stack into an outline-like edge; the wide one lifts
+/// the glyphs off the table.
+struct PlayerColorRim: ViewModifier {
+    func body(content: Content) -> some View {
+        content
+            .shadow(color: .cardFace.opacity(0.85), radius: 0.6)
+            .shadow(color: .cardFace.opacity(0.85), radius: 0.6)
+            .shadow(color: .cardFace.opacity(0.30), radius: 8)
+    }
+}
+
 extension View {
+    /// Outline and halo text drawn in a player color so it stands out on the felt.
+    func playerColorRim() -> some View { modifier(PlayerColorRim()) }
+
     /// Flash a subtle gold halo once each time `trigger` changes.
     func attentionGlow(trigger: Int) -> some View { modifier(AttentionGlow(trigger: trigger)) }
 }

@@ -121,6 +121,7 @@ Every message is a JSON object with a `"t"` discriminator:
 | `updateIdentity` | `name` String, `colorID` Int |
 | `setScoringMode` | `mode` Int |
 | `quitGame` | — |
+| `requestWiFiAwarePairing` | — ; iOS↔iOS only: asks the host to show the system Wi-Fi Aware pairing sheet while the guest shows its own. Peers that don't support it ignore it |
 
 A message with no fields is still a full object: `{"t":"intentGo"}`.
 

@@ -90,7 +90,7 @@ struct ScoringReplayView: View {
         let isScoring = current?.player == player
         VStack(spacing: 4) {
             Text(verbatim: name.uppercased())
-                .font(.title3.weight(.heavy)).foregroundStyle(theme.primary)
+                .font(.title3.weight(.heavy)).foregroundStyle(theme.primary).playerColorRim()
                 .lineLimit(1).minimumScaleFactor(0.6)
             HStack(alignment: .center, spacing: 6) {
                 Text(verbatim: "\(score(player))")

@@ -44,6 +44,10 @@ struct ScorePanel: View {
     /// The board uses it to turn the shared score to face whoever is using it, which has to happen the
     /// moment they start, not when they finish. No-op everywhere else.
     var onActivity: () -> Void = {}
+    /// Multiplies every text size and control dimension. The game screen passes more than 1 so the
+    /// panel reads from across a table — the top band has the room, especially on iPad. The board's
+    /// panels stay at 1.
+    var scale: CGFloat = 1
 
     @State private var pending: Int = 0
     @State private var sliderIsDragging: Bool = false
@@ -102,12 +106,12 @@ struct ScorePanel: View {
             // in your color, the opponent's in theirs, with their pending "+X" right beside it.
             if showsScore {
             HStack(spacing: 6) {
-                Text(verbatim: "\(score)").foregroundStyle(primary.opacity(0.85))
+                Text(verbatim: "\(score)").foregroundStyle(primary).playerColorRim()
                 Text(verbatim: "/").foregroundStyle(.white.opacity(0.35))
-                Text(verbatim: "\(opponentScore)").foregroundStyle(opponentColor.opacity(0.85))
+                Text(verbatim: "\(opponentScore)").foregroundStyle(opponentColor).playerColorRim()
                 if opponentPending > 0 {
                     Text(verbatim: "+\(opponentPending)")
-                        .font(.system(size: 26, weight: .heavy, design: .rounded))
+                        .font(.system(size: 26 * scale, weight: .heavy, design: .rounded))
                         .monospacedDigit()
                         .foregroundStyle(.white)
                         .padding(.horizontal, 8).padding(.vertical, 2)
@@ -116,12 +120,11 @@ struct ScorePanel: View {
                         .transition(.scale.combined(with: .opacity))
                 }
             }
-            .font(.system(size: 56, weight: .black, design: .rounded))
+            .font(.system(size: 56 * scale, weight: .black, design: .rounded))
             .tracking(2)
             .lineLimit(1)
             .minimumScaleFactor(0.4)
             .monospacedDigit()
-            .shadow(color: primary.opacity(0.4), radius: 12)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .allowsHitTesting(false)
             .accessibilityLabel("\(name): \(score) points, opponent \(opponentScore)")
@@ -139,15 +142,16 @@ struct ScorePanel: View {
                     }
                 } label: {
                     Text(verbatim: "+\(displayValue)")
-                        .font(.system(size: 22, weight: .black, design: .rounded))
+                        .font(.system(size: 22 * scale, weight: .black, design: .rounded))
                         .foregroundStyle(
                             highlighted
                             ? AnyShapeStyle(.white)
                             : AnyShapeStyle(LinearGradient(colors: [primary, deep], startPoint: .top, endPoint: .bottom))
                         )
+                        .playerColorRim()   // the deep palette needs the same edge here as on the scores
                         .monospacedDigit()
                         .contentTransition(.numericText(value: Double(displayValue)))
-                        .frame(minWidth: 56, minHeight: 44)
+                        .frame(minWidth: 56 * scale, minHeight: 44 * scale)
                         .padding(.horizontal, 8)
                         .background(
                             Capsule()
@@ -181,7 +185,8 @@ struct ScorePanel: View {
                 .opacity(disabled ? 0.4 : 1.0)
                 .onAppear { plusHeavy.prepare(); plusRigid.prepare() }
 
-                PointsSlider(value: $pending, isDragging: $sliderIsDragging, primary: primary, deep: deep) { committed in
+                PointsSlider(value: $pending, isDragging: $sliderIsDragging, primary: primary, deep: deep,
+                             scale: scale) { committed in
                     onActivity()
                     if !requireConfirm {
                         onAdd(committed)
@@ -189,7 +194,7 @@ struct ScorePanel: View {
                         withAnimation(.spring(response: 0.45, dampingFraction: 0.8)) { pending = 0 }
                     }
                 }
-                .frame(height: 44)
+                .frame(height: 44 * scale)
                 .disabled(disabled)
                 .opacity(disabled ? 0.4 : 1.0)
 
@@ -203,9 +208,9 @@ struct ScorePanel: View {
                     if HapticsSetting.enabled { UIImpactFeedbackGenerator(style: .light).impactOccurred() }
                 } label: {
                     Image(systemName: "arrow.uturn.backward")
-                        .font(.system(size: 13, weight: .black))
+                        .font(.system(size: 13 * scale, weight: .black))
                         .foregroundStyle(.white.opacity(0.85))
-                        .frame(width: 38, height: 38)
+                        .frame(width: 38 * scale, height: 38 * scale)
                         .background(
                             Circle()
                                 .fill(Color.white.opacity(0.08))
@@ -231,7 +236,7 @@ struct ScorePanel: View {
                 .opacity(((!canUndo && pending == 0) || disabled) ? 0.30 : 1.0)
             }
             .padding(.horizontal, 16)
-            .padding(.vertical, 8)
+            .padding(.vertical, 8 * scale)
             .onChange(of: sliderIsDragging) { _, dragging in if dragging { onActivity() } }
             .onChange(of: pending) { _, _ in onActivity() }
         }
@@ -435,6 +440,8 @@ struct PointsSlider: View {
     @Binding var isDragging: Bool
     let primary: Color
     let deep: Color
+    /// Grows the knob and track with the panel — see `ScorePanel.scale`.
+    var scale: CGFloat = 1
     let onCommit: (Int) -> Void
 
     @State private var dragStartValue: Int = 0
@@ -443,8 +450,8 @@ struct PointsSlider: View {
 
     var body: some View {
         GeometryReader { geo in
-            let knobSize: CGFloat = 32
-            let trackHeight: CGFloat = 10
+            let knobSize: CGFloat = 32 * scale
+            let trackHeight: CGFloat = 10 * scale
             let usable = geo.size.width - knobSize
             let progress = CGFloat(value) / CGFloat(maxValue)
             let knobX = progress * usable

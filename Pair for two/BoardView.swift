@@ -264,6 +264,7 @@ struct BoardView: View {
             Text(verbatim: (isNear ? nearLabel : farLabel).uppercased())
                 .font(.system(size: nameSize, weight: .heavy, design: .rounded))
                 .foregroundStyle(theme.primary)
+                .playerColorRim()
                 .lineLimit(1).minimumScaleFactor(0.6)
             Text(verbatim: "\(game.score(side))")
                 .font(.system(size: scoreSize, weight: .heavy, design: .rounded))

@@ -14,6 +14,11 @@ enum ResumeRole { case host, guest }
 ///
 /// Peers offering both are deduped by name with **Multipeer preferred**, since it doesn't need a
 /// network. See PLAN.md §4.4.
+///
+/// **A third, on phones that have it.** `WiFiAwareTransport` connects paired iPhones directly, with
+/// no discovery to wait for. Nothing here shows for it: the one-time pairing is offered by the game
+/// itself the first time two capable phones meet (`GameViewModel.considerWiFiAwarePairing`), and
+/// from then on it runs alongside the other two and usually wins.
 struct ConnectView: View {
     let localName: String
     let localColorID: Int
@@ -27,6 +32,9 @@ struct ConnectView: View {
 
     @State private var mc: MultipeerSession
     @State private var lan: LANTransport
+    /// nil on a phone without Wi-Fi Aware (iOS 26 on an iPhone 12 or later), where the screen is as it
+    /// always was. Held behind the protocol because the type itself needs iOS 26; `wa` unwraps it.
+    @State private var waBox: (any NearbyTransport)? = nil
     @State private var connectStalled = false  // surfaced after a while so a stuck connect isn't a silent spinner
     @State private var handedOff = false       // both transports can report .connected; only hand up once
     @State private var offerWiFiPeers = false  // see `rows`: Multipeer gets first refusal
@@ -51,6 +59,27 @@ struct ConnectView: View {
         self.onCancel = onCancel
         _mc = State(initialValue: MultipeerSession(displayName: localName))
         _lan = State(initialValue: LANTransport(displayName: localName))
+        if #available(iOS 26, *), WiFiAwareTransport.isSupported {
+            _waBox = State(initialValue: WiFiAwareTransport())
+        }
+    }
+
+    @available(iOS 26, *)
+    private var wa: WiFiAwareTransport? { waBox as? WiFiAwareTransport }
+
+    private var waIsConnected: Bool {
+        if #available(iOS 26, *) { return wa?.phase == .connected }
+        return false
+    }
+
+    private var waIsConnecting: Bool {
+        if #available(iOS 26, *) { return wa?.phase == .connecting || wa?.phase == .reconnecting }
+        return false
+    }
+
+    private var waPeerName: String? {
+        if #available(iOS 26, *) { return wa?.connectedPeerName }
+        return nil
     }
 
     // MARK: - Combined phase
@@ -60,9 +89,10 @@ struct ConnectView: View {
     /// One phase from two state machines. Ordered by precedence: a connection in progress on
     /// either transport outranks the other still idling in discovery.
     private var uiPhase: UIPhase {
-        if mc.phase == .connected || (lanActive && lan.phase == .connected) { return .connected }
+        if mc.phase == .connected || (lanActive && lan.phase == .connected) || waIsConnected { return .connected }
         if mc.phase == .connecting || mc.phase == .reconnecting { return .connecting }
         if lanActive, lan.phase == .connecting || lan.phase == .reconnecting { return .connecting }
+        if waIsConnecting { return .connecting }
         if mc.phase == .hosting || (lanActive && lan.phase == .hosting) { return .hosting }
         if mc.phase == .browsing || (lanActive && lan.phase == .browsing) { return .browsing }
         // Only terminal once every transport in play has given up.
@@ -159,10 +189,13 @@ struct ConnectView: View {
             .padding(20)
         }
         .onChange(of: mc.phase) { _, phase in
-            if phase == .connected { handOff(mc, stopping: lanActive ? lan : nil) }
+            if phase == .connected { handOff(mc) }
         }
         .onChange(of: lan.phase) { _, phase in
-            if lanActive, phase == .connected { handOff(lan, stopping: mc) }
+            if lanActive, phase == .connected { handOff(lan) }
+        }
+        .onChange(of: waIsConnected) { _, connected in
+            if connected, let waBox { handOff(waBox) }
         }
         .onAppear {
             // Resuming: both phones advertise *and* browse and auto-pair, regardless of their stored
@@ -171,6 +204,7 @@ struct ConnectView: View {
             if resuming, mc.phase == .idle {
                 mc.setMatchToken(resumeMatchID)   // before it looks, so the first invitation carries it
                 mc.startRendezvous()
+                if #available(iOS 26, *) { wa?.startRendezvous() }
             }
         }
         // Pairing now retries by itself rather than failing after one timed-out invitation, so
@@ -200,6 +234,7 @@ struct ConnectView: View {
             guard phase == .active else { return }
             mc.resumeSearch()
             if lanActive { lan.resumeSearch() }
+            if #available(iOS 26, *) { wa?.resumeSearch() }
         }
         // And a long wait shouldn't die quietly. Only while nothing has been found — re-arming under a
         // list the player is reading would make rows flicker, and MultipeerConnectivity punishes
@@ -211,6 +246,7 @@ struct ConnectView: View {
                 guard !Task.isCancelled, rows.isEmpty else { return }
                 mc.resumeSearch()
                 if lanActive { lan.resumeSearch() }
+                if #available(iOS 26, *) { wa?.resumeSearch() }
             }
         }
     }
@@ -220,29 +256,38 @@ struct ConnectView: View {
     private func startHosting() {
         mc.startHosting()
         if lanActive { lan.startHosting() }
+        if #available(iOS 26, *) { wa?.startHosting() }
     }
 
     private func startBrowsing() {
         mc.startBrowsing()
         if lanActive { lan.startBrowsing() }
+        if #available(iOS 26, *) { wa?.startBrowsing() }
+    }
+
+    /// Every transport this screen is running.
+    private var transports: [any NearbyTransport] {
+        var all: [any NearbyTransport] = [mc]
+        if lanActive { all.append(lan) }
+        if let waBox { all.append(waBox) }
+        return all
     }
 
     private func stopAll() {
-        mc.stop()
-        lan.stop()
+        for transport in transports { transport.stop() }
     }
 
-    /// Hand the winning transport up and shut the other one down. Guarded because both can report
+    /// Hand the winning transport up and shut the others down. Guarded because two can report
     /// `.connected` in the same runloop turn if two peers pair simultaneously.
-    private func handOff(_ winner: any NearbyTransport, stopping loser: (any NearbyTransport)?) {
+    private func handOff(_ winner: any NearbyTransport) {
         guard !handedOff else { return }
         handedOff = true
-        loser?.stop()
+        for transport in transports where transport !== winner { transport.stop() }
         onConnected(winner)
     }
 
     private var connectedPeerName: String? {
-        mc.connectedPeerName ?? (lanActive ? lan.connectedPeerName : nil)
+        mc.connectedPeerName ?? (lanActive ? lan.connectedPeerName : nil) ?? waPeerName
     }
 
     // MARK: - Content

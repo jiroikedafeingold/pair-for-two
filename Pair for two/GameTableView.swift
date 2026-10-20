@@ -63,6 +63,11 @@ struct GameTableView: View {
     /// Regular *height* is the iPad test (a big iPhone in landscape is regular-width but compact-height).
     @Environment(\.verticalSizeClass) private var vSizeClass
 
+    /// How much bigger the top band's type is drawn than its original size. The band is capped at
+    /// 190pt on iPad and its contents used barely half of that; a landscape phone has less to spare,
+    /// so it gets a smaller step. Both fit the shortest phone (SE) with the banner at one line.
+    private var bandTextScale: CGFloat { vSizeClass == .regular ? 1.6 : 1.25 }
+
     // The body is split into layered `some View` properties on purpose: a single long chain of
     // modifiers (sheets + ~10 onChange handlers) makes the Swift type-checker blow up (multi-minute
     // builds). Each boundary below gives the checker a fixed anchor, keeping builds fast.
@@ -103,6 +108,15 @@ struct GameTableView: View {
             }
             // The game was quit (by you or the other player) — return to the menu.
             .onChange(of: vm.ended) { _, ended in if ended { onExit() } }
+            // The one-time Wi-Fi Aware pairing: both phones put the system's sheet up together.
+            .onChange(of: vm.wiFiAwarePairing) { _, role in
+                guard let role else { return }
+                Task { @MainActor in
+                    var paired = false
+                    if #available(iOS 26, *) { paired = await WiFiAwarePairingSheet.present(role) }
+                    vm.wiFiAwarePairingFinished(paired: paired)
+                }
+            }
             // Push name/color changes into the running game when Settings closes, so the highlight,
             // slider and score colors update live (for this device and the opponent).
             .onChange(of: showingSettings) { _, isShowing in
@@ -491,7 +505,8 @@ struct GameTableView: View {
     @ViewBuilder private func topBand(_ s: PlayerSnapshot) -> some View {
         VStack(spacing: 8) {
             Text(verbatim: vm.coachBanner)
-                .font(.headline.weight(.bold))
+                // 17 is what .headline resolves to; sized in points so the band's scale can multiply it.
+                .font(.system(size: 17 * bandTextScale, weight: .bold))
                 .foregroundStyle(.white)
                 .multilineTextAlignment(.center)
                 .minimumScaleFactor(0.6)
@@ -537,7 +552,7 @@ struct GameTableView: View {
             Capsule()
                 .fill(LinearGradient(colors: [.white.opacity(0.06), .white.opacity(0.45), .white.opacity(0.06)],
                                      startPoint: .top, endPoint: .bottom))
-                .frame(width: 2.5, height: 58)
+                .frame(width: 2.5, height: vSizeClass == .regular ? 80 : 58)
             scoreColumn(for: opp, s: s)
         }
         .frame(maxWidth: 760)
@@ -565,20 +580,24 @@ struct GameTableView: View {
         let theme = vm.theme(for: player)
         let isOpponent = player != s.you
         let value = isOpponent ? (displayedOppScore ?? vm.score(of: player)) : vm.score(of: player)
+        // Bigger on iPad only: on a landscape phone this scoreboard already fills the band to the
+        // pixel, so growing it there would clip the bottom of the oval.
+        let roomy = vSizeClass == .regular
         VStack(spacing: 4) {
             Text(verbatim: vm.name(of: player).uppercased())
-                .font(.title3.weight(.heavy))
+                .font(.system(size: roomy ? 30 : 20, weight: .heavy))   // 20 is .title3
                 .foregroundStyle(theme.primary)
+                .playerColorRim()
                 .lineLimit(1).minimumScaleFactor(0.5)
             HStack(alignment: .center, spacing: 6) {   // "+X" centered vertically against the score
                 Text(verbatim: "\(value)")
-                    .font(.system(size: 44, weight: .heavy, design: .rounded))
+                    .font(.system(size: roomy ? 60 : 44, weight: .heavy, design: .rounded))
                     .foregroundStyle(.white)
                     .monospacedDigit()
                     .minimumScaleFactor(0.7)
                 if isOpponent && oppPending > 0 {
                     Text(verbatim: "+\(oppPending)")
-                        .font(.system(size: 20, weight: .heavy, design: .rounded))
+                        .font(.system(size: roomy ? 28 : 20, weight: .heavy, design: .rounded))
                         .monospacedDigit()
                         .foregroundStyle(.white)
                         .padding(.horizontal, 8).padding(.vertical, 2)
@@ -616,7 +635,8 @@ struct GameTableView: View {
             onPlusOne: { GameFeedback.shared.play(.score); vm.claim(1, for: player) },
             onUndo: { vm.undo(for: player) },
             undoHistory: vm.recentClaims(for: player).map(\.amount),
-            onUndoStep: { vm.undo(for: player, stepsBack: $0) }
+            onUndoStep: { vm.undo(for: player, stepsBack: $0) },
+            scale: bandTextScale
         )
     }
 

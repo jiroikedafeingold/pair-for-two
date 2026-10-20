@@ -4,5 +4,10 @@
 <dict>
 	<key>com.apple.developer.game-center</key>
 	<true/>
+	<key>com.apple.developer.wifi-aware</key>
+	<array>
+		<string>Subscribe</string>
+		<string>Publish</string>
+	</array>
 </dict>
 </plist>

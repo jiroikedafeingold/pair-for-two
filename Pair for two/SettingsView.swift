@@ -22,6 +22,8 @@ struct SettingsView: View {
     @AppStorage("celebrationEffects") private var celebrationEffects = true
     @AppStorage("replayBeforeWin") private var replayBeforeWin = true
     @AppStorage("scoreTrackEnabled") private var scoreTrackEnabled = true
+    /// TEMPORARY: percent brighter for every player color (see `PlayerTheme.brightnessBoost`).
+    @AppStorage("colorBrightnessBoost") private var colorBrightnessBoost = 0
 
     private var scoringMode: ScoringMode { ScoringMode.stored(scoringModeRaw) }
 
@@ -194,6 +196,16 @@ struct SettingsView: View {
                 }
                 .padding(.vertical, 2)
             }
+            // TEMPORARY: tuning control for the color palette.
+            LabeledContent {
+                Text(verbatim: "+\(colorBrightnessBoost)%").monospacedDigit()
+            } label: {
+                Text(verbatim: "Color brightness")
+            }
+            .font(.subheadline)
+            Slider(value: Binding(get: { Double(colorBrightnessBoost) },
+                                  set: { colorBrightnessBoost = Int($0) }),
+                   in: 0...50, step: 10)
         }
     }
 }

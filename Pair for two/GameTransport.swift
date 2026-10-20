@@ -25,6 +25,10 @@ nonisolated enum GameMessage: Codable, Sendable {
     case updateIdentity(name: String, colorID: Int)   // live name/color change from Settings
     case setScoringMode(Int)                          // live scoring-mode change from Settings
     case quitGame                                     // either side ends the game for both players
+    /// Guest → host, once, after a first Multipeer connection between two phones that both have
+    /// Wi-Fi Aware: "put up the system pairing sheet, I'm putting up mine". Builds that predate it
+    /// can't decode it and drop it, which is the right answer. See `GameViewModel.considerWiFiAwarePairing`.
+    case requestWiFiAwarePairing
 }
 
 // MARK: - Transport events
@@ -45,6 +49,7 @@ nonisolated enum TransportEvent: Sendable {
 nonisolated enum LinkKind: Sendable {
     case direct        // Multipeer: Bluetooth / peer-to-peer Wi-Fi, no network involved
     case wifiNetwork   // LANTransport: Bonjour + TCP across a shared Wi-Fi network
+    case wifiAware     // WiFiAwareTransport: paired iPhones over peer-to-peer Wi-Fi, no network involved
     case online        // Game Center
     case sameDevice    // loopback (pass-and-play)
 
@@ -55,6 +60,8 @@ nonisolated enum LinkKind: Sendable {
                                          comment: "The two phones are connected directly, with no network")
         case .wifiNetwork: return String(localized: "your Wi-Fi network",
                                          comment: "The two devices are connected through the Wi-Fi network they share")
+        case .wifiAware:   return String(localized: "Wi-Fi Aware",
+                                         comment: "The two paired phones are connected directly over Wi-Fi Aware; a technology name")
         case .online:      return String(localized: "Game Center", comment: "Connected through Apple's Game Center")
         case .sameDevice:  return String(localized: "this phone", comment: "Both players are sharing one device")
         }
@@ -99,9 +106,15 @@ protocol GameTransport: Sendable {
     /// advertiser can come back from a suspend dead, and a recovery already under way won't restart
     /// one — so without this a game could sit "reconnecting" having quietly stopped looking.
     func resumeSearch()
+
+    /// Whether the connected peer's phone can pair over Wi-Fi Aware. Only a transport that
+    /// *discovered* the peer can know (Multipeer's browser reads it from the advertisement), and
+    /// only the game's guest ever did, so it is the guest that offers the pairing.
+    var peerSupportsWiFiAware: Bool { get }
 }
 
 extension GameTransport {
+    var peerSupportsWiFiAware: Bool { false }
     func reconnect(force: Bool) {}   // no-op by default (e.g. loopback)
     func reconnect() { reconnect(force: false) }
     func stop() {}                   // no-op by default (e.g. loopback, Game Center)

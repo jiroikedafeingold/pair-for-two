@@ -190,6 +190,11 @@ final class LANTransport: NearbyTransport {
         // twice while the old advertisement times out.
         var seen = Set<String>()
         discoveredPeers = peers.filter { seen.insert($0.name).inserted }
+        // A reconnecting guest dials the host the moment it reappears. The retry loop would get to
+        // it too, but only on its next pass — up to three seconds after the host was already there.
+        if phase == .reconnecting, !isHost, connection == nil, let peer = discoveredPeers.first {
+            openConnection(to: peer.endpoint)
+        }
     }
 
     /// The host accepts the first guest and stops advertising — this is a two-player game.
@@ -203,8 +208,15 @@ final class LANTransport: NearbyTransport {
         let params = NWParameters.tcp
         (params.defaultProtocolStack.transportProtocol as? NWProtocolTCP.Options)?.noDelay = true
         params.includePeerToPeer = false
+        attemptStartedAt = Date()
         bind(NWConnection(to: endpoint, using: params))
     }
+
+    /// When the current dial attempt began, so the reconnect loop can abandon one that hangs.
+    private var attemptStartedAt: Date?
+    /// A dial that hasn't become ready in this long is going nowhere — a stale Bonjour record for a
+    /// host that has since re-registered, most likely. TCP's own give-up is over a minute.
+    private static let dialTimeout: TimeInterval = 10
 
     private func bind(_ conn: NWConnection) {
         connection?.cancel()   // never leave a half-open attempt running alongside a new one
@@ -336,7 +348,15 @@ final class LANTransport: NearbyTransport {
                 try? await Task.sleep(for: .seconds(3))
                 guard let self, self.phase == .reconnecting else { return }
                 pass += 1
-                if self.connection != nil { continue }          // an attempt is still in progress
+                if let attempt = self.connection {
+                    // An attempt is still in progress. Give it its time, but not forever: cancelling
+                    // clears `connection` (see `bind`), so the next pass dials afresh.
+                    if let began = self.attemptStartedAt,
+                       Date().timeIntervalSince(began) > Self.dialTimeout {
+                        attempt.cancel()
+                    }
+                    continue
+                }
                 if let peer = self.discoveredPeers.first {
                     self.openConnection(to: peer.endpoint)
                 } else if pass % 3 == 0 {
