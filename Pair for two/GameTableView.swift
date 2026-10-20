@@ -308,9 +308,12 @@ struct GameTableView: View {
                 let s = vm.snapshot
                 let auto = s.scoringMode == .auto
                 let mine = s.dealer == s.you || vm.isLoopback
-                if auto || !mine {
+                if !mine {
                     showPegAlert(String(localized: "His Heels — 2 for \(vm.name(of: s.dealer))",
                                         comment: "Toast when the starter is a Jack; %@ is the dealer's name"))
+                } else if auto {
+                    showPegAlert(String(localized: "His Heels — 2 for you",
+                                        comment: "Toast when the starter is a Jack and you are the dealer, scored automatically"))
                 } else {
                     showPegAlert(String(localized: "His Heels — take 2",
                                         comment: "Toast telling the dealer to peg 2 for a Jack starter"))
@@ -373,9 +376,12 @@ struct GameTableView: View {
                                   comment: "Toast: the other player could not play; %@ is their name. 'Go' is the cribbage call")
             } else {
                 GameFeedback.shared.play(.go)
-                if auto {
+                if auto && mine {
+                    pegAlert = String(localized: "Go — you peg 1",
+                                      comment: "Toast in automatic scoring when the go is yours")
+                } else if auto {
                     pegAlert = String(localized: "Go — \(who) pegs 1",
-                                      comment: "Toast in automatic scoring; %@ is a player name")
+                                      comment: "Toast in automatic scoring; %@ is the other player's name")
                 } else if mine {
                     pegAlert = String(localized: "Go — take 1", comment: "Toast telling you to peg 1 for the go")
                 } else {
@@ -398,9 +404,12 @@ struct GameTableView: View {
             // The hand's final card is down — tell both players, so the one who laid it takes the
             // point and the other knows the play is over and the count is next.
             GameFeedback.shared.play(.go)
-            if auto {
+            if auto && mine {
+                pegAlert = String(localized: "Last card — you peg \(event.points)",
+                                  comment: "Toast in automatic scoring when the last card was yours; %lld is the points")
+            } else if auto {
                 pegAlert = String(localized: "Last card — \(who) pegs \(event.points)",
-                                  comment: "Toast in automatic scoring; %@ is a player name, %lld the points")
+                                  comment: "Toast in automatic scoring; %@ is the other player's name, %lld the points")
             } else if mine {
                 pegAlert = String(localized: "Last card — take \(event.points)",
                                   comment: "Toast telling you to peg for the last card; %lld is the points")
@@ -1024,9 +1033,7 @@ struct GameTableView: View {
                     // The crib gets a distinct gold badge + backing so it's obvious it's the crib
                     // being counted (not another hand).
                     if isCrib {
-                        Label(String(localized: "\(vm.name(of: s.dealer))'s crib",
-                                     comment: "Badge over the crib being counted; %@ is the dealer's name").uppercased(),
-                              systemImage: "square.stack.3d.up.fill")
+                        Label(vm.cribLabel.uppercased(), systemImage: "square.stack.3d.up.fill")
                             .font(PlayText.sized(13, weight: .heavy, roomy: roomy))
                             .foregroundStyle(.black)
                             .padding(.horizontal, 10).padding(.vertical, 3)

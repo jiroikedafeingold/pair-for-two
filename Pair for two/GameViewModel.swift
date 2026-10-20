@@ -793,16 +793,28 @@ final class GameViewModel {
     var showLabel: String {
         switch snapshot.phase {
         case .showPone:
-            return String(localized: "\(name(of: snapshot.pone))'s hand",
-                          comment: "Whose hand is being counted; %@ is a player name")
+            return handLabel(snapshot.pone)
         case .showDealer:
-            return String(localized: "\(name(of: snapshot.dealer))'s hand",
-                          comment: "Whose hand is being counted; %@ is a player name")
+            return handLabel(snapshot.dealer)
         case .showCrib:
-            return String(localized: "\(name(of: snapshot.dealer))'s crib",
-                          comment: "Whose crib is being counted; %@ is a player name")
+            return cribLabel
         default:          return ""
         }
+    }
+
+    private func handLabel(_ player: PlayerID) -> String {
+        player == snapshot.you
+            ? String(localized: "Your hand", comment: "Label over your own hand while it is counted")
+            : String(localized: "\(name(of: player))'s hand",
+                     comment: "Whose hand is being counted; %@ is the other player's name")
+    }
+
+    /// "Your crib" or "Ann's crib" — the badge over the crib and its VoiceOver label.
+    var cribLabel: String {
+        snapshot.dealer == snapshot.you
+            ? String(localized: "Your crib", comment: "Label over the crib when it is yours")
+            : String(localized: "\(name(of: snapshot.dealer))'s crib",
+                     comment: "Whose crib this is; %@ is the other player's name")
     }
 
     /// The correct count for what's on the table right now, computed on this device from the revealed
@@ -836,8 +848,12 @@ final class GameViewModel {
                           : String(localized: "Connecting…", comment: "Guest is joining a game")
         case .cutForDeal:
             if cutForDealDecided {
-                return String(localized: "\(name(of: s.dealer)) wins the cut — deals & takes the crib",
-                              comment: "Result of the cut for deal; %@ is a player name")
+                // Second person whenever the subject is this device's player — the screen is theirs.
+                return s.dealer == s.you
+                    ? String(localized: "You win the cut — you deal & take the crib",
+                             comment: "Result of the cut for deal when you won it")
+                    : String(localized: "\(name(of: s.dealer)) wins the cut — deals & takes the crib",
+                             comment: "Result of the cut for deal; %@ is the other player's name")
             }
             if waitingForOpponentCut {
                 return String(localized: "Waiting for \(s.opponentName) to cut…",
@@ -877,28 +893,36 @@ final class GameViewModel {
             }
             if s.isYourTurn {
                 return canSayGo
-                    ? String(localized: "\(s.yourName): no card to play — say Go",
-                             comment: "You cannot play under 31; %@ is your name. 'Go' is the cribbage call")
-                    : String(localized: "\(s.yourName)'s play",
-                             comment: "It is your turn to lay a card; %@ is your name")
+                    ? String(localized: "No card to play — say Go",
+                             comment: "You cannot play under 31. 'Go' is the cribbage call")
+                    : String(localized: "Your play",
+                             comment: "It is your turn to lay a card")
             }
             return String(localized: "Waiting for \(s.opponentName)",
                           comment: "%@ is the other player's name")
         case .showPone:
-            return String(localized: "\(name(of: s.pone)) counts their hand",
-                          comment: "%@ is a player name")
+            return countsHand(s.pone)
         case .showDealer:
-            return String(localized: "\(name(of: s.dealer)) counts their hand",
-                          comment: "%@ is a player name")
+            return countsHand(s.dealer)
         case .showCrib:
-            return String(localized: "\(name(of: s.dealer)) counts the crib",
-                          comment: "%@ is a player name")
+            return s.dealer == s.you
+                ? String(localized: "You count the crib", comment: "The crib being counted is yours")
+                : String(localized: "\(name(of: s.dealer)) counts the crib",
+                         comment: "%@ is the other player's name")
         case .handComplete:
             return String(localized: "Hand complete", comment: "The hand has finished scoring")
         case .gameOver:
-            let w = s.winner == s.you ? s.yourName : s.opponentName
-            return String(localized: "\(w) wins!", comment: "%@ is the winner's name")
+            return s.winner == s.you
+                ? String(localized: "You win!", comment: "Coach banner when you won the game")
+                : String(localized: "\(s.opponentName) wins!", comment: "%@ is the other player's name")
         }
+    }
+
+    private func countsHand(_ player: PlayerID) -> String {
+        player == snapshot.you
+            ? String(localized: "You count your hand", comment: "It is your hand being counted")
+            : String(localized: "\(name(of: player)) counts their hand",
+                     comment: "%@ is the other player's name")
     }
 
     func name(of player: PlayerID) -> String {

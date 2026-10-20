@@ -109,8 +109,7 @@ struct PlayPileView: View {
                 Text("Crib").font(labelFont).foregroundStyle(Color.cribGold)
             }
             .accessibilityElement(children: .ignore)
-            .accessibilityLabel(Text("\(vm.name(of: snapshot.dealer))'s crib",
-                                     comment: "VoiceOver label for the crib pile; %@ is the dealer's name"))
+            .accessibilityLabel(Text(verbatim: vm.cribLabel))
             ZStack {
                 if let crib = snapshot.crib {          // revealed at the show
                     HStack(spacing: -cardWidth * 0.6) {
