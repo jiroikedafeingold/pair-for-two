@@ -660,6 +660,7 @@ struct GameTableView: View {
             opponentPending: isLocal ? oppPending : 0,
             ringColor: theme.ring,
             opponentRingColor: vm.theme(for: player.opponent).ring,
+            plusColor: theme.plusOne,
             // A lone panel (networked play) carries both players' loops; with two panels
             // (pass-and-play) each shows only its own player's loop.
             showOpponentTrack: vm.scorablePlayers.count == 1,

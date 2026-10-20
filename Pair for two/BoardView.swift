@@ -169,6 +169,7 @@ struct BoardView: View {
                    canUndo: game.canUndo(side),
                    requireConfirm: confirmRelease,
                    opponentColor: otherTheme.primary,
+                   plusColor: theme.plusOne,
                    showsScore: false,   // the shared band between the halves carries the score
                    uncommitted: isNear ? $bottomPending : $topPending,
                    onAdd: { peg($0, to: side) },

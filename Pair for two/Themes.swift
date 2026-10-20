@@ -36,6 +36,8 @@ struct PlayerTheme: Identifiable, Hashable {
     /// A much brighter shade for the scoring rings: a two-point line in the deep palette vanished
     /// against the felt, where the names and scores have their cream rim to carry them.
     var ring: Color { Self.color(hex, brightness: 2) }
+    /// Half again as bright, for the +1 button: a small control that has to read at a glance.
+    var plusOne: Color { Self.color(hex, brightness: 1.5) }
 
     /// `hex` with its HSB brightness scaled by `brightness` (capped at full brightness).
     private static func color(_ hex: UInt32, brightness factor: Double) -> Color {

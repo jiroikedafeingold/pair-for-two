@@ -22,6 +22,9 @@ struct ScorePanel: View {
     /// Brighter shades for the two progress loops (`PlayerTheme.ring`); the base colors when nil.
     var ringColor: Color? = nil
     var opponentRingColor: Color? = nil
+    /// A brighter shade for the +1 button (`PlayerTheme.plusOne`); `primary` when nil.
+    var plusColor: Color? = nil
+    private var plus: Color { plusColor ?? primary }
     /// When true this is the only panel on screen (networked play), so it carries *both* players'
     /// progress loops — your color on the outer edge, the opponent's just inside it. When false
     /// (pass-and-play, one panel per player) only this player's own loop is drawn.
@@ -149,7 +152,7 @@ struct ScorePanel: View {
                         .foregroundStyle(
                             highlighted
                             ? AnyShapeStyle(.white)
-                            : AnyShapeStyle(LinearGradient(colors: [primary, deep], startPoint: .top, endPoint: .bottom))
+                            : AnyShapeStyle(LinearGradient(colors: [plus, primary], startPoint: .top, endPoint: .bottom))
                         )
                         .playerColorRim()   // the deep palette needs the same edge here as on the scores
                         .monospacedDigit()
@@ -158,7 +161,7 @@ struct ScorePanel: View {
                         .padding(.horizontal, 8)
                         .background(
                             Capsule()
-                                .fill(primary.opacity(highlighted ? 0.42 : 0.16))
+                                .fill(plus.opacity(highlighted ? 0.42 : 0.16))
                                 .overlay(
                                     // The outline gets the same cream edge as the text — drawn as a
                                     // slightly wider, translucent cream stroke beneath the colored one,
@@ -168,16 +171,16 @@ struct ScorePanel: View {
                                     ZStack {
                                         Capsule().stroke(Color.cardFace.opacity(0.45),
                                                          lineWidth: (highlighted ? 1.6 : 1) + 1)
-                                        Capsule().stroke(primary.opacity(highlighted ? 1 : 0.9),
+                                        Capsule().stroke(plus.opacity(highlighted ? 1 : 0.9),
                                                          lineWidth: highlighted ? 1.6 : 1)
                                     }
                                     .shadow(color: .cardFace.opacity(0.30), radius: 8)
                                 )
                         )
                         .scaleEffect(highlighted ? 1.05 : 1.0)
-                        .shadow(color: primary.opacity(highlighted ? 0.75 : 0.0), radius: 10)
+                        .shadow(color: plus.opacity(highlighted ? 0.75 : 0.0), radius: 10)
                         .shadow(
-                            color: primary.opacity(highlighted ? (glowPulse ? 0.9 : 0.35) : 0.0),
+                            color: plus.opacity(highlighted ? (glowPulse ? 0.9 : 0.35) : 0.0),
                             radius: highlighted ? (glowPulse ? 24 : 12) : 0
                         )
                         .animation(.easeInOut(duration: 0.22), value: highlighted)
