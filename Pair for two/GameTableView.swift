@@ -569,7 +569,7 @@ struct GameTableView: View {
         .padding(.top, 12)
         // The panel fills whatever height it is given, so this is what keeps a band of dark felt
         // showing beneath it — generous on iPad, where the band is tall enough to spare it.
-        .padding(.bottom, vSizeClass == .regular ? 26 : 4)
+        .padding(.bottom, vSizeClass == .regular ? 40 : 4)
     }
 
     /// Auto-scoring scoreboard: each player's name over a big score, in their color. The opponent's
