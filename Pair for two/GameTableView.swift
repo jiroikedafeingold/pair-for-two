@@ -71,6 +71,8 @@ struct GameTableView: View {
     /// 190pt on iPad and its contents used barely half of that; a landscape phone has less to spare,
     /// so it gets a smaller step. Both fit the shortest phone (SE) with the banner at one line.
     private var bandTextScale: CGFloat { vSizeClass == .regular ? 1.6 : 1.25 }
+    /// iPad: the labels on the felt are drawn much larger (see `PlayText`).
+    private var roomy: Bool { vSizeClass == .regular }
 
     // The body is split into layered `some View` properties on purpose: a single long chain of
     // modifiers (sheets + ~10 onChange handlers) makes the Swift type-checker blow up (multi-minute
@@ -450,7 +452,7 @@ struct GameTableView: View {
                 // has no way to rebuild a real-time match without them agreeing — so say so rather
                 // than spinning on "Reconnecting…" while they wonder what to do.
                 connectionBannerText
-                    .font(.caption.weight(.semibold)).foregroundStyle(.white)
+                    .font(PlayText.font(.caption, phoneSize: 12, weight: .semibold, roomy: roomy)).foregroundStyle(.white)
                     .multilineTextAlignment(.center)
                     .fixedSize(horizontal: false, vertical: true)
             }
@@ -477,7 +479,7 @@ struct GameTableView: View {
     @ViewBuilder private var pegAlertBanner: some View {
         if let text = pegAlert {
             Text(verbatim: text)
-                .font(.title3.weight(.heavy))
+                .font(PlayText.font(.title3, phoneSize: 20, weight: .heavy, roomy: roomy))
                 .foregroundStyle(.black)
                 .padding(.horizontal, 20).padding(.vertical, 10)
                 .background(Capsule().fill(Color.cribGold))
@@ -754,7 +756,7 @@ struct GameTableView: View {
     /// prompt and buttons further below the cards being counted. Fixed rather than content-sized so the
     /// prompt/button keeps one position; the rail's text is pinned to the default Dynamic Type size, so
     /// this height holds whatever the reader's text setting is.
-    private static let railFlagsHeight: CGFloat = 76
+    private var railFlagsHeight: CGFloat { roomy ? 130 : 76 }   // the chips are drawn larger on iPad
 
     /// Height to assume for the prompt + primary button before the first measurement comes back. The
     /// flags slot gets whatever is left over, so on a short landscape phone the flags scroll rather than
@@ -772,7 +774,7 @@ struct GameTableView: View {
         // + Check stack is well over the assumed 96, and on a compact phone the difference is the
         // whole margin — reserve a full-height flags slot as well and the two don't both fit.
         let action = max(GameTableView.railActionHeight, actionHeight)
-        return min(GameTableView.railFlagsHeight, max(0, railHeight - action - 8))
+        return min(railFlagsHeight, max(0, railHeight - action - 8))
     }
 
     /// The scoring flags for the current context, as a vertical column pinned to the top of the rail.
@@ -812,7 +814,7 @@ struct GameTableView: View {
                 Button { vm.cut() } label: {
                     VStack(spacing: 6) {
                         CardView(card: nil, faceUp: false, width: width * 0.85)
-                        Text("Tap to cut").font(.callout.weight(.semibold)).foregroundStyle(.white)
+                        Text("Tap to cut").font(promptFont).foregroundStyle(.white)
                     }
                 }
                 .buttonStyle(.plain)
@@ -829,16 +831,25 @@ struct GameTableView: View {
     private func waitingLabel(_ text: String) -> some View {
         VStack(spacing: 8) {
             ProgressView().tint(.white)
-            Text(verbatim: text).font(.callout).foregroundStyle(.white.opacity(0.8))
+            Text(verbatim: text).font(PlayText.font(.callout, phoneSize: 16, roomy: roomy))
+                .foregroundStyle(.white.opacity(0.8))
                 .multilineTextAlignment(.center)
                 .fixedSize(horizontal: false, vertical: true)
         }
     }
 
+    /// The "tap to…" instructions beside the cards.
+    private var promptFont: Font { PlayText.font(.callout, phoneSize: 16, weight: .semibold, roomy: roomy) }
+    /// The small captions over cards and piles ("The Cut", a hand's label, the crib badge).
+    private var captionFont: Font { PlayText.font(.caption2, phoneSize: 11, roomy: roomy) }
+
     @ViewBuilder private func cutResult(for player: PlayerID, s: PlayerSnapshot, width: CGFloat) -> some View {
         let isWinner = vm.cutForDealDecided && s.dealer == player
         VStack(spacing: 4) {
-            Text(verbatim: vm.name(of: player)).font(.caption).foregroundStyle(.white.opacity(0.7)).lineLimit(1)
+            Text(verbatim: vm.name(of: player))
+                .font(PlayText.font(.caption, phoneSize: 12, roomy: roomy))
+                .foregroundStyle(.white.opacity(0.7))
+                .lineLimit(1).minimumScaleFactor(0.5)   // a long name shrinks rather than truncating
             if let card = s.cutForDeal[player] {
                 CardView(card: card, isHighlighted: isWinner, width: width)
             } else {
@@ -852,7 +863,7 @@ struct GameTableView: View {
                     Text(verbatim: " ")   // holds the row's height so the cards don't shift
                 }
             }
-            .font(.caption2.weight(.bold))
+            .font(PlayText.font(.caption2, phoneSize: 11, weight: .bold, roomy: roomy))
             .foregroundStyle(Color.cribGold)
         }
         .frame(width: width + 12)
@@ -906,10 +917,10 @@ struct GameTableView: View {
             .animation(.spring(response: 0.45, dampingFraction: 0.72), value: lifted)
         } action: {
             if vm.youLiftCut {
-                Text("Tap the deck to cut").font(.callout.weight(.semibold)).foregroundStyle(.white)
+                Text("Tap the deck to cut").font(promptFont).foregroundStyle(.white)
                     .multilineTextAlignment(.center)
             } else if vm.youRevealStarter {
-                Text("Tap the deck to turn up the cut").font(.callout.weight(.semibold)).foregroundStyle(.white)
+                Text("Tap the deck to turn up the cut").font(promptFont).foregroundStyle(.white)
                     .multilineTextAlignment(.center)
             } else {
                 waitingLabel(lifted ? String(localized: "Waiting for \(vm.name(of: s.dealer)) to turn up the cut…",
@@ -1004,7 +1015,7 @@ struct GameTableView: View {
         playScene(s, railWidth: railWidth) {
             HStack(alignment: .top, spacing: 16) {
                 VStack(spacing: 4) {
-                    Text("The Cut").font(.caption2).foregroundStyle(.white.opacity(0.7))
+                    Text("The Cut").font(captionFont).foregroundStyle(.white.opacity(0.7))
                     if let starter = s.starter { CardView(card: starter, width: cardW) }
                 }
                 VStack(spacing: 6) {
@@ -1014,12 +1025,12 @@ struct GameTableView: View {
                         Label(String(localized: "\(vm.name(of: s.dealer))'s crib",
                                      comment: "Badge over the crib being counted; %@ is the dealer's name").uppercased(),
                               systemImage: "square.stack.3d.up.fill")
-                            .font(.caption2.weight(.heavy))
+                            .font(PlayText.font(.caption2, phoneSize: 11, weight: .heavy, roomy: roomy))
                             .foregroundStyle(.black)
                             .padding(.horizontal, 10).padding(.vertical, 3)
                             .background(Capsule().fill(Color.cribGold))
                     } else {
-                        Text(verbatim: vm.showLabel).font(.caption2).foregroundStyle(.white.opacity(0.7))
+                        Text(verbatim: vm.showLabel).font(captionFont).foregroundStyle(.white.opacity(0.7))
                     }
                     // Cards deal out one-by-one as they're shown (re-triggers each show sub-phase).
                     // In the crib, each card carries a marker in the color of whoever discarded it.
@@ -1053,7 +1064,8 @@ struct GameTableView: View {
                             Text("Count it on your slider, then Continue", comment: "Instruction while counting a hand")
                         }
                     }
-                        .font(wideRail ? .title3 : .caption).foregroundStyle(.white.opacity(0.7))
+                        .font(PlayText.font(wideRail ? .title3 : .caption, phoneSize: 15, roomy: roomy))
+                        .foregroundStyle(.white.opacity(0.7))
                         .multilineTextAlignment(.center)
                         .fixedSize(horizontal: false, vertical: true)
                 }
@@ -1103,9 +1115,10 @@ struct GameTableView: View {
     @ViewBuilder private func handCompleteArea(_ s: PlayerSnapshot, railWidth: CGFloat) -> some View {
         playScene(s, railWidth: railWidth) {
             VStack(spacing: 10) {
-                Text("Hand complete").font(.title2.weight(.bold)).foregroundStyle(.white)
+                Text("Hand complete")
+                    .font(PlayText.font(.title2, phoneSize: 22, weight: .bold, roomy: roomy)).foregroundStyle(.white)
                 Text(verbatim: "\(s.yourName) \(s.yourScore)  •  \(s.opponentName) \(s.opponentScore)")
-                    .font(.title3).foregroundStyle(.white.opacity(0.85))
+                    .font(PlayText.font(.title3, phoneSize: 20, roomy: roomy)).foregroundStyle(.white.opacity(0.85))
                     .multilineTextAlignment(.center)
             }
         } action: {

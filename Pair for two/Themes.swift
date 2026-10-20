@@ -196,6 +196,20 @@ struct AttentionGlow: ViewModifier {
     }
 }
 
+// MARK: - Play-area type on iPad
+
+/// Type for the labels on the felt. A phone keeps the Dynamic-Type text style it always had; an iPad
+/// draws the same label at `phoneSize` points scaled by `iPadScale`, because at phone sizes those
+/// labels were lost on the big table. `phoneSize` is what the style resolves to at the default
+/// Dynamic Type size (caption2 11, caption 12, callout 16, title3 20, title2 22).
+enum PlayText {
+    static let iPadScale: CGFloat = 1.8
+
+    static func font(_ style: Font, phoneSize: CGFloat, weight: Font.Weight = .regular, roomy: Bool) -> Font {
+        roomy ? .system(size: phoneSize * iPadScale, weight: weight) : style.weight(weight)
+    }
+}
+
 // MARK: - Player-color legibility
 
 /// A thin cream rim and soft light halo for text drawn in a player color, so the deep palette still

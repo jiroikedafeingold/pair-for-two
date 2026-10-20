@@ -23,10 +23,18 @@ struct ScoreFlagsView: View {
     /// The column in the action rail shares its height with the prompt and buttons, so its chips are a
     /// size down and tighter than the row layout's — that keeps a hand's chips *and* its total visible
     /// in a short slot, instead of the total being pushed out of sight.
-    private var chipFont: Font { vertical ? .caption2.weight(.semibold) : .caption.weight(.semibold) }
-    private var totalFont: Font { vertical ? .caption2.weight(.heavy) : .caption.weight(.heavy) }
-    private var chipHPad: CGFloat { vertical ? 8 : 10 }
-    private var chipVPad: CGFloat { vertical ? 4 : 5 }
+    ///
+    /// On iPad everything is drawn larger — see `PlayText`.
+    @Environment(\.verticalSizeClass) private var vSizeClass
+    private var roomy: Bool { vSizeClass == .regular }
+    private var chipFont: Font {
+        PlayText.font(vertical ? .caption2 : .caption, phoneSize: vertical ? 11 : 12, weight: .semibold, roomy: roomy)
+    }
+    private var totalFont: Font {
+        PlayText.font(vertical ? .caption2 : .caption, phoneSize: vertical ? 11 : 12, weight: .heavy, roomy: roomy)
+    }
+    private var chipHPad: CGFloat { (vertical ? 8 : 10) * (roomy ? 1.5 : 1) }
+    private var chipVPad: CGFloat { (vertical ? 4 : 5) * (roomy ? 1.5 : 1) }
 
     var body: some View {
         if vertical {
@@ -40,7 +48,7 @@ struct ScoreFlagsView: View {
                 HStack(spacing: 8) { chips }
                     .padding(.horizontal, 2)
             }
-            .frame(height: flags.isEmpty ? 0 : 30)
+            .frame(height: flags.isEmpty ? 0 : (roomy ? 50 : 30))
             .opacity(flags.isEmpty ? 0 : 1)
         }
     }
@@ -48,7 +56,7 @@ struct ScoreFlagsView: View {
     @ViewBuilder private var chips: some View {
         if let playerName, !flags.isEmpty {
             Text(verbatim: playerName.uppercased())
-                .font(.caption.weight(.heavy))
+                .font(PlayText.font(.caption, phoneSize: 12, weight: .heavy, roomy: roomy))
                 .foregroundStyle(accent)
                 .lineLimit(1).minimumScaleFactor(0.7)
         }

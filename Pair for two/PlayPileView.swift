@@ -7,6 +7,10 @@ struct PlayPileView: View {
     let snapshot: PlayerSnapshot
     var vm: GameViewModel
     var cardWidth: CGFloat = 60
+    /// Regular height is an iPad, where the labels are drawn much larger — see `PlayText`.
+    @Environment(\.verticalSizeClass) private var vSizeClass
+    private var roomy: Bool { vSizeClass == .regular }
+    private var labelFont: Font { PlayText.font(.caption2, phoneSize: 11, weight: .semibold, roomy: roomy) }
 
     var body: some View {
         HStack(alignment: .top, spacing: cardWidth * 0.5) {
@@ -20,7 +24,7 @@ struct PlayPileView: View {
 
     private var cutStack: some View {
         VStack(spacing: 6) {
-            Text("The Cut").font(.caption2.weight(.semibold)).foregroundStyle(Color.cribGold)
+            Text("The Cut").font(labelFont).foregroundStyle(Color.cribGold)
             if let cut = snapshot.starter {
                 RankSuitTile(card: cut, width: cardWidth)
             } else {
@@ -35,7 +39,7 @@ struct PlayPileView: View {
         VStack(spacing: 6) {
             // Running count lives here (frees vertical space above the play area for bigger cards).
             Text("Count \(snapshot.runningCount)")
-                .font(.caption.weight(.bold)).monospacedDigit()
+                .font(PlayText.font(.caption, phoneSize: 12, weight: .bold, roomy: roomy)).monospacedDigit()
                 .foregroundStyle(.white)
                 .lineLimit(1).fixedSize()
                 .padding(.horizontal, 10).padding(.vertical, 2)
@@ -46,7 +50,8 @@ struct PlayPileView: View {
                     .strokeBorder(style: StrokeStyle(lineWidth: 1.5, dash: [5]))
                     .foregroundStyle(.white.opacity(0.25))
                     .frame(width: cardWidth * 2.2, height: cardWidth * 1.45)
-                    .overlay(Text("Play area").font(.caption2).foregroundStyle(.white.opacity(0.4)))
+                    .overlay(Text("Play area").font(PlayText.font(.caption2, phoneSize: 11, roomy: roomy))
+                        .foregroundStyle(.white.opacity(0.4)))
             } else {
                 // Cards from finished laps (count reset via a go or 31) stay full-strength on the table;
                 // a vertical divider separates them from the current lap so it's clear what's still in
@@ -101,7 +106,7 @@ struct PlayPileView: View {
                 Circle()
                     .fill(vm.theme(for: snapshot.dealer).primary)
                     .frame(width: 7, height: 7)
-                Text("Crib").font(.caption2.weight(.semibold)).foregroundStyle(Color.cribGold)
+                Text("Crib").font(labelFont).foregroundStyle(Color.cribGold)
             }
             .accessibilityElement(children: .ignore)
             .accessibilityLabel(Text("\(vm.name(of: snapshot.dealer))'s crib",
