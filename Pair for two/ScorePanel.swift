@@ -161,11 +161,13 @@ struct ScorePanel: View {
                                 .fill(primary.opacity(highlighted ? 0.42 : 0.16))
                                 .overlay(
                                     // The outline gets the same cream edge as the text — drawn as a
-                                    // wider cream stroke beneath the colored one, because the shadow
-                                    // trick behind `playerColorRim` is too faint on a one-point line.
+                                    // slightly wider, translucent cream stroke beneath the colored one,
+                                    // because the shadow trick behind `playerColorRim` is too faint on
+                                    // a one-point line. Kept soft: a bright, wide one read as a second
+                                    // line rather than an edge.
                                     ZStack {
-                                        Capsule().stroke(Color.cardFace.opacity(0.85),
-                                                         lineWidth: (highlighted ? 1.6 : 1) + 1.6)
+                                        Capsule().stroke(Color.cardFace.opacity(0.45),
+                                                         lineWidth: (highlighted ? 1.6 : 1) + 1)
                                         Capsule().stroke(primary.opacity(highlighted ? 1 : 0.9),
                                                          lineWidth: highlighted ? 1.6 : 1)
                                     }
