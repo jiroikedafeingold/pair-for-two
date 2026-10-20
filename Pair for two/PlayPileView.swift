@@ -10,7 +10,7 @@ struct PlayPileView: View {
     /// Regular height is an iPad, where the labels are drawn much larger — see `PlayText`.
     @Environment(\.verticalSizeClass) private var vSizeClass
     private var roomy: Bool { vSizeClass == .regular }
-    private var labelFont: Font { PlayText.font(.caption2, phoneSize: 11, weight: .semibold, roomy: roomy) }
+    private var labelFont: Font { PlayText.sized(13, weight: .semibold, roomy: roomy) }
 
     var body: some View {
         HStack(alignment: .top, spacing: cardWidth * 0.5) {
@@ -39,7 +39,7 @@ struct PlayPileView: View {
         VStack(spacing: 6) {
             // Running count lives here (frees vertical space above the play area for bigger cards).
             Text("Count \(snapshot.runningCount)")
-                .font(PlayText.font(.caption, phoneSize: 12, weight: .bold, roomy: roomy)).monospacedDigit()
+                .font(PlayText.sized(14, weight: .bold, roomy: roomy)).monospacedDigit()
                 .foregroundStyle(.white)
                 .lineLimit(1).fixedSize()
                 .padding(.horizontal, 10).padding(.vertical, 2)
@@ -50,7 +50,7 @@ struct PlayPileView: View {
                     .strokeBorder(style: StrokeStyle(lineWidth: 1.5, dash: [5]))
                     .foregroundStyle(.white.opacity(0.25))
                     .frame(width: cardWidth * 2.2, height: cardWidth * 1.45)
-                    .overlay(Text("Play area").font(PlayText.font(.caption2, phoneSize: 11, roomy: roomy))
+                    .overlay(Text("Play area").font(PlayText.sized(13, roomy: roomy))
                         .foregroundStyle(.white.opacity(0.4)))
             } else {
                 // Cards from finished laps (count reset via a go or 31) stay full-strength on the table;

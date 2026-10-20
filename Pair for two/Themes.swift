@@ -208,6 +208,13 @@ enum PlayText {
     static func font(_ style: Font, phoneSize: CGFloat, weight: Font.Weight = .regular, roomy: Bool) -> Font {
         roomy ? .system(size: phoneSize * iPadScale, weight: weight) : style.weight(weight)
     }
+
+    /// For labels the phone wanted larger than their text style too: a fixed `phone` size there,
+    /// scaled by `iPadScale` on iPad. Only for text that has room to grow without wrapping — the
+    /// callers pair it with a single line and a minimum scale factor where a name could run long.
+    static func sized(_ phone: CGFloat, weight: Font.Weight = .regular, roomy: Bool) -> Font {
+        .system(size: roomy ? phone * iPadScale : phone, weight: weight)
+    }
 }
 
 // MARK: - Player-color legibility

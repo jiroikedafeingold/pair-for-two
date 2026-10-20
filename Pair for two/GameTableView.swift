@@ -839,16 +839,16 @@ struct GameTableView: View {
     }
 
     /// The "tap to…" instructions beside the cards.
-    private var promptFont: Font { PlayText.font(.callout, phoneSize: 16, weight: .semibold, roomy: roomy) }
+    private var promptFont: Font { PlayText.sized(18, weight: .semibold, roomy: roomy) }
     /// The small captions over cards and piles ("The Cut", a hand's label, the crib badge).
-    private var captionFont: Font { PlayText.font(.caption2, phoneSize: 11, roomy: roomy) }
+    private var captionFont: Font { PlayText.sized(13, roomy: roomy) }
 
     @ViewBuilder private func cutResult(for player: PlayerID, s: PlayerSnapshot, width: CGFloat) -> some View {
         let isWinner = vm.cutForDealDecided && s.dealer == player
         VStack(spacing: 4) {
             Text(verbatim: vm.name(of: player))
-                .font(PlayText.font(.caption, phoneSize: 12, roomy: roomy))
-                .foregroundStyle(.white.opacity(0.7))
+                .font(PlayText.sized(16, weight: .semibold, roomy: roomy))
+                .foregroundStyle(.white.opacity(0.8))
                 .lineLimit(1).minimumScaleFactor(0.5)   // a long name shrinks rather than truncating
             if let card = s.cutForDeal[player] {
                 CardView(card: card, isHighlighted: isWinner, width: width)
@@ -863,7 +863,8 @@ struct GameTableView: View {
                     Text(verbatim: " ")   // holds the row's height so the cards don't shift
                 }
             }
-            .font(PlayText.font(.caption2, phoneSize: 11, weight: .bold, roomy: roomy))
+            .font(PlayText.sized(13, weight: .bold, roomy: roomy))
+            .lineLimit(1).minimumScaleFactor(0.6)   // one line in every language, so the cards stay put
             .foregroundStyle(Color.cribGold)
         }
         .frame(width: width + 12)
@@ -1025,7 +1026,7 @@ struct GameTableView: View {
                         Label(String(localized: "\(vm.name(of: s.dealer))'s crib",
                                      comment: "Badge over the crib being counted; %@ is the dealer's name").uppercased(),
                               systemImage: "square.stack.3d.up.fill")
-                            .font(PlayText.font(.caption2, phoneSize: 11, weight: .heavy, roomy: roomy))
+                            .font(PlayText.sized(13, weight: .heavy, roomy: roomy))
                             .foregroundStyle(.black)
                             .padding(.horizontal, 10).padding(.vertical, 3)
                             .background(Capsule().fill(Color.cribGold))
