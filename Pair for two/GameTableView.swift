@@ -588,9 +588,9 @@ struct GameTableView: View {
         .overlay {
             if scoreTrackEnabled {
                 ScoreTrackOverlay(youFraction: loopFraction(vm.score(of: you)),
-                                  youColor: vm.theme(for: you).primary,
+                                  youColor: vm.theme(for: you).ring,
                                   opponentFraction: loopFraction(oppValue),
-                                  opponentColor: vm.theme(for: opp).primary,
+                                  opponentColor: vm.theme(for: opp).ring,
                                   cornerRadius: 200)
             }
         }
@@ -652,6 +652,8 @@ struct GameTableView: View {
             requireConfirm: isLocal ? confirmRelease : false,
             opponentColor: vm.theme(for: player.opponent).primary,
             opponentPending: isLocal ? oppPending : 0,
+            ringColor: theme.ring,
+            opponentRingColor: vm.theme(for: player.opponent).ring,
             // A lone panel (networked play) carries both players' loops; with two panels
             // (pass-and-play) each shows only its own player's loop.
             showOpponentTrack: vm.scorablePlayers.count == 1,

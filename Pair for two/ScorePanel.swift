@@ -19,6 +19,9 @@ struct ScorePanel: View {
     /// score updates), so this player can see what the other is scoring.
     var opponentColor: Color = .gray
     var opponentPending: Int = 0
+    /// Brighter shades for the two progress loops (`PlayerTheme.ring`); the base colors when nil.
+    var ringColor: Color? = nil
+    var opponentRingColor: Color? = nil
     /// When true this is the only panel on screen (networked play), so it carries *both* players'
     /// progress loops — your color on the outer edge, the opponent's just inside it. When false
     /// (pass-and-play, one panel per player) only this player's own loop is drawn.
@@ -260,9 +263,9 @@ struct ScorePanel: View {
         // so the stroke rides the rounded edge.
         .overlay {
             if scoreTrackEnabled, showsScore {
-                ScoreTrackOverlay(youFraction: loopFraction(score), youColor: primary,
+                ScoreTrackOverlay(youFraction: loopFraction(score), youColor: ringColor ?? primary,
                                   opponentFraction: showOpponentTrack ? loopFraction(opponentScore) : nil,
-                                  opponentColor: opponentColor)
+                                  opponentColor: opponentRingColor ?? opponentColor)
                     // Sit a touch outside the controls so the lines stay clear of the numbers.
                     .padding(-4)
             }

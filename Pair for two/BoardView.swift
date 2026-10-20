@@ -235,9 +235,9 @@ struct BoardView: View {
             // connected game draws, here framing the shared score.
             if trackEnabled {
                 ScoreTrackOverlay(youFraction: loopFraction(game.score(.bottom)),
-                                  youColor: playerTheme(colorID: nearColorID).primary,
+                                  youColor: playerTheme(colorID: nearColorID).ring,
                                   opponentFraction: loopFraction(game.score(.top)),
-                                  opponentColor: playerTheme(colorID: farColorID).primary,
+                                  opponentColor: playerTheme(colorID: farColorID).ring,
                                   cornerRadius: min(60, height * 0.28))
                     // Clear of the buttons at either end of the band, so the loop doesn't run through them.
                     .padding(.horizontal, inset)

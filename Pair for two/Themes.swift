@@ -30,15 +30,12 @@ struct PlayerTheme: Identifiable, Hashable {
     /// The color's name for display.
     var localizedName: LocalizedStringKey { LocalizedStringKey(displayName) }
 
-    var primary: Color { Self.color(hex, brightness: 1 + Self.brightnessBoost) }
+    var primary: Color { Self.color(hex, brightness: 1) }
     /// A darker shade of `primary`, for gradients.
-    var deep: Color { Self.color(hex, brightness: (1 + Self.brightnessBoost) * 0.72) }
-
-    /// TEMPORARY: the Settings "Color brightness" boost (0, 10…50%), read straight from defaults so
-    /// every theme lookup picks it up without threading it through the views.
-    static var brightnessBoost: Double {
-        Double(UserDefaults.standard.integer(forKey: "colorBrightnessBoost")) / 100
-    }
+    var deep: Color { Self.color(hex, brightness: 0.72) }
+    /// A much brighter shade for the scoring rings: a two-point line in the deep palette vanished
+    /// against the felt, where the names and scores have their cream rim to carry them.
+    var ring: Color { Self.color(hex, brightness: 2) }
 
     /// `hex` with its HSB brightness scaled by `brightness` (capped at full brightness).
     private static func color(_ hex: UInt32, brightness factor: Double) -> Color {
