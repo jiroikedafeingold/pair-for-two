@@ -53,9 +53,12 @@ final class MultipeerSession: NSObject, NearbyTransport {
     // Confined to the main actor: it's reassigned on reconnect/rebuild, so any off-actor read while
     // it's being swapped is a data race (crashes in objc_retain). All access hops to the main actor.
     private var session: MCSession
-    /// Replaced, along with the session, at the start of each recovery — see `rebuildSession`.
-    nonisolated(unsafe) private var myPeerID: MCPeerID
-    private let displayName: String
+    /// One identity for the life of this object. A fresh `MCPeerID` per recovery was tried and
+    /// reverted: when both phones recover at once, each side's invitation targets an identity the
+    /// other has just discarded, times out, and triggers another rebuild — and the two can chase each
+    /// other indefinitely. A stable identity lets a late invitation still land on the rebuilt
+    /// advertiser, which is what makes recovery converge.
+    nonisolated(unsafe) private let myPeerID: MCPeerID
     private var advertiser: MCNearbyServiceAdvertiser?
     private var browser: MCNearbyServiceBrowser?
 
@@ -149,10 +152,8 @@ final class MultipeerSession: NSObject, NearbyTransport {
     init(displayName: String) {
         let trimmed = displayName.trimmingCharacters(in: .whitespaces)
         let name = String((trimmed.isEmpty ? String(localized: "Player", comment: "Fallback name shown to the other device when you have not set one") : trimmed).prefix(60))
-        self.displayName = name
-        let peer = MCPeerID(displayName: name)
-        myPeerID = peer
-        session = MCSession(peer: peer, securityIdentity: nil, encryptionPreference: Self.encryption)
+        myPeerID = MCPeerID(displayName: name)
+        session = MCSession(peer: myPeerID, securityIdentity: nil, encryptionPreference: Self.encryption)
         var captured: AsyncStream<TransportEvent>.Continuation!
         events = AsyncStream(bufferingPolicy: .unbounded) { captured = $0 }
         continuation = captured
@@ -233,9 +234,7 @@ final class MultipeerSession: NSObject, NearbyTransport {
                 // otherwise the loop re-invites the same dead peer every 20 seconds, forever.
                 if self.inviteWentQuiet {
                     self.pendingInviteAt = nil
-                    // Everything is replaced here — session, advertiser, browser — so the identity can
-                    // be too, and a peer that has us on file as a dead advertiser sees a new one.
-                    self.rebuildSession(force: true, freshIdentity: true)
+                    self.rebuildSession(force: true)
                     if self.symmetricPairing { self.startBoth(force: true) } else { self.startRole() }
                     continue
                 }
@@ -460,17 +459,12 @@ final class MultipeerSession: NSObject, NearbyTransport {
         phase = .reconnecting
         continuation.yield(.reconnecting)
         pendingInviteAt = nil
-        // Forced, and under a fresh identity. This is the *start* of recovery, so the rate limiters —
-        // there to stop the retry loop thrashing — have nothing to protect; unforced, the rebuild was
-        // skipped whenever another had happened within the floor, leaving a session that still listed
-        // the ghost peer, which made the retry loop give up on its first pass with `recovering` stuck.
-        //
-        // The fresh `MCPeerID` is what makes a reconnect look like a first connection to the other
-        // phone. Reusing the old one meant the partner's browser could still hold our *previous*
-        // advertiser on file — same peer, dead endpoint — and invite that, getting no answer at all
-        // for the whole unanswered-invite timeout before a rebuild found the live one. A relaunch
-        // never has that problem because every launch mints a new peer; now a recovery does too.
-        rebuildSession(force: true, freshIdentity: true)
+        // Forced: this is the *start* of recovery, so the rate limiter — there to stop the retry loop
+        // thrashing — has nothing to protect. Unforced, the rebuild was skipped whenever another had
+        // happened within the floor, leaving a session that still listed the ghost peer, which made
+        // the retry loop give up on its first pass with `recovering` stuck. (The identity stays the
+        // same on purpose — see `myPeerID`.)
+        rebuildSession(force: true)
         // Same reasoning for discovery: both halves have to be running from here. Unforced, it
         // silently did nothing whenever the last restart was inside the floor — discovery is stopped
         // the moment a game connects, but the timestamp isn't, so a link that dropped soon after
@@ -486,18 +480,13 @@ final class MultipeerSession: NSObject, NearbyTransport {
     /// worse than not rebuilding at all: it pulls the session out from under an invitation that is
     /// still being negotiated, so the peer completes a handshake into a session we have already thrown
     /// away — one side then believes it is connected while the other is still hunting.
-    ///
-    /// `freshIdentity` also mints a new `MCPeerID`. Only for callers that go on to replace the
-    /// advertiser and browser as well: an advertiser answers invitations addressed to the peer it
-    /// was built with, so accepting one into a session under a different peer is not an option.
-    private func rebuildSession(force: Bool = false, freshIdentity: Bool = false) {
+    private func rebuildSession(force: Bool = false) {
         if !force, let last = lastRebuildAt,
            Date().timeIntervalSince(last) < Self.minRebuildInterval { return }
         lastRebuildAt = Date()
         pendingInviteAt = nil       // whatever was in flight belonged to the old session
         session.delegate = nil
         session.disconnect()
-        if freshIdentity { myPeerID = MCPeerID(displayName: displayName) }
         session = MCSession(peer: myPeerID, securityIdentity: nil, encryptionPreference: Self.encryption)
         session.delegate = self
     }
