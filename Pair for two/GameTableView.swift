@@ -173,9 +173,11 @@ struct GameTableView: View {
             let height: CGFloat = geo.size.height
             let width: CGFloat = geo.size.width
             // Cap the scoreboard band so it doesn't leave a tall dead zone on iPad; the play area
-            // takes the rest. 0.40 is enough for the (top-anchored) banner + flags + scoreboard/panel
+            // takes the rest. 0.37 is enough for the (top-anchored) banner + flags + scoreboard/panel
             // while leaving the play area room for the show cards AND the Continue button below them.
-            let topBandHeight: CGFloat = min(height * 0.37, 190)
+            // The cap only ever bites on iPad (a phone's 37% is well under it), where the panel is
+            // drawn larger and wants clear felt beneath it rather than sitting on the band's edge.
+            let topBandHeight: CGFloat = min(height * 0.37, 230)
             let playHeight: CGFloat = height - topBandHeight
             // Every phase reserves a fixed trailing "action rail" for its scoring flags + prompt +
             // button, so nothing stacks below the cards. iPad gets a much wider rail (it dwarfed the
@@ -563,7 +565,9 @@ struct GameTableView: View {
         // the scoreboard/panel height. Any excess spills downward within the band.
         .frame(maxHeight: .infinity, alignment: .top)
         .padding(.top, 12)
-        .padding(.bottom, 4)
+        // The panel fills whatever height it is given, so this is what keeps a band of dark felt
+        // showing beneath it — generous on iPad, where the band is tall enough to spare it.
+        .padding(.bottom, vSizeClass == .regular ? 26 : 4)
     }
 
     /// Auto-scoring scoreboard: each player's name over a big score, in their color. The opponent's
