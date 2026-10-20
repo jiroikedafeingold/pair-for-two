@@ -160,10 +160,16 @@ struct ScorePanel: View {
                             Capsule()
                                 .fill(primary.opacity(highlighted ? 0.42 : 0.16))
                                 .overlay(
-                                    Capsule().stroke(
-                                        primary.opacity(highlighted ? 0.95 : 0.55),
-                                        lineWidth: highlighted ? 1.6 : 1
-                                    )
+                                    // The outline gets the same cream edge as the text — drawn as a
+                                    // wider cream stroke beneath the colored one, because the shadow
+                                    // trick behind `playerColorRim` is too faint on a one-point line.
+                                    ZStack {
+                                        Capsule().stroke(Color.cardFace.opacity(0.85),
+                                                         lineWidth: (highlighted ? 1.6 : 1) + 1.6)
+                                        Capsule().stroke(primary.opacity(highlighted ? 1 : 0.9),
+                                                         lineWidth: highlighted ? 1.6 : 1)
+                                    }
+                                    .shadow(color: .cardFace.opacity(0.30), radius: 8)
                                 )
                         )
                         .scaleEffect(highlighted ? 1.05 : 1.0)
@@ -252,8 +258,9 @@ struct ScorePanel: View {
                     )
                 )
                 .overlay(
+                    // Cream, like the rims on the text: this edge is where the scoring loops run.
                     RoundedRectangle(cornerRadius: 22, style: .continuous)
-                        .stroke(Color.white.opacity(0.10), lineWidth: 1)
+                        .stroke(Color.cardFace.opacity(0.45), lineWidth: 1)
                 )
                 .shadow(color: .black.opacity(0.35), radius: 14, y: 6)
         )
@@ -477,6 +484,7 @@ struct PointsSlider: View {
                 Capsule()
                     .fill(LinearGradient(colors: [deep, primary], startPoint: .leading, endPoint: .trailing))
                     .frame(width: max(trackHeight, knobX + knobSize / 2), height: trackHeight)
+                    .playerColorRim()   // the filled part of the track, in the player's color, reads like the text
 
                 ZStack {
                     Circle().fill(.white)
