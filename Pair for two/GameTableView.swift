@@ -42,6 +42,10 @@ struct GameTableView: View {
     // toast us — only the other player is told "so-and-so switched scoring".
     @State private var initiatedScoringChange = false
 
+    /// The one-time Wi-Fi Aware pairing is being offered: a word on what it is for before the system's
+    /// own sheet, which explains nothing about this game, takes over.
+    @State private var showingWiFiAwareIntro = false
+
     // Scoring replay. The auto pre-win replay plays before the win screen; `preWinReplayShown` flips
     // once it's done so the win screen — and its celebration haptic — appears only then, never while
     // the replay is still covering the table. `showManualReplay` is the win screen's "Replay scoring".
@@ -91,6 +95,19 @@ struct GameTableView: View {
     /// appears and on every foreground.
     private func triggerIconGlow() { glowTrigger += 1 }
 
+    /// What the pairing buys, and what each side has to do next. Two whole sentences per role rather
+    /// than one assembled from parts, so each translates as a unit.
+    @ViewBuilder private var wiFiAwareIntroText: some View {
+        let name = vm.snapshot.opponentName
+        if vm.wiFiAwarePairing == .advertise {
+            Text("Pairing the two phones once over Wi-Fi Aware lets them connect and reconnect in a second or two, with no searching. This phone will show as available to pair: choose it on \(name)'s phone, then confirm on both.",
+                 comment: "Explains the one-time Wi-Fi Aware pairing to the host; %@ is the other player's name")
+        } else {
+            Text("Pairing the two phones once over Wi-Fi Aware lets them connect and reconnect in a second or two, with no searching. Choose \(name)'s phone from the list that appears, then confirm on both phones.",
+                 comment: "Explains the one-time Wi-Fi Aware pairing to the guest; %@ is the other player's name")
+        }
+    }
+
     /// The table plus the sheets, quit dialog, and the state-sync handlers.
     private var interactiveScreen: some View {
         tableScreen
@@ -108,14 +125,23 @@ struct GameTableView: View {
             }
             // The game was quit (by you or the other player) — return to the menu.
             .onChange(of: vm.ended) { _, ended in if ended { onExit() } }
-            // The one-time Wi-Fi Aware pairing: both phones put the system's sheet up together.
+            // The one-time Wi-Fi Aware pairing: say what it is for, then both phones put the system's
+            // sheet up together.
             .onChange(of: vm.wiFiAwarePairing) { _, role in
-                guard let role else { return }
-                Task { @MainActor in
-                    var paired = false
-                    if #available(iOS 26, *) { paired = await WiFiAwarePairingSheet.present(role) }
-                    vm.wiFiAwarePairingFinished(paired: paired)
+                if role != nil { showingWiFiAwareIntro = true }
+            }
+            .alert("Pair these phones for faster connections", isPresented: $showingWiFiAwareIntro) {
+                Button("Pair now") {
+                    guard let role = vm.wiFiAwarePairing else { return }
+                    Task { @MainActor in
+                        var paired = false
+                        if #available(iOS 26, *) { paired = await WiFiAwarePairingSheet.present(role) }
+                        vm.wiFiAwarePairingFinished(paired: paired)
+                    }
                 }
+                Button("Not now", role: .cancel) { vm.wiFiAwarePairingFinished(paired: false) }
+            } message: {
+                wiFiAwareIntroText
             }
             // Push name/color changes into the running game when Settings closes, so the highlight,
             // slider and score colors update live (for this device and the opponent).
