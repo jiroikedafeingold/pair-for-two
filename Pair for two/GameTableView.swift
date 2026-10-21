@@ -239,6 +239,12 @@ struct GameTableView: View {
             // iPad — halve them there. iPhone keeps the fitted size.
             let cutBase: CGFloat = min((playWidth - 50) / 2.2, (playHeight - 76) / 1.45)
             let cutWidth: CGFloat = hSizeClass == .regular ? cutBase * 0.5 : cutBase
+            // The starter cut on a phone is one deck, two once it's lifted, with no names above or
+            // label below — so it takes the height the cut for deal keeps for those: room for the
+            // deck's stacked edges and its pulse, and for the lifted half beside it.
+            let starterCutWidth: CGFloat? = isPhoneHardware
+                ? min((playWidth - 70) / 2.1, (playHeight - 40) / 1.5)
+                : nil
 
             // The discard on the Duo in landscape: six cards in a row are tiny there, so they fan,
             // overlapping as little as the room allows (see `discardArea`). On the cover screen the
@@ -257,7 +263,8 @@ struct GameTableView: View {
             } else {
                 tableLayout(topBandHeight: topBandHeight, railWidth: railWidth, handWidth: handWidth,
                             peggingHandWidth: peggingHandWidth, pileWidth: pileWidth,
-                            showWidth: showWidth, cutWidth: cutWidth, duoDiscard: discard)
+                            showWidth: showWidth, cutWidth: cutWidth, starterCutWidth: starterCutWidth,
+                            duoDiscard: discard)
             }
         }
         .readingFoldDivision($foldDivision, across: $foldAcross)
@@ -323,6 +330,7 @@ struct GameTableView: View {
     @ViewBuilder private func tableLayout(topBandHeight: CGFloat, railWidth: CGFloat, handWidth: CGFloat,
                                           peggingHandWidth: CGFloat, pileWidth: CGFloat,
                                           showWidth: CGFloat, cutWidth: CGFloat,
+                                          starterCutWidth: CGFloat? = nil,
                                           duoDiscard: DuoDiscard? = nil,
                                           portraitPages: (topPage: CGFloat, bottomTop: CGFloat)? = nil) -> some View {
         let s = vm.snapshot
@@ -356,7 +364,8 @@ struct GameTableView: View {
             }
 
             bottomBand(s, railWidth: railWidth, handWidth: handWidth, peggingHandWidth: peggingHandWidth,
-                       pileWidth: pileWidth, showWidth: showWidth, cutWidth: cutWidth, duoDiscard: duoDiscard)
+                       pileWidth: pileWidth, showWidth: showWidth, cutWidth: cutWidth,
+                       starterCutWidth: starterCutWidth, duoDiscard: duoDiscard)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
         .background(felt)
@@ -826,7 +835,7 @@ struct GameTableView: View {
 
     // MARK: Bottom band
 
-    @ViewBuilder private func bottomBand(_ s: PlayerSnapshot, railWidth: CGFloat, handWidth: CGFloat, peggingHandWidth: CGFloat, pileWidth: CGFloat, showWidth: CGFloat, cutWidth: CGFloat, duoDiscard: DuoDiscard?) -> some View {
+    @ViewBuilder private func bottomBand(_ s: PlayerSnapshot, railWidth: CGFloat, handWidth: CGFloat, peggingHandWidth: CGFloat, pileWidth: CGFloat, showWidth: CGFloat, cutWidth: CGFloat, starterCutWidth: CGFloat?, duoDiscard: DuoDiscard?) -> some View {
         VStack(spacing: 12) {
             switch s.phase {
             case .cutForDeal:
@@ -834,7 +843,7 @@ struct GameTableView: View {
             case .discardToCrib:
                 discardArea(s, width: handWidth, railWidth: railWidth, duo: duoDiscard)
             case .cutStarter:
-                starterCutArea(s, width: cutWidth, railWidth: railWidth)
+                starterCutArea(s, width: starterCutWidth ?? cutWidth, railWidth: railWidth)
             case .pegging:
                 peggingArea(s, handWidth: peggingHandWidth, pileWidth: pileWidth, railWidth: railWidth)
             case .showPone, .showDealer, .showCrib:
@@ -982,7 +991,8 @@ struct GameTableView: View {
             } else if vm.youNeedToCut {
                 Button { vm.cut() } label: {
                     VStack(spacing: 6) {
-                        CardView(card: nil, faceUp: false, width: min(width * 0.85, railWidth * 0.75))
+                        // As wide as the rail allows, short of its edges.
+                        CardView(card: nil, faceUp: false, width: min(width * 0.85, railWidth - 16))
                         Text("Tap to cut").font(promptFont).foregroundStyle(.white)
                     }
                 }

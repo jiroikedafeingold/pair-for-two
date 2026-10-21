@@ -172,6 +172,14 @@ enum ScreenshotFixture {
         return s.snapshot(for: .two)
     }
 
+    /// The cut for deal before either player has cut — the rail offers the deck to tap.
+    static func cutForDealStart() -> PlayerSnapshot {
+        var s = GameState.newMatch(matchID: UUID(), seed: 5, names: names,
+                                   colorIDs: colorIDs, scoringMode: .off)
+        CribbageEngine.begin(&s)
+        return s.snapshot(for: .two)
+    }
+
     /// A fresh hand of six, waiting for the guest to send two to the dealer's crib.
     static func discard() -> PlayerSnapshot {
         var s = GameState.newMatch(matchID: UUID(), seed: 11, names: names,
@@ -243,11 +251,12 @@ struct ScreenshotStage: View {
     /// The `-shot N` argument, if the app was launched for a screenshot. Shots 6–8 aren't store shots:
     /// 6 is the opening held on its first frame (what the splash artwork's connector is baked from),
     /// and 7 and 8 are the two rail buttons — "Deal" and "Go" — that otherwise need a live two-device
-    /// game to lay eyes on. 9 is the discard, for checking the six-card hand's size.
+    /// game to lay eyes on. 9 is the discard, for checking the six-card hand's size, and 10 the cut
+    /// for deal before either player has cut.
     static var requested: Int? {
         guard UserDefaults.standard.object(forKey: "shot") != nil else { return nil }
         let shot = UserDefaults.standard.integer(forKey: "shot")
-        return (1...9).contains(shot) ? shot : nil
+        return (1...10).contains(shot) ? shot : nil
     }
 
     var body: some View {
@@ -261,6 +270,7 @@ struct ScreenshotStage: View {
             case 7: GuestShot(ScreenshotFixture.deal(), onExit: onExit)
             case 8: GuestShot(ScreenshotFixture.mustSayGo(), onExit: onExit)
             case 9: GuestShot(ScreenshotFixture.discard(), onExit: onExit)
+            case 10: GuestShot(ScreenshotFixture.cutForDealStart(), onExit: onExit)
             default: GuestShot(ScreenshotFixture.winner(), onExit: onExit)
             }
         }
