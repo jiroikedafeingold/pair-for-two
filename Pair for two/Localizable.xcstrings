@@ -28677,6 +28677,134 @@
           }
         }
       }
+    },
+    "**Already paired?** Tap **Join a game** and it connects to the paired host by itself. Other hosts still appear in the list, so you can pick one of those instead." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "**Schon gekoppelt?** Tippe auf **Spiel beitreten**, und es verbindet sich von selbst mit dem gekoppelten Gastgeber. Andere Gastgeber erscheinen weiterhin in der Liste, falls du lieber einen davon wählst."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "**¿Ya emparejados?** Toca **Unirse a una partida** y se conectará por sí solo al anfitrión emparejado. Los demás anfitriones siguen apareciendo en la lista por si prefieres elegir uno de ellos."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "**Déjà jumelés ?** Touchez **Rejoindre une partie** : la connexion à l'hôte jumelé se fait toute seule. Les autres hôtes restent dans la liste si vous préférez en choisir un."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "**Già abbinati?** Tocca **Partecipa a una partita** e si connette da solo all'host abbinato. Gli altri host restano nell'elenco, così puoi sceglierne uno di quelli."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "**ペアリング済みなら：** **ゲームに参加**をタップすると、ペアリング済みのホストに自動で接続します。ほかのホストもリストに表示されるので、そちらを選ぶこともできます。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "**이미 페어링했다면:** **게임 참가**를 탭하면 페어링된 호스트에 자동으로 연결됩니다. 다른 호스트도 목록에 계속 표시되므로 그중 하나를 선택할 수도 있습니다."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "**Já pareados?** Toque em **Entrar em um jogo** e ele se conecta sozinho ao anfitrião pareado. Os outros anfitriões continuam na lista, caso prefira escolher um deles."
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "**Zaten eşlendi mi?** **Oyuna katıl**'a dokunun; eşlenmiş sunucuya kendiliğinden bağlanır. Diğer sunucular listede görünmeye devam eder, dilerseniz onlardan birini seçebilirsiniz."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "**已经配对？** 点按**加入游戏**，它会自动连接到已配对的主机。其他主机仍会显示在列表中，你也可以改选其中一个。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "**已經配對？** 點按**加入遊戲**，它會自動連線到已配對的主機。其他主機仍會顯示在清單中，你也可以改選其中一個。"
+          }
+        }
+      }
+    },
+    "**Faster connections on newer iPhones:** the first time two iPhones (iPhone 12 or later) play each other, the game offers to pair them over **Wi-Fi Aware**. Confirm once on both phones and from then on they find each other in a second or two — including when one comes back after a drop." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "**Schnellere Verbindungen auf neueren iPhones:** Wenn zwei iPhones (ab iPhone 12) zum ersten Mal gegeneinander spielen, bietet das Spiel an, sie über **Wi-Fi Aware** zu koppeln. Einmal auf beiden bestätigen – danach finden sie sich in ein, zwei Sekunden, auch wenn eines nach einer Unterbrechung zurückkommt."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "**Conexiones más rápidas en iPhone recientes:** la primera vez que dos iPhone (iPhone 12 o posterior) juegan entre sí, el juego ofrece emparejarlos por **Wi-Fi Aware**. Confírmalo una vez en ambos y, a partir de entonces, se encontrarán en uno o dos segundos, incluso cuando uno vuelve tras una desconexión."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "**Connexions plus rapides sur les iPhone récents :** la première fois que deux iPhone (iPhone 12 ou plus récent) jouent ensemble, le jeu propose de les jumeler via **Wi-Fi Aware**. Confirmez une fois sur chacun : ils se retrouveront ensuite en une ou deux secondes, y compris quand l'un revient après une coupure."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "**Connessioni più rapide sugli iPhone recenti:** la prima volta che due iPhone (iPhone 12 o successivo) giocano insieme, il gioco propone di abbinarli tramite **Wi-Fi Aware**. Conferma una volta su entrambi e da quel momento si troveranno in un secondo o due, anche quando uno torna dopo un'interruzione."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "**新しいiPhoneではより速く接続：** 2台のiPhone（iPhone 12以降）が初めて対戦するとき、**Wi-Fi Aware**でのペアリングを提案します。両方で一度確認すれば、以後は中断から戻ったときも含めて1〜2秒で互いを見つけます。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "**최신 iPhone에서 더 빠른 연결:** 두 iPhone(iPhone 12 이상)이 처음 함께 플레이할 때 **Wi-Fi Aware**로 페어링할지 묻습니다. 양쪽에서 한 번만 확인하면 이후에는 끊겼다가 돌아올 때를 포함해 1~2초 만에 서로를 찾습니다."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "**Conexões mais rápidas em iPhones recentes:** na primeira vez que dois iPhones (iPhone 12 ou posterior) jogam juntos, o jogo oferece pareá-los por **Wi-Fi Aware**. Confirme uma vez em ambos e, a partir daí, eles se encontram em um ou dois segundos, inclusive quando um volta após uma queda."
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "**Yeni iPhone'larda daha hızlı bağlantı:** iki iPhone (iPhone 12 ve sonrası) ilk kez birlikte oynadığında oyun onları **Wi-Fi Aware** ile eşlemeyi önerir. İkisinde de bir kez onaylayın; sonrasında, biri kopmanın ardından geri döndüğünde bile birbirlerini bir iki saniyede bulurlar."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "**较新 iPhone 上连接更快：** 两部 iPhone（iPhone 12 或更新机型）首次对局时，游戏会提议通过 **Wi-Fi Aware** 配对。在两部手机上确认一次，之后它们会在一两秒内找到彼此，包括一方断线后返回时。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "**較新 iPhone 上連線更快：** 兩部 iPhone（iPhone 12 或更新機型）首次對局時，遊戲會提議透過 **Wi-Fi Aware** 配對。在兩部手機上確認一次，之後它們會在一兩秒內找到彼此，包括一方斷線後返回時。"
+          }
+        }
+      }
     }
   },
   "version" : "1.1"

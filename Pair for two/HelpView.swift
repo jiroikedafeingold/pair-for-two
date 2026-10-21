@@ -34,6 +34,8 @@ struct HelpView: View {
                     bullet("On the menu, tap **Play nearby**.")
                     bullet("One phone taps **Host**, the other taps **Join** and picks the host.")
                     bullet("Allow **Local Network** access if asked — it's needed to find the other phone.")
+                    bullet("**Faster connections on newer iPhones:** the first time two iPhones (iPhone 12 or later) play each other, the game offers to pair them over **Wi-Fi Aware**. Confirm once on both phones and from then on they find each other in a second or two — including when one comes back after a drop.")
+                    bullet("**Already paired?** Tap **Join a game** and it connects to the paired host by itself. Other hosts still appear in the list, so you can pick one of those instead.")
                 }
 
                 Section("Play online") {

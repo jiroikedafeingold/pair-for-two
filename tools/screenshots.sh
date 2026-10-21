@@ -55,8 +55,15 @@ case "$DEVICE" in
   *)     PREFIX="iphone69" ;;
 esac
 
-APP=$(ls -dt "$HOME/Library/Developer/Xcode/DerivedData/Pair_for_two-"*/Build/Products/Debug-iphonesimulator/*.app 2>/dev/null | head -1)
-[[ -n "$APP" ]] || { echo "no Debug simulator build found — build the app first"; exit 1; }
+# The Debug simulator build: `APP_PATH` if set, else the default DerivedData, else Xcode's custom
+# DerivedData location (this Mac keeps it on an external volume).
+APP="${APP_PATH:-}"
+[[ -n "$APP" ]] || APP=$(ls -dt "$HOME/Library/Developer/Xcode/DerivedData/Pair_for_two-"*/Build/Products/Debug-iphonesimulator/*.app 2>/dev/null | head -1)
+if [[ -z "$APP" ]]; then
+  CUSTOM=$(defaults read com.apple.dt.Xcode IDECustomDerivedDataLocation 2>/dev/null || true)
+  [[ -n "$CUSTOM" ]] && APP=$(ls -dt "$CUSTOM"/Debug-iphonesimulator/Pair*.app "$CUSTOM"/Pair_for_two-*/Build/Products/Debug-iphonesimulator/*.app 2>/dev/null | head -1)
+fi
+[[ -n "$APP" ]] || { echo "no Debug simulator build found — build the app first (or set APP_PATH)"; exit 1; }
 
 # An iPad app is resizable by default, and a resizable app doesn't get to lock its orientation — so
 # the simulated iPad stays portrait and lays the game out in a portrait window. A *copy* of the bundle

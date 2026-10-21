@@ -466,7 +466,7 @@ struct GameTableView: View {
                     .fixedSize(horizontal: false, vertical: true)
             }
             .frame(maxWidth: 420)
-            .padding(.horizontal, 14).padding(.vertical, 7)
+            .padding(.horizontal, 22).padding(.vertical, 14)
             .background(Capsule().fill(Color.black.opacity(0.7)))
             .transition(.move(edge: .top).combined(with: .opacity))
         }

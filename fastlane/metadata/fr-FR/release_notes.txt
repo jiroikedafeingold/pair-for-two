@@ -1,3 +1,5 @@
-• Quelques points de trop ? Maintenez le bouton Annuler pour voir vos cinq derniers scores : choisissez-en un, il est annulé avec tous ceux ajoutés après, et vous recomptez à partir de là. Un simple toucher annule toujours seulement le dernier.
+• Connexions plus rapides entre deux iPhone. Sur iPhone 12 ou plus récent, la première fois que deux téléphones jouent ensemble, le jeu propose de les jumeler via Wi-Fi Aware. Confirmez une fois sur chacun et ils se retrouveront ensuite en une ou deux secondes, y compris quand l'un revient après une coupure. La reconnexion en Bluetooth et Wi-Fi est également plus rapide.
+• Plus lisible : des caractères plus grands sur iPad, des noms et libellés plus grands sur iPhone, une palette de couleurs plus profonde avec un liseré crème sur les noms et les scores, et des pistes de score plus lumineuses.
+• La ligne d'aide s'adresse à vous directement : « Vous comptez votre main » plutôt que votre nom.
 
 Merci de jouer ! Questions ou remarques ? apps@feingold5.com
