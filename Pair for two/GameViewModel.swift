@@ -1092,8 +1092,13 @@ final class GameViewModel {
     func quit() {
         guard !ended else { return }
         if isLoopback { endGame(); return }
+        // The send runs on its own rather than being waited on: Wi-Fi Aware's send waits for the
+        // network, so a stalled link would hold it indefinitely and "Quit game" would do nothing.
+        // Quitting has to work whatever state the link is in; if the message doesn't make it, the
+        // other phone just sees the connection drop.
+        let transport = transport
+        Task { @MainActor in await transport.send(.quitGame) }
         Task { @MainActor in
-            await transport.send(.quitGame)
             try? await Task.sleep(for: .milliseconds(400))   // let the reliable message flush before teardown
             endGame()
         }
