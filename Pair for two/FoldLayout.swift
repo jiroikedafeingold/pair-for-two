@@ -137,7 +137,12 @@ private struct BalancedHorizontalSafeArea: ViewModifier {
             .safeAreaPadding(.trailing, balance ? max(0, insets.left - insets.right) : 0)
             .environment(\.balancedContentWidth,
                          balance && insets.width > 0 ? insets.width - 2 * max(insets.left, insets.right) : nil)
-            .background(WindowInsetsReader(insets: $insets))
+            .environment(\.windowSize, CGSize(width: insets.width, height: insets.height))
+            // Spanning the whole window, so its own insets change whenever the window's do. Inside
+            // the safe area it heard nothing when the cover screen turned from one landscape to the
+            // other — same size, and the camera's inset just changing sides — and kept centering
+            // for the old side.
+            .background(WindowInsetsReader(insets: $insets).ignoresSafeArea())
     }
 }
 
@@ -146,8 +151,9 @@ private struct BalancedHorizontalSafeArea: ViewModifier {
 private struct WindowSideInsets: Equatable {
     var left: CGFloat = 0
     var right: CGFloat = 0
-    /// The window's width, so the room between the balanced insets can be passed on.
+    /// The window's size, so the room between the balanced insets can be passed on.
     var width: CGFloat = 0
+    var height: CGFloat = 0
 }
 
 extension EnvironmentValues {
@@ -155,6 +161,9 @@ extension EnvironmentValues {
     /// trust its own proposal for this: content that overflows widens the views around it. Nil where
     /// the sides aren't balanced (regular width).
     @Entry var balancedContentWidth: CGFloat? = nil
+    /// The window's own size (zero until it's measured). Like `balancedContentWidth`, read from the
+    /// window rather than a view's proposal, which overflowing content can inflate.
+    @Entry var windowSize: CGSize = .zero
 }
 
 /// Reports the window's left and right safe-area insets, which come from the device and the system
@@ -184,7 +193,7 @@ private struct WindowInsetsReader: UIViewRepresentable {
         private func report() {
             guard let window else { return }
             var current = WindowSideInsets(left: window.safeAreaInsets.left, right: window.safeAreaInsets.right,
-                                           width: window.bounds.width)
+                                           width: window.bounds.width, height: window.bounds.height)
             // Mirrored layout flips SwiftUI's leading/trailing; keep leading = the left padding.
             if effectiveUserInterfaceLayoutDirection == .rightToLeft { swap(&current.left, &current.right) }
             guard current != reported else { return }

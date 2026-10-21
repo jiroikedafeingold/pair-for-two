@@ -83,4 +83,5 @@ private struct FixedTextSize: UIViewRepresentable {
 
 #Preview {
     RootView()
+        .balancedHorizontalSafeArea()   // as the app applies it, so the menu sees the window's size
 }

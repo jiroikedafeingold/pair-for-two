@@ -33,6 +33,13 @@ struct RootView: View {
     @State private var showOnboarding = false
     /// The screen's width inside its evened-out safe areas — see `menuScales`.
     @Environment(\.balancedContentWidth) private var balancedContentWidth
+    @Environment(\.windowSize) private var windowSize
+    /// The open iPhone Duo held upright — the only phone that runs taller than wide. Its inner screen
+    /// has regular size classes, so it gets the iPad's roomy menu, but only 669 points across.
+    private var upright: Bool { isPhoneHardware && windowSize.height > windowSize.width }
+    /// Width of a menu button's label, before scaling. Narrower on the upright Duo so the captions
+    /// beside the buttons still fit.
+    private var menuButtonWidth: CGFloat { roomy ? (upright ? 190 : 250) : 168 }
     @AppStorage("hasOnboarded") private var hasOnboarded = false
     @Environment(\.scenePhase) private var scenePhase
     /// Regular height means an iPad: room to center the menu on the screen and scale it up. A phone in
@@ -80,7 +87,7 @@ struct RootView: View {
             .font(.system(size: (roomy ? 20 : 17) * scale, weight: roomy ? .regular : .semibold))
             .lineLimit(1)
             .minimumScaleFactor(0.8)
-            .frame(width: (roomy ? 250 : 168) * scale, alignment: .leading)
+            .frame(width: menuButtonWidth * scale, alignment: .leading)
             .padding(.horizontal, (roomy ? 22 : 16) * scale)
             .padding(.vertical, (roomy ? 16 : 7) * scale)
         }
@@ -108,7 +115,7 @@ struct RootView: View {
             .foregroundStyle(.white.opacity(0.62))
             .multilineTextAlignment(.leading)
             .fixedSize(horizontal: false, vertical: true)
-            .frame(maxWidth: (roomy ? 480 : 400) * scale, alignment: .leading)
+            .frame(maxWidth: captionMaxWidth(scale: scale), alignment: .leading)
     }
 
     /// What to call the device in copy that points at it ("use the iPad as the board").
@@ -467,15 +474,35 @@ struct RootView: View {
     /// layout — is the floor, with a scrolling copy behind it as the safety net.
     ///
     /// `ViewThatFits` doesn't notice a menu that's too *wide*: the fixed-width button column just pushes
-    /// the grid past the screen's edge. The iPhone Duo's cover screen is narrow enough for that, so on a
-    /// phone the scales are also limited by width — the button and its padding (168 + 32), the column
-    /// gap (18), the narrowest a caption gets before it wraps word by word (about 150), all times the
+    /// the grid past the screen's edge. Both iPhone Duo screens are narrow enough for that — the cover
+    /// screen, and the inner one held upright — so on a phone the scales are also limited by width:
+    /// the button and its padding, the column gap, the narrowest a caption gets before it wraps word
+    /// by word (about 150 points at the phone's caption size, 200 at the roomy one), all times the
     /// scale, plus the menu's side padding. Every other iPhone has room for the largest scale (637
     /// points), so for them this changes nothing.
     private var menuScales: [CGFloat] {
         let scales: [CGFloat] = roomy ? [1.4, 1.25, 1.1, 1.0] : [1.6, 1.45, 1.3, 1.15, 1.0]
-        guard isPhoneHardware, let width = balancedContentWidth else { return scales }
-        return scales.filter { (168 + 32 + 18 + 150) * $0 + 48 <= width }
+        guard let width = narrowMenuWidth else { return scales }
+        return scales.filter { (menuButtonColumn + (roomy ? 200 : 150)) * $0 + 48 + 24 <= width }
+    }
+
+    /// The menu's width on the two Duo screens that can't fit it at full size: the cover screen
+    /// (between its evened-out safe areas) and the inner screen held upright. Nil everywhere else.
+    private var narrowMenuWidth: CGFloat? {
+        guard isPhoneHardware else { return nil }
+        return upright ? windowSize.width : balancedContentWidth
+    }
+
+    /// A button with its padding plus the gap to its caption, before scaling. (The 48s and 24s beside
+    /// it are the menu's side padding and the bordered button style's own, which don't scale.)
+    private var menuButtonColumn: CGFloat { roomy ? menuButtonWidth + 44 + 26 : menuButtonWidth + 32 + 18 }
+
+    /// The widest a caption may be at `scale`. The grid otherwise sizes the caption column to its own
+    /// liking rather than to what's left beside the buttons, so on a narrow screen it's capped at that.
+    private func captionMaxWidth(scale: CGFloat) -> CGFloat {
+        let preferred = (roomy ? 480 : 400) * scale
+        guard let width = narrowMenuWidth else { return preferred }
+        return min(preferred, width - 48 - 24 - menuButtonColumn * scale)
     }
 
     private var menu: some View {
