@@ -83,6 +83,9 @@ struct GameTableView: View {
     @State private var isPortrait = false
     /// The hinge running across the screen when the open Duo is held upright; nil everywhere else.
     @State private var foldAcross: FoldBand?
+    /// The iPhone Duo's cover screen in landscape: a nearly square phone screen of compact height (no
+    /// other iPhone is that shape). Its score band is shorter and runs into the side margins.
+    @State private var isDuoCover = false
 
     // The body is split into layered `some View` properties on purpose: a single long chain of
     // modifiers (sheets + ~10 onChange handlers) makes the Swift type-checker blow up (multi-minute
@@ -189,7 +192,10 @@ struct GameTableView: View {
             // while leaving the play area room for the show cards AND the Continue button below them.
             // The cap only ever bites on iPad (a phone's 37% is well under it), where the panel is
             // drawn larger and wants clear felt beneath it rather than sitting on the band's edge.
-            let topBandHeight: CGFloat = min(height * 0.37, 230)
+            // The Duo's cover screen is short; there the band gives a little more of it to the cards.
+            let coverScreen: Bool = isPhoneHardware && width > height && width / height < 1.6
+                && vSizeClass == .compact
+            let topBandHeight: CGFloat = coverScreen ? (height * 0.32).rounded() : min(height * 0.37, 230)
             let playHeight: CGFloat = height - topBandHeight
             // Every phase reserves a fixed trailing "action rail" for its scoring flags + prompt +
             // button, so nothing stacks below the cards. iPad gets a much wider rail (it dwarfed the
@@ -211,10 +217,14 @@ struct GameTableView: View {
             // its layout allows, capped by the width the row needs. Discard: a 6-card hand. Pegging: a
             // pile ABOVE the hand, so shorter. Show: the cut + a 4-card row. Cut: just two big cards.
             let handWidth: CGFloat = min((playWidth - 34) / 7.0, (playHeight - 64) / 1.45)
-            // The pegging hand is four cards, not six: on the open iPhone Duo's narrow left page it
-            // takes the width those four need rather than inheriting the six-card size.
-            let peggingHandWidth: CGFloat = onFoldInner
-                ? min((playWidth - 34) / 4.6, (playHeight - 44) / 2.15)
+            // The pegging hand is never more than four cards. On the iPhone Duo — both its screens are
+            // nearly square, which no other iPhone is — it's sized for exactly those four rather than
+            // inheriting the six-card discard size: four cards and the hand's three gaps (0.18 of a card
+            // each) across the play column, or the hand plus the half-size pile above it, the pile's
+            // labels and the padding down it, whichever runs out first. Every other device is unchanged.
+            let duoScreen: Bool = isPhoneHardware && width / height < 1.6
+            let peggingHandWidth: CGFloat = duoScreen
+                ? min((playWidth - 8) / 4.54, (playHeight - 74) / 2.175)
                 : min(handWidth, (playHeight - 44) / 2.15)
             let pileWidth: CGFloat = peggingHandWidth * 0.5
             // The show row is: cut card + 16pt gap + a 4-card hand (8pt spacing) = 5 cards + ~44pt,
@@ -235,6 +245,10 @@ struct GameTableView: View {
         }
         .readingFoldDivision($foldDivision, across: $foldAcross)
         .onGeometryChange(for: Bool.self) { $0.size.height > $0.size.width } action: { isPortrait = $0 && isPhoneHardware }
+        .onGeometryChange(for: Bool.self) { proxy in
+            let size = proxy.size
+            return size.width > size.height && size.width / size.height < 1.6
+        } action: { isDuoCover = $0 && isPhoneHardware && vSizeClass == .compact }
     }
 
     /// How much height the controls under the cards take in portrait: a row of scoring flags, a prompt,
@@ -277,7 +291,9 @@ struct GameTableView: View {
             topBand(s)
                 .frame(maxWidth: .infinity)
                 .frame(height: topBandHeight)
-                .clipped()   // clip any bottom overflow to the band (banner is top-anchored, so safe)
+                // Clip any bottom overflow to the band (banner is top-anchored, so safe). Sideways it may
+                // overflow: on the Duo's cover screen the score panel runs into the side margins.
+                .mask { Rectangle().padding(.horizontal, isDuoCover ? -200 : 0) }
                 // Full-bleed dark band: the background (added after the clip) extends into the top +
                 // side safe areas so it spans the whole screen width, while the content inside stays
                 // within the safe area.
@@ -640,7 +656,11 @@ struct GameTableView: View {
                     }
                 }
                 .frame(maxWidth: 900)
-                .padding(.horizontal, 12)
+                .padding(.horizontal, isDuoCover ? 6 : 12)
+                // The Duo's cover screen: the panel runs into the side margins, the same on both sides so
+                // it stays centered. Its controls sit below the corner camera, which only the panel's
+                // rounded border reaches.
+                .ignoresSafeArea(.container, edges: isDuoCover ? .horizontal : [])
             }
         }
         // Anchor to the top (not centered) with clearance below the top controls, so the coach
