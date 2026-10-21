@@ -9,6 +9,8 @@ struct HandView: View {
     var isEnabled: (Card) -> Bool = { _ in true }
     var onTap: (Card) -> Void
     var cardWidth: CGFloat = 74
+    /// The gap between cards; negative overlaps them into a fan. Nil is the usual gap.
+    var spacing: CGFloat? = nil
     /// When set, the cards deal in one-by-one (dropping from above) whenever this value changes —
     /// used for a fresh deal. Left nil during pegging so cards don't re-animate on every play.
     var dealSignal: AnyHashable? = nil
@@ -16,7 +18,7 @@ struct HandView: View {
     @State private var revealed = 0
 
     var body: some View {
-        HStack(spacing: cardWidth * 0.18) {
+        HStack(spacing: spacing ?? cardWidth * 0.18) {
             ForEach(Array(cards.enumerated()), id: \.element.id) { idx, card in
                 let shown = dealSignal == nil || idx < revealed
                 CardView(card: card,
@@ -35,6 +37,9 @@ struct HandView: View {
         .animation(.spring(response: 0.35, dampingFraction: 0.8), value: cards)
         .task(id: dealSignal) {
             guard dealSignal != nil else { return }
+#if DEBUG
+            if dealsCardsInstantly { revealed = cards.count; return }   // a screenshot fixture
+#endif
             revealed = 0
             try? await Task.sleep(for: .milliseconds(140))
             for i in 1...max(cards.count, 1) {

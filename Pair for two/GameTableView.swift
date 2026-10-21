@@ -195,7 +195,10 @@ struct GameTableView: View {
             // The Duo's cover screen is short; there the band gives a little more of it to the cards.
             let coverScreen: Bool = isPhoneHardware && width > height && width / height < 1.6
                 && vSizeClass == .compact
-            let topBandHeight: CGFloat = coverScreen ? (height * 0.32).rounded() : min(height * 0.37, 230)
+            // The cut for deal comes before anyone has a point, so on a phone the band drops the score
+            // panel (0 / 0 is all it could show) and keeps only the prompt line; the cards take the rest.
+            let topBandHeight: CGFloat = scoresHiddenForCut ? Self.promptOnlyBandHeight
+                : coverScreen ? (height * 0.32).rounded() : min(height * 0.37, 230)
             let playHeight: CGFloat = height - topBandHeight
             // Every phase reserves a fixed trailing "action rail" for its scoring flags + prompt +
             // button, so nothing stacks below the cards. iPad gets a much wider rail (it dwarfed the
@@ -216,20 +219,17 @@ struct GameTableView: View {
             // Card aspect is height = width * 1.45. Each phase's cards fill as much of the play area as
             // its layout allows, capped by the width the row needs. Discard: a 6-card hand. Pegging: a
             // pile ABOVE the hand, so shorter. Show: the cut + a 4-card row. Cut: just two big cards.
-            // The Duo's cover screen is too narrow for six in a row beside the rail — they came out
-            // barely 48 points wide — so there the hand deals as two rows of three: three cards and
-            // two gaps across, two rows and the gap between them down (see `discardArea`).
-            let handWidth: CGFloat = coverScreen
-                ? min((playWidth - 8) / 3.36, (playHeight - 64) / 3.14)
-                : min((playWidth - 34) / 7.0, (playHeight - 64) / 1.45)
+            let handWidth: CGFloat = min((playWidth - 34) / 7.0, (playHeight - 64) / 1.45)
             // The pegging hand is never more than four cards. On the iPhone Duo — both its screens are
             // nearly square, which no other iPhone is — it's sized for exactly those four rather than
             // inheriting the six-card discard size: four cards and the hand's three gaps (0.18 of a card
             // each) across the play column, or the hand plus the half-size pile above it, the pile's
             // labels and the padding down it, whichever runs out first. Every other device is unchanged.
             let duoScreen: Bool = isPhoneHardware && width / height < 1.6
+            // On the Duo the hand keeps 20 points clear each side; hard against the column's edge it
+            // sat right at the screen's left.
             let peggingHandWidth: CGFloat = duoScreen
-                ? min((playWidth - 8) / 4.54, (playHeight - 74) / 2.175)
+                ? min((playWidth - 40) / 4.54, (playHeight - 74) / 2.175)
                 : min(handWidth, (playHeight - 44) / 2.15)
             let pileWidth: CGFloat = peggingHandWidth * 0.5
             // The show row is: cut card + 16pt gap + a 4-card hand (8pt spacing) = 5 cards + ~44pt,
@@ -240,12 +240,24 @@ struct GameTableView: View {
             let cutBase: CGFloat = min((playWidth - 50) / 2.2, (playHeight - 76) / 1.45)
             let cutWidth: CGFloat = hSizeClass == .regular ? cutBase * 0.5 : cutBase
 
+            // The discard on the Duo in landscape: six cards in a row are tiny there, so they fan,
+            // overlapping as little as the room allows (see `discardArea`). On the cover screen the
+            // button goes under them and they take the full width; on the inner screen they fill the
+            // left page. Each card is as big as the height allows — a lifted card is 1.67 card
+            // widths tall — or as a fan overlapped down to 40% per card fits across, whichever is less.
+            let fanWidth: CGFloat = coverScreen ? width - 40 : playWidth - 40
+            let fanHeight: CGFloat = coverScreen ? playHeight - 28 - Self.underCardsButtonRoom : playHeight - 28
+            let discard: DuoDiscard? = duoScreen && width > height
+                ? DuoDiscard(cardWidth: min(fanWidth / 3.0, fanHeight / 1.67, 190),
+                             rowWidth: fanWidth, buttonBelow: coverScreen)
+                : nil
+
             if height > width, isPhoneHardware {   // the open Duo held upright; an iPad keeps its layout
                 portraitTable(width: width, height: height, topBandHeight: topBandHeight)
             } else {
                 tableLayout(topBandHeight: topBandHeight, railWidth: railWidth, handWidth: handWidth,
                             peggingHandWidth: peggingHandWidth, pileWidth: pileWidth,
-                            showWidth: showWidth, cutWidth: cutWidth)
+                            showWidth: showWidth, cutWidth: cutWidth, duoDiscard: discard)
             }
         }
         .readingFoldDivision($foldDivision, across: $foldAcross)
@@ -255,6 +267,27 @@ struct GameTableView: View {
             return size.width > size.height && size.width / size.height < 1.6
         } action: { isDuoCover = $0 && isPhoneHardware && vSizeClass == .compact }
     }
+
+    /// How the discard is laid out on the Duo in landscape. See `tableScreen` and `discardArea`.
+    struct DuoDiscard {
+        var cardWidth: CGFloat
+        /// The width the fanned row may take.
+        var rowWidth: CGFloat
+        /// The cover screen: the button sits under the cards rather than in the rail.
+        var buttonBelow: Bool
+    }
+
+    /// Height kept under the fanned discard on the cover screen for the button and the gap above it.
+    private static let underCardsButtonRoom: CGFloat = 64
+
+    /// The cut for deal on a phone in landscape: the top band holds only its prompt line. See
+    /// `tableScreen`.
+    private var scoresHiddenForCut: Bool {
+        isPhoneHardware && !isPortrait && vm.snapshot.phase == .cutForDeal
+    }
+
+    /// The band's top inset, the prompt line and a little below it.
+    private static let promptOnlyBandHeight: CGFloat = 52
 
     /// How much height the controls under the cards take in portrait: a row of scoring flags, a prompt,
     /// the big button and Check. Measured once there is a measurement; this is the first guess.
@@ -290,6 +323,7 @@ struct GameTableView: View {
     @ViewBuilder private func tableLayout(topBandHeight: CGFloat, railWidth: CGFloat, handWidth: CGFloat,
                                           peggingHandWidth: CGFloat, pileWidth: CGFloat,
                                           showWidth: CGFloat, cutWidth: CGFloat,
+                                          duoDiscard: DuoDiscard? = nil,
                                           portraitPages: (topPage: CGFloat, bottomTop: CGFloat)? = nil) -> some View {
         let s = vm.snapshot
         VStack(spacing: 0) {
@@ -322,7 +356,7 @@ struct GameTableView: View {
             }
 
             bottomBand(s, railWidth: railWidth, handWidth: handWidth, peggingHandWidth: peggingHandWidth,
-                       pileWidth: pileWidth, showWidth: showWidth, cutWidth: cutWidth)
+                       pileWidth: pileWidth, showWidth: showWidth, cutWidth: cutWidth, duoDiscard: duoDiscard)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
         .background(felt)
@@ -652,7 +686,9 @@ struct GameTableView: View {
 
             // The scoring flags ("Fifteen 2 +2" …) live at the top of the felt now (see `bottomBand`),
             // so the dark band holds only the coach line + the scoreboard — giving the scores room.
-            if s.scoringMode == .auto {
+            if scoresHiddenForCut {
+                // Only the prompt line, before anyone has a point (see `tableScreen`).
+            } else if s.scoringMode == .auto {
                 // Auto mode: no manual controls — just a big names + scores scoreboard.
                 autoScoreboard(s)
             } else {
@@ -681,7 +717,7 @@ struct GameTableView: View {
         .padding(.top, 12)
         // The panel fills whatever height it is given, so this is what keeps a band of dark felt
         // showing beneath it — generous on iPad, where the band is tall enough to spare it.
-        .padding(.bottom, vSizeClass == .regular ? 40 : 4)
+        .padding(.bottom, scoresHiddenForCut ? 0 : vSizeClass == .regular ? 40 : 4)
     }
 
     /// Auto-scoring scoreboard: each player's name over a big score, in their color. The opponent's
@@ -790,13 +826,13 @@ struct GameTableView: View {
 
     // MARK: Bottom band
 
-    @ViewBuilder private func bottomBand(_ s: PlayerSnapshot, railWidth: CGFloat, handWidth: CGFloat, peggingHandWidth: CGFloat, pileWidth: CGFloat, showWidth: CGFloat, cutWidth: CGFloat) -> some View {
+    @ViewBuilder private func bottomBand(_ s: PlayerSnapshot, railWidth: CGFloat, handWidth: CGFloat, peggingHandWidth: CGFloat, pileWidth: CGFloat, showWidth: CGFloat, cutWidth: CGFloat, duoDiscard: DuoDiscard?) -> some View {
         VStack(spacing: 12) {
             switch s.phase {
             case .cutForDeal:
                 cutForDealArea(s, width: cutWidth, railWidth: railWidth)
             case .discardToCrib:
-                discardArea(s, width: handWidth, railWidth: railWidth)
+                discardArea(s, width: handWidth, railWidth: railWidth, duo: duoDiscard)
             case .cutStarter:
                 starterCutArea(s, width: cutWidth, railWidth: railWidth)
             case .pegging:
@@ -946,7 +982,7 @@ struct GameTableView: View {
             } else if vm.youNeedToCut {
                 Button { vm.cut() } label: {
                     VStack(spacing: 6) {
-                        CardView(card: nil, faceUp: false, width: width * 0.85)
+                        CardView(card: nil, faceUp: false, width: min(width * 0.85, railWidth * 0.75))
                         Text("Tap to cut").font(promptFont).foregroundStyle(.white)
                     }
                 }
@@ -1005,40 +1041,68 @@ struct GameTableView: View {
 
     // MARK: Discard
 
-    @ViewBuilder private func discardArea(_ s: PlayerSnapshot, width: CGFloat, railWidth: CGFloat) -> some View {
+    @ViewBuilder private func discardArea(_ s: PlayerSnapshot, width: CGFloat, railWidth: CGFloat,
+                                          duo: DuoDiscard? = nil) -> some View {
         let cards = s.yourHand.sortedForDisplay()
         let deal = AnyHashable(s.yourHand.map(\.id))   // deal cards in on a fresh hand
-        playScene(s, railWidth: railWidth) {
-            if isDuoCover, cards.count > 3 {
-                // Two rows of three on the Duo's cover screen, where one row of six would be tiny. The
-                // gap is a little more than a selected card's lift, so a lifted card clears the row above.
-                VStack(spacing: width * 0.24) {
-                    discardRow(Array(cards.prefix(3)), width: width, deal: deal)
-                    discardRow(Array(cards.dropFirst(3)), width: width, deal: deal)
-                }
-            } else {
-                discardRow(cards, width: width, deal: deal)
+        if let duo, duo.buttonBelow {
+            // The Duo's cover screen: the fanned cards across the whole width, the button beneath.
+            VStack(spacing: 14) {
+                discardRow(cards, width: duo.cardWidth, spacing: fanSpacing(duo, count: cards.count), deal: deal)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                // The phone-sized button on one line, so the cards keep the height.
+                discardButton(s, railWidth: 209, singleLine: true)
             }
-        } action: {
-            RailButton(title: s.yourSeat == .dealer
-                       ? String(localized: "Send 2 to your crib", comment: "Button: discard two cards into your own crib")
-                       : String(localized: "Send 2 to \(vm.name(of: s.dealer))'s crib",
-                                comment: "Button: discard into the dealer's crib; %@ is their name"),
-                       railWidth: railWidth,
-                       tint: vm.theme(for: s.you).deep,
-                       textColor: .white,
-                       disabled: !vm.canConfirmDiscard) {
-                GameFeedback.shared.play(.discardConfirm)
-                vm.confirmDiscard()
+            .padding(.horizontal, 4)
+        } else {
+            playScene(s, railWidth: railWidth) {
+                if let duo {
+                    discardRow(cards, width: duo.cardWidth, spacing: fanSpacing(duo, count: cards.count), deal: deal)
+                } else {
+                    discardRow(cards, width: width, deal: deal)
+                }
+            } action: {
+                // On the Duo's inner screen the rail is a whole page; a page-sized button there took
+                // more than its share, so it's drawn at the phone's size.
+                discardButton(s, railWidth: duo == nil ? railWidth : min(railWidth, Self.compactButtonRail))
             }
         }
     }
 
-    private func discardRow(_ cards: [Card], width: CGFloat, deal: AnyHashable) -> some View {
+    /// A rail width that gives the phone-sized button (see `RailButton`).
+    private static let compactButtonRail: CGFloat = 200
+
+    /// The gap between fanned discard cards: the usual gap when the row fits, otherwise an overlap
+    /// just deep enough to fit `rowWidth`, and never so deep that less than 40% of a card shows.
+    private func fanSpacing(_ duo: DuoDiscard, count: Int) -> CGFloat {
+        let w = duo.cardWidth
+        guard count > 1 else { return w * 0.18 }
+        let fit = (duo.rowWidth - CGFloat(count) * w) / CGFloat(count - 1)
+        return min(w * 0.18, max(-w * 0.6, fit))
+    }
+
+    private func discardButton(_ s: PlayerSnapshot, railWidth: CGFloat, singleLine: Bool = false) -> some View {
+        RailButton(title: s.yourSeat == .dealer
+                   ? String(localized: "Send 2 to your crib", comment: "Button: discard two cards into your own crib")
+                   : String(localized: "Send 2 to \(vm.name(of: s.dealer))'s crib",
+                            comment: "Button: discard into the dealer's crib; %@ is their name"),
+                   railWidth: railWidth,
+                   tint: vm.theme(for: s.you).deep,
+                   textColor: .white,
+                   disabled: !vm.canConfirmDiscard,
+                   singleLine: singleLine) {
+            GameFeedback.shared.play(.discardConfirm)
+            vm.confirmDiscard()
+        }
+    }
+
+    private func discardRow(_ cards: [Card], width: CGFloat, spacing: CGFloat? = nil,
+                            deal: AnyHashable) -> some View {
         HandView(cards: cards,
                  selected: vm.selectedForDiscard,
                  onTap: { GameFeedback.shared.play(.discardSelect); vm.toggleDiscard($0) },
                  cardWidth: width,
+                 spacing: spacing,
                  dealSignal: deal)
     }
 
@@ -1478,6 +1542,9 @@ private struct RailButton: View {
     let tint: Color
     var textColor: Color = .black
     var disabled: Bool = false
+    /// Shrink the title onto one line rather than wrapping it — for a button under the cards, where
+    /// every point of height is the cards'.
+    var singleLine: Bool = false
     let action: () -> Void
 
     /// How big the type can be is a question about the rail, not about the device: an iPad in Split
@@ -1522,7 +1589,7 @@ private struct RailButton: View {
         Button(action: action) {
             Text(title)
                 .font(titleFont)
-                .lineLimit(2)
+                .lineLimit(singleLine ? 1 : 2)
                 .minimumScaleFactor(0.6)
                 .multilineTextAlignment(.center)
                 // Without this the bordered style hands the label a single line's height, so a long
