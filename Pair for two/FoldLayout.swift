@@ -125,16 +125,73 @@ private struct FoldDivisionReader: UIViewRepresentable {
 /// would throw away 68 points of a screen the game uses all of.
 private struct BalancedHorizontalSafeArea: ViewModifier {
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
-    @State private var insets = EdgeInsets()
+    /// The window's own left and right insets. Read from UIKit, not from SwiftUI's geometry: the
+    /// padding below changes the safe area SwiftUI reports, so measuring there read the padding back,
+    /// removed it, and the two chased each other forever — a white screen at full CPU.
+    @State private var insets = WindowSideInsets()
 
     func body(content: Content) -> some View {
         let balance = horizontalSizeClass == .compact
         content
-            .safeAreaPadding(.leading, balance ? max(0, insets.trailing - insets.leading) : 0)
-            .safeAreaPadding(.trailing, balance ? max(0, insets.leading - insets.trailing) : 0)
-            // Read outside the padding above, so this sees the device's own insets rather than the
-            // ones just added — otherwise the two would chase each other.
-            .onGeometryChange(for: EdgeInsets.self) { $0.safeAreaInsets } action: { insets = $0 }
+            .safeAreaPadding(.leading, balance ? max(0, insets.right - insets.left) : 0)
+            .safeAreaPadding(.trailing, balance ? max(0, insets.left - insets.right) : 0)
+            .environment(\.balancedContentWidth,
+                         balance && insets.width > 0 ? insets.width - 2 * max(insets.left, insets.right) : nil)
+            .background(WindowInsetsReader(insets: $insets))
+    }
+}
+
+/// The device's side insets, as SwiftUI's leading and trailing: left and right on screen, swapped in a
+/// right-to-left layout so the padding still lands opposite the camera.
+private struct WindowSideInsets: Equatable {
+    var left: CGFloat = 0
+    var right: CGFloat = 0
+    /// The window's width, so the room between the balanced insets can be passed on.
+    var width: CGFloat = 0
+}
+
+extension EnvironmentValues {
+    /// The width between the evened-out side safe areas, from the window itself. A view inside can't
+    /// trust its own proposal for this: content that overflows widens the views around it. Nil where
+    /// the sides aren't balanced (regular width).
+    @Entry var balancedContentWidth: CGFloat? = nil
+}
+
+/// Reports the window's left and right safe-area insets, which come from the device and the system
+/// bars alone and so can't be moved by the padding they drive.
+private struct WindowInsetsReader: UIViewRepresentable {
+    @Binding var insets: WindowSideInsets
+
+    func makeUIView(context: Context) -> Probe {
+        let view = Probe()
+        view.isUserInteractionEnabled = false
+        view.onChange = { insets = $0 }
+        return view
+    }
+
+    func updateUIView(_ view: Probe, context: Context) {
+        view.onChange = { insets = $0 }
+    }
+
+    final class Probe: UIView {
+        var onChange: ((WindowSideInsets) -> Void)?
+        private var reported: WindowSideInsets?
+
+        override func didMoveToWindow() { super.didMoveToWindow(); report() }
+        override func layoutSubviews() { super.layoutSubviews(); report() }
+        override func safeAreaInsetsDidChange() { super.safeAreaInsetsDidChange(); report() }
+
+        private func report() {
+            guard let window else { return }
+            var current = WindowSideInsets(left: window.safeAreaInsets.left, right: window.safeAreaInsets.right,
+                                           width: window.bounds.width)
+            // Mirrored layout flips SwiftUI's leading/trailing; keep leading = the left padding.
+            if effectiveUserInterfaceLayoutDirection == .rightToLeft { swap(&current.left, &current.right) }
+            guard current != reported else { return }
+            reported = current
+            let onChange = onChange
+            Task { @MainActor in onChange?(current) }
+        }
     }
 }
 

@@ -31,6 +31,8 @@ struct RootView: View {
     /// state rather than read per render — it's a file check.
     @State private var boardResumeAvailable = BoardGameStore.load() != nil
     @State private var showOnboarding = false
+    /// The screen's width inside its evened-out safe areas — see `menuScales`.
+    @Environment(\.balancedContentWidth) private var balancedContentWidth
     @AppStorage("hasOnboarded") private var hasOnboarded = false
     @Environment(\.scenePhase) private var scenePhase
     /// Regular height means an iPad: room to center the menu on the screen and scale it up. A phone in
@@ -463,7 +465,18 @@ struct RootView: View {
     /// height, so four rows draw large enough to fill a landscape phone, a fifth (Rejoin) drops the
     /// menu a size or two, and a long translation that wraps its captions does the same. 1 — today's
     /// layout — is the floor, with a scrolling copy behind it as the safety net.
-    private var menuScales: [CGFloat] { roomy ? [1.4, 1.25, 1.1, 1.0] : [1.6, 1.45, 1.3, 1.15, 1.0] }
+    ///
+    /// `ViewThatFits` doesn't notice a menu that's too *wide*: the fixed-width button column just pushes
+    /// the grid past the screen's edge. The iPhone Duo's cover screen is narrow enough for that, so on a
+    /// phone the scales are also limited by width — the button and its padding (168 + 32), the column
+    /// gap (18), the narrowest a caption gets before it wraps word by word (about 150), all times the
+    /// scale, plus the menu's side padding. Every other iPhone has room for the largest scale (637
+    /// points), so for them this changes nothing.
+    private var menuScales: [CGFloat] {
+        let scales: [CGFloat] = roomy ? [1.4, 1.25, 1.1, 1.0] : [1.6, 1.45, 1.3, 1.15, 1.0]
+        guard isPhoneHardware, let width = balancedContentWidth else { return scales }
+        return scales.filter { (168 + 32 + 18 + 150) * $0 + 48 <= width }
+    }
 
     private var menu: some View {
         ZStack {
