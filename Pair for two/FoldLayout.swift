@@ -25,6 +25,20 @@ struct FoldDivision: Equatable {
     var trailingPage: CGFloat { containerWidth - maxX }
 }
 
+/// Whether this is a phone at all. With the app locked to landscape on every other iPhone, a phone
+/// whose screen is taller than wide, or regular in height, can only be the open iPhone Duo — which is
+/// how the Duo-only layouts tell themselves apart from an iPad in the same shape. (A device check,
+/// deliberately: those layouts must leave every other device exactly as it was.)
+@MainActor
+var isPhoneHardware: Bool { UIDevice.current.userInterfaceIdiom == .phone }
+
+/// Where a hinge running side to side crosses a view (the open Duo held upright), in that view's
+/// coordinates: the top page ends at `minY` and the bottom page starts at `maxY`.
+struct FoldBand: Equatable {
+    var minY: CGFloat
+    var maxY: CGFloat
+}
+
 /// Reports the vertical hinge crossing the view it's attached to, or nil where there isn't one: every
 /// non-foldable device, the folded Duo's outer display, and any OS before 27.1.
 ///
@@ -33,21 +47,33 @@ struct FoldDivision: Equatable {
 /// folds, instead of reflowing the table the moment someone props it up.
 private struct FoldDivisionReader: UIViewRepresentable {
     @Binding var division: FoldDivision?
+    /// The hinge when it runs *across* the view instead — the open Duo held upright. Optional, so a
+    /// screen that has no portrait arrangement doesn't have to ask.
+    var across: Binding<FoldBand?>?
 
     func makeUIView(context: Context) -> ProbeView {
         let view = ProbeView()
         view.isUserInteractionEnabled = false
-        view.onChange = { division = $0 }
+        updateUIView(view, context: context)
         return view
     }
 
     func updateUIView(_ view: ProbeView, context: Context) {
-        view.onChange = { division = $0 }
+        let across = across
+        view.onChange = { vertical, horizontal in
+            division = vertical
+            across?.wrappedValue = horizontal
+        }
     }
 
     final class ProbeView: UIView {
-        var onChange: ((FoldDivision?) -> Void)?
-        private var reported: FoldDivision??
+        var onChange: ((FoldDivision?, FoldBand?) -> Void)?
+        private var reported: Measurement?
+
+        private struct Measurement: Equatable {
+            var vertical: FoldDivision?
+            var horizontal: FoldBand?
+        }
 
         // Bounds change on every fold, unfold and rotation, each of which lays the view out again.
         override func layoutSubviews() {
@@ -63,24 +89,25 @@ private struct FoldDivisionReader: UIViewRepresentable {
         private func report() {
             let current = measure()
             if let reported, reported == current { return }
-            reported = .some(current)
+            reported = current
             // Not inside SwiftUI's own update pass: publish on the next turn of the main actor.
             let onChange = onChange
-            Task { @MainActor in onChange?(current) }
+            Task { @MainActor in onChange?(current.vertical, current.horizontal) }
         }
 
-        private func measure() -> FoldDivision? {
-            guard window != nil else { return nil }
+        private func measure() -> Measurement {
+            guard window != nil else { return Measurement() }
             if #available(iOS 27.1, *) {
-                // Only a hinge running top to bottom splits this landscape layout into pages; one
-                // across the middle (a portrait-held inner display) leaves the layout as it is.
-                let vertical = reservedRegions(kind: .division, options: .includeInactive)
-                    .map(\.frame)
-                    .filter { $0.height > $0.width && $0.minX > 0 && $0.maxX < bounds.width }
-                guard let frame = vertical.first else { return nil }
-                return FoldDivision(minX: frame.minX, maxX: frame.maxX, containerWidth: bounds.width)
+                let frames = reservedRegions(kind: .division, options: .includeInactive).map(\.frame)
+                // Top to bottom: the open Duo in landscape, pages left and right.
+                let vertical = frames.first { $0.height > $0.width && $0.minX > 0 && $0.maxX < bounds.width }
+                // Side to side: the open Duo held upright, pages above and below.
+                let horizontal = frames.first { $0.width > $0.height && $0.minY > 0 && $0.maxY < bounds.height }
+                return Measurement(
+                    vertical: vertical.map { FoldDivision(minX: $0.minX, maxX: $0.maxX, containerWidth: bounds.width) },
+                    horizontal: horizontal.map { FoldBand(minY: $0.minY, maxY: $0.maxY) })
             }
-            return nil
+            return Measurement()
         }
     }
 }
@@ -119,7 +146,7 @@ extension View {
     }
 
     /// Keeps `division` up to date with the hinge crossing this view, in this view's coordinates.
-    func readingFoldDivision(_ division: Binding<FoldDivision?>) -> some View {
-        background(FoldDivisionReader(division: division))
+    func readingFoldDivision(_ division: Binding<FoldDivision?>, across: Binding<FoldBand?>? = nil) -> some View {
+        background(FoldDivisionReader(division: division, across: across))
     }
 }

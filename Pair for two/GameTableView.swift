@@ -77,6 +77,12 @@ struct GameTableView: View {
     /// `FoldDivision`.
     @State private var foldDivision: FoldDivision?
     private var onFoldInner: Bool { foldDivision != nil }
+    /// The table is taller than it is wide: the open iPhone Duo held upright (its inner display
+    /// ignores the app's landscape-only setting), or an iPad in portrait. The table then stacks into
+    /// two pages — see `tableLayout`.
+    @State private var isPortrait = false
+    /// The hinge running across the screen when the open Duo is held upright; nil everywhere else.
+    @State private var foldAcross: FoldBand?
 
     // The body is split into layered `some View` properties on purpose: a single long chain of
     // modifiers (sheets + ~10 onChange handlers) makes the Swift type-checker blow up (multi-minute
@@ -219,18 +225,53 @@ struct GameTableView: View {
             let cutBase: CGFloat = min((playWidth - 50) / 2.2, (playHeight - 76) / 1.45)
             let cutWidth: CGFloat = hSizeClass == .regular ? cutBase * 0.5 : cutBase
 
-            tableLayout(topBandHeight: topBandHeight, railWidth: railWidth, handWidth: handWidth,
-                        peggingHandWidth: peggingHandWidth, pileWidth: pileWidth,
-                        showWidth: showWidth, cutWidth: cutWidth)
+            if height > width, isPhoneHardware {   // the open Duo held upright; an iPad keeps its layout
+                portraitTable(width: width, height: height, topBandHeight: topBandHeight)
+            } else {
+                tableLayout(topBandHeight: topBandHeight, railWidth: railWidth, handWidth: handWidth,
+                            peggingHandWidth: peggingHandWidth, pileWidth: pileWidth,
+                            showWidth: showWidth, cutWidth: cutWidth)
+            }
         }
-        .readingFoldDivision($foldDivision)
+        .readingFoldDivision($foldDivision, across: $foldAcross)
+        .onGeometryChange(for: Bool.self) { $0.size.height > $0.size.width } action: { isPortrait = $0 && isPhoneHardware }
+    }
+
+    /// How much height the controls under the cards take in portrait: a row of scoring flags, a prompt,
+    /// the big button and Check. Measured once there is a measurement; this is the first guess.
+    private static let portraitControlsHeight: CGFloat = 150
+
+    /// The portrait table: two pages. The top one holds the scoreboard and, while the cards are being
+    /// played, the cut, the count and the crib; the bottom one holds the cards in play at the full width,
+    /// with the flags, prompt and buttons beneath them. On the open Duo the hinge falls between the two
+    /// pages and nothing is drawn on it; elsewhere the top page takes 45%.
+    @ViewBuilder private func portraitTable(width: CGFloat, height: CGFloat, topBandHeight: CGFloat) -> some View {
+        let topPage: CGFloat = foldAcross?.minY ?? (height * 0.45).rounded()
+        let bottomTop: CGFloat = foldAcross?.maxY ?? topPage
+        let cardsWidth: CGFloat = width - 8
+        // The bottom page, less its vertical padding and the controls under the cards.
+        let controls: CGFloat = max(Self.portraitControlsHeight, actionHeight + 44)
+        let cardsHeight: CGFloat = max(60, height - bottomTop - 28 - controls)
+        let handWidth: CGFloat = min((cardsWidth - 34) / 7.0, cardsHeight / 1.45)
+        let peggingHandWidth: CGFloat = min((cardsWidth - 34) / 4.6, cardsHeight / 1.45)
+        let showWidth: CGFloat = min((cardsWidth - 44) / 5.0, (cardsHeight - 24) / 1.45)
+        let cutWidth: CGFloat = min((cardsWidth - 50) / 2.2, (cardsHeight - 40) / 1.45)
+        // The pile spans the cut, up to eight overlapped played cards and the crib: about 9.5 cards.
+        let pileWidth: CGFloat = min(width / 9.5, max(30, (topPage - topBandHeight - 64) / 1.45))
+        // 290 keeps the buttons at their medium size (see `RailButton`): the full-size iPad button and
+        // prompt took the height the cards below the fold need.
+        tableLayout(topBandHeight: topBandHeight, railWidth: min(cardsWidth, 290), handWidth: handWidth,
+                    peggingHandWidth: peggingHandWidth, pileWidth: pileWidth,
+                    showWidth: showWidth, cutWidth: cutWidth,
+                    portraitPages: (topPage: topPage, bottomTop: bottomTop))
     }
 
     /// The band-split layout + overlays. Extracted from the `GeometryReader` closure so that closure
     /// stays a few cheap bindings + one call — keeping the Swift type-checker fast.
     @ViewBuilder private func tableLayout(topBandHeight: CGFloat, railWidth: CGFloat, handWidth: CGFloat,
                                           peggingHandWidth: CGFloat, pileWidth: CGFloat,
-                                          showWidth: CGFloat, cutWidth: CGFloat) -> some View {
+                                          showWidth: CGFloat, cutWidth: CGFloat,
+                                          portraitPages: (topPage: CGFloat, bottomTop: CGFloat)? = nil) -> some View {
         let s = vm.snapshot
         VStack(spacing: 0) {
             topBand(s)
@@ -243,6 +284,21 @@ struct GameTableView: View {
                 .background(alignment: .top) {
                     Color.black.opacity(0.22).ignoresSafeArea(edges: [.top, .horizontal])
                 }
+
+            if let pages = portraitPages {
+                // The rest of the top page: the cut, the count and the crib, while the cards are played.
+                Group {
+                    if s.phase == .pegging {
+                        PlayPileView(snapshot: s, vm: vm, cardWidth: pileWidth)
+                    } else {
+                        Color.clear
+                    }
+                }
+                .frame(maxWidth: .infinity)
+                .frame(height: max(0, pages.topPage - topBandHeight))
+                // The hinge, when there is one. Nothing goes on it.
+                Color.clear.frame(height: max(0, pages.bottomTop - pages.topPage))
+            }
 
             bottomBand(s, railWidth: railWidth, handWidth: handWidth, peggingHandWidth: peggingHandWidth,
                        pileWidth: pileWidth, showWidth: showWidth, cutWidth: cutWidth)
@@ -574,14 +630,6 @@ struct GameTableView: View {
             if s.scoringMode == .auto {
                 // Auto mode: no manual controls — just a big names + scores scoreboard.
                 autoScoreboard(s)
-            } else if let fold = foldDivision, vm.scorablePlayers.count == 1, let player = vm.scorablePlayers.first {
-                // The open iPhone Duo: the one slider can't straddle the hinge. Scores on the left
-                // page, the controls on the right, the hinge in the gutter.
-                HStack(spacing: fold.width + 24) {
-                    autoScoreboard(s).frame(width: max(0, fold.leadingPage - 24))
-                    scorePanel(for: player, s: s, showsScore: false).frame(width: max(0, fold.trailingPage - 24))
-                }
-                .padding(.horizontal, 12)
             } else {
                 // A slider panel per peg this device may score: both for pass-and-play, just the
                 // local player's when networked. Constrain the width so a single panel doesn't
@@ -750,6 +798,23 @@ struct GameTableView: View {
         // Built here, outside the rail's GeometryReader, because that closure escapes and so can't
         // capture the `action` view builder itself.
         let actionColumn = VStack(spacing: 10) { action() }
+        if isPortrait {
+            // Portrait: the cards take the full width, and the flags, prompt and buttons sit under them
+            // rather than in a side rail.
+            VStack(spacing: 12) {
+                play()
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                if !s.flags.isEmpty {
+                    ScoreFlagsView(flags: s.flags,
+                                   accent: vm.scoringPlayer.map { vm.theme(for: $0).primary } ?? .cribGold)
+                }
+                actionColumn
+                    .frame(maxWidth: railWidth)
+                    .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { actionHeight = $0 }
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .padding(.horizontal, 4)
+        } else {
         // On the open iPhone Duo the gap between cards and rail *is* the hinge.
         HStack(spacing: foldDivision?.width ?? 12) {
             play()
@@ -785,6 +850,7 @@ struct GameTableView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .padding(.horizontal, 4)
+        }
     }
 
     /// Tallest the flags slot gets: enough for a hand's usual two chips plus its total, with the
@@ -990,10 +1056,13 @@ struct GameTableView: View {
                 // On iPad, drop the pile down from the top of the play area (this top spacer balances the
                 // two below, so the hand still sits centered between the pile and the bottom). iPhone
                 // keeps the pile at the top.
-                if hSizeClass == .regular { Spacer(minLength: 0) }
+                // In portrait the pile is on the top page (see `tableLayout`); only the hand is here.
+                if !isPortrait {
+                    if hSizeClass == .regular { Spacer(minLength: 0) }
 
-                // The running count lives inside the play pile, freeing this space for bigger cards.
-                PlayPileView(snapshot: s, vm: vm, cardWidth: pileWidth)
+                    // The running count lives inside the play pile, freeing this space for bigger cards.
+                    PlayPileView(snapshot: s, vm: vm, cardWidth: pileWidth)
+                }
 
                 // Center your hand in the space between the pile and the bottom of the screen (rather
                 // than pinning it to the very bottom). The equal spacers around a fixed-height slot keep

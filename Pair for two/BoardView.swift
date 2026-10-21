@@ -97,9 +97,10 @@ struct BoardView: View {
             // tight, so its sliders go close to the edges to leave the middle as much room as possible;
             // an iPad keeps them comfortably inset and still has hundreds of points to spare.
             // Regular height isn't always iPad height: the open iPhone Duo is regular both ways at only
-            // 669 points tall, where two fixed 250-point slider zones squeezed the score to a strip.
-            // A share of the height keeps an iPad at (or near) 250 and gives the Duo's score room.
-            let sliderHeight: CGFloat = verticalSizeClass == .compact ? 86 : min(250, (geo.size.height - 16) * 0.3)
+            // 669 points tall, where two fixed 250-point slider zones squeezed the score to a strip, so
+            // there the zones take a share of the height. iPad keeps its 250.
+            let sliderHeight: CGFloat = verticalSizeClass == .compact ? 86
+                : (isPhoneHardware ? min(250, (geo.size.height - 16) * 0.3) : 250)
             let bandHeight = max(140, geo.size.height - 16 - sliderHeight * 2)
             // On the open iPhone Duo each player's controls sit on one page, so no slider's knob ever
             // passes under the hinge: the near player's on the left, the far player's — whose half is
