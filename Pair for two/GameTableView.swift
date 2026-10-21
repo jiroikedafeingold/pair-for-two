@@ -644,7 +644,11 @@ struct GameTableView: View {
                 .minimumScaleFactor(0.6)
                 .lineLimit(1)
                 .frame(maxWidth: .infinity)
-                .padding(.horizontal, 44)   // keep clear of the settings gear / screen edges
+                // Keep clear of the settings gear / screen edges. The Duo's cover screen is narrow
+                // enough that a long line shrinks only to 44 points from the edge and runs under the
+                // help button, so there both sides clear the help-and-settings pair (two 40-point
+                // buttons, their gap and inset) and the line stays centered.
+                .padding(.horizontal, isDuoCover ? 104 : 44)
 
             // The scoring flags ("Fifteen 2 +2" …) live at the top of the felt now (see `bottomBand`),
             // so the dark band holds only the coach line + the scoreboard — giving the scores room.
