@@ -73,6 +73,8 @@ struct GameTableView: View {
     private var bandTextScale: CGFloat { vSizeClass == .regular ? 1.6 : 1.25 }
     /// iPad: the labels on the felt are drawn much larger (see `PlayText`).
     private var roomy: Bool { vSizeClass == .regular }
+    /// The open iPhone Duo, whose hinge down the middle takes no touches — see `FoldLayout`.
+    private var onFoldInner: Bool { FoldLayout.isInnerDisplay(horizontal: hSizeClass, vertical: vSizeClass) }
 
     // The body is split into layered `some View` properties on purpose: a single long chain of
     // modifiers (sheets + ~10 onChange handlers) makes the Swift type-checker blow up (multi-minute
@@ -184,7 +186,10 @@ struct GameTableView: View {
             // Every phase reserves a fixed trailing "action rail" for its scoring flags + prompt +
             // button, so nothing stacks below the cards. iPad gets a much wider rail (it dwarfed the
             // big screen at the iPhone width); iPhone keeps it narrow so the cards get the space.
-            let railWidth: CGFloat = hSizeClass == .regular ? min(width * 0.30, 420) : 156
+            // On the open iPhone Duo the rail is the whole right page, so the hinge falls in the gutter
+            // between the cards and the controls instead of across either.
+            let railWidth: CGFloat = onFoldInner ? width / 2 - 24
+                : (hSizeClass == .regular ? min(width * 0.30, 420) : 156)
             // What's actually left for the cards: the rail, the 12pt gap beside it and the row's own
             // 4pt of horizontal padding each side all come out first. Leaving those 20 points out is
             // what pushed the rail off the right edge of a standard iPad — the card row sized itself
@@ -194,7 +199,11 @@ struct GameTableView: View {
             // its layout allows, capped by the width the row needs. Discard: a 6-card hand. Pegging: a
             // pile ABOVE the hand, so shorter. Show: the cut + a 4-card row. Cut: just two big cards.
             let handWidth: CGFloat = min((playWidth - 34) / 7.0, (playHeight - 64) / 1.45)
-            let peggingHandWidth: CGFloat = min(handWidth, (playHeight - 44) / 2.15)
+            // The pegging hand is four cards, not six: on the open iPhone Duo's narrow left page it
+            // takes the width those four need rather than inheriting the six-card size.
+            let peggingHandWidth: CGFloat = onFoldInner
+                ? min((playWidth - 34) / 4.6, (playHeight - 44) / 2.15)
+                : min(handWidth, (playHeight - 44) / 2.15)
             let pileWidth: CGFloat = peggingHandWidth * 0.5
             // The show row is: cut card + 16pt gap + a 4-card hand (8pt spacing) = 5 cards + ~44pt,
             // so /5 keeps it inside the play column instead of spilling into the rail.
@@ -558,6 +567,15 @@ struct GameTableView: View {
             if s.scoringMode == .auto {
                 // Auto mode: no manual controls — just a big names + scores scoreboard.
                 autoScoreboard(s)
+            } else if onFoldInner, vm.scorablePlayers.count == 1, let player = vm.scorablePlayers.first {
+                // The open iPhone Duo: the hinge runs down the middle and takes no touches while the
+                // phone lies flat, so the one slider can't straddle it. Scores on the left page, the
+                // controls on the right, the hinge in the gutter.
+                HStack(spacing: FoldLayout.hingeWidth + 24) {
+                    autoScoreboard(s).frame(maxWidth: .infinity)
+                    scorePanel(for: player, s: s, showsScore: false).frame(maxWidth: .infinity)
+                }
+                .padding(.horizontal, 12)
             } else {
                 // A slider panel per peg this device may score: both for pass-and-play, just the
                 // local player's when networked. Constrain the width so a single panel doesn't
@@ -651,7 +669,7 @@ struct GameTableView: View {
         .padding(.horizontal, 10)   // keep names/scores clear of the divider and the oval's ends
     }
 
-    @ViewBuilder private func scorePanel(for player: PlayerID, s: PlayerSnapshot) -> some View {
+    @ViewBuilder private func scorePanel(for player: PlayerID, s: PlayerSnapshot, showsScore: Bool = true) -> some View {
         let theme = vm.theme(for: player)
         let isLocal = player == s.you
         // On the local panel, delay the opponent's score by 3s and show their "+X" preview.
@@ -673,6 +691,7 @@ struct GameTableView: View {
             // A lone panel (networked play) carries both players' loops; with two panels
             // (pass-and-play) each shows only its own player's loop.
             showOpponentTrack: vm.scorablePlayers.count == 1,
+            showsScore: showsScore,
             uncommitted: isLocal ? $uncommittedLocal : nil,
             clearSignal: isLocal ? clearScoreSignal : 0,
             onAdd: { GameFeedback.shared.play(.score); vm.claim($0, for: player) },
@@ -1533,6 +1552,43 @@ private struct GameTablePreview: View {
 
 #Preview(traits: .landscapeLeft) {
     GameTablePreview()
+}
+
+// MARK: - iPhone Duo stand-ins
+//
+// Xcode 27.1's iPhone Duo simulator isn't installed here, so these approximate it from Apple's
+// published geometry. Unfolded, the inner display hands a landscape-only app 951 × 669 points with
+// *regular* size classes both ways — the first iPhone to report them — and a 40-point hinge strip
+// down the middle that doesn't take touches when the phone is flat. Folded, the outer display in
+// landscape is 678 × 466 with compact classes: a small phone. Replace with the real simulator when
+// Xcode 27.1 is installed.
+
+#Preview("iPhone Duo — inner display", traits: .fixedLayout(width: 951, height: 669)) {
+    GameTablePreview()
+        .environment(\.horizontalSizeClass, .regular)
+        .environment(\.verticalSizeClass, .regular)
+        .overlay { Rectangle().fill(.black.opacity(0.3)).frame(width: 40) }   // where the hinge falls
+}
+
+#Preview("iPhone Duo — inner, cut for deal", traits: .fixedLayout(width: 951, height: 669)) {
+    CutForDealPreview()
+        .environment(\.horizontalSizeClass, .regular)
+        .environment(\.verticalSizeClass, .regular)
+        .overlay { Rectangle().fill(.black.opacity(0.3)).frame(width: 40) }
+}
+
+// The networked game — one score panel — which is where the hinge mattered most.
+#Preview("iPhone Duo — inner, networked", traits: .fixedLayout(width: 951, height: 669)) {
+    GameTableView(vm: GameViewModel.previewGuest(snapshot: ScreenshotFixture.pegging()))
+        .environment(\.horizontalSizeClass, .regular)
+        .environment(\.verticalSizeClass, .regular)
+        .overlay { Rectangle().fill(.black.opacity(0.3)).frame(width: 40) }
+}
+
+#Preview("iPhone Duo — outer display", traits: .fixedLayout(width: 678, height: 466)) {
+    GameTablePreview()
+        .environment(\.horizontalSizeClass, .compact)
+        .environment(\.verticalSizeClass, .compact)
 }
 
 // The opening screen: nobody has cut yet, so the rail holds the tall "tap to cut" card.

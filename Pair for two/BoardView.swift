@@ -49,6 +49,12 @@ struct BoardView: View {
     /// Compact height means a phone in landscape; regular means an iPad. Drives how much of the screen
     /// the sliders keep versus the score — not a device check, a space check.
     @Environment(\.verticalSizeClass) private var verticalSizeClass
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    /// The open iPhone Duo: its hinge runs down the middle of the board and takes no touches while
+    /// the phone lies flat, which is exactly where the reset button sat. See `FoldLayout`.
+    private var onFoldInner: Bool {
+        FoldLayout.isInnerDisplay(horizontal: horizontalSizeClass, vertical: verticalSizeClass)
+    }
 
     /// How much of the loop a score fills: nothing at the start, a closed ring at game point.
     private func loopFraction(_ points: Int) -> Double {
@@ -94,16 +100,20 @@ struct BoardView: View {
             // an iPad keeps them comfortably inset and still has hundreds of points to spare.
             let sliderHeight: CGFloat = verticalSizeClass == .compact ? 86 : 250
             let bandHeight = max(140, geo.size.height - 16 - sliderHeight * 2)
+            // On the open iPhone Duo each player's controls sit on one page, so no slider's knob ever
+            // passes under the hinge: the near player's on the left, the far player's — whose half is
+            // rotated — visually on the right.
+            let pageWidth: CGFloat? = onFoldInner ? geo.size.width / 2 - FoldLayout.hingeWidth / 2 - 8 : nil
             VStack(spacing: 0) {
                 // The far player's half, turned to face them.
-                panel(for: .top)
+                panel(for: .top, pageWidth: pageWidth)
                     .frame(height: sliderHeight)
                     .rotationEffect(.degrees(180))
 
                 sharedBand(height: bandHeight)
                     .frame(height: bandHeight)
 
-                panel(for: .bottom)
+                panel(for: .bottom, pageWidth: pageWidth)
                     .frame(height: sliderHeight)
             }
             .padding(.vertical, 8)
@@ -191,7 +201,7 @@ struct BoardView: View {
     /// A player's slider with the edit button beside it — to the right as that player sees it, since the
     /// far half is rotated. Beside rather than below on purpose: under the slider it was eating the
     /// vertical space the score wants.
-    @ViewBuilder private func panel(for side: BoardSide) -> some View {
+    @ViewBuilder private func panel(for side: BoardSide, pageWidth: CGFloat? = nil) -> some View {
         let isNear = side == .bottom
         HStack(spacing: 6) {
             slider(for: side)
@@ -208,6 +218,10 @@ struct BoardView: View {
             .accessibilityLabel("Edit \(isNear ? nearLabel : farLabel)'s name and color")
         }
         .padding(.horizontal, 10)
+        // Confined to one page on the open iPhone Duo (see `body`); leading before the far half's
+        // rotation, which lands it on the right as that player sees it.
+        .frame(maxWidth: pageWidth)
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     // MARK: The shared middle
@@ -224,11 +238,18 @@ struct BoardView: View {
             Rectangle().fill(Color.black.opacity(0.22))
             HStack(spacing: 0) {
                 exitButton
+                if onFoldInner { resetButton.padding(.leading, 10) }
                 sharedScore(.bottom, scoreSize: scoreSize, nameSize: nameSize)
-                resetControl(lineHeight: height * 0.18)
+                if onFoldInner {
+                    // The hinge is here. Keep the divider, which only has to be seen; the reset
+                    // button, which has to be tapped, moves beside the exit button.
+                    dividerLine.frame(height: height * 0.36 + 48).frame(width: 44)
+                } else {
+                    resetControl(lineHeight: height * 0.18)
+                }
                 sharedScore(.top, scoreSize: scoreSize, nameSize: nameSize)
-                // Balances the exit button on the other side so the scores stay centered.
-                Color.clear.frame(width: 34, height: 1)
+                // Balances the button(s) on the other side so the scores stay centered.
+                Color.clear.frame(width: onFoldInner ? 34 + 48 : 34, height: 1)
             }
             .padding(.horizontal, 12)
 
@@ -240,8 +261,9 @@ struct BoardView: View {
                                   opponentFraction: loopFraction(game.score(.top)),
                                   opponentColor: playerTheme(colorID: farColorID).ring,
                                   cornerRadius: min(60, height * 0.28))
-                    // Clear of the buttons at either end of the band, so the loop doesn't run through them.
-                    .padding(.horizontal, inset)
+                    // Clear of the buttons at either end of the band, so the loop doesn't run through them
+                    // — two buttons on the open iPhone Duo, where the reset sits beside the exit.
+                    .padding(.horizontal, onFoldInner ? inset + 48 : inset)
                     .padding(.vertical, 6)
             }
         }
@@ -309,22 +331,26 @@ struct BoardView: View {
     private func resetControl(lineHeight: CGFloat) -> some View {
         VStack(spacing: 10) {
             dividerLine.frame(height: lineHeight)
-            Button {
-                if game.hasProgress { confirmingNewGame = true } else { newGame() }
-            } label: {
-                Image(systemName: "arrow.counterclockwise")
-                    .font(.system(size: 16, weight: .bold))
-                    .foregroundStyle(.white.opacity(0.75))
-                    .frame(width: 38, height: 38)
-                    .background(Circle().fill(Color.black.opacity(0.35)))
-                    .overlay(Circle().stroke(.white.opacity(0.15), lineWidth: 1))
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel("Reset the board")
-            .accessibilityHint("Clears both scores. Asks first.")
+            resetButton
             dividerLine.frame(height: lineHeight)
         }
         .frame(width: 44)
+    }
+
+    private var resetButton: some View {
+        Button {
+            if game.hasProgress { confirmingNewGame = true } else { newGame() }
+        } label: {
+            Image(systemName: "arrow.counterclockwise")
+                .font(.system(size: 16, weight: .bold))
+                .foregroundStyle(.white.opacity(0.75))
+                .frame(width: 38, height: 38)
+                .background(Circle().fill(Color.black.opacity(0.35)))
+                .overlay(Circle().stroke(.white.opacity(0.15), lineWidth: 1))
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Reset the board")
+        .accessibilityHint("Clears both scores. Asks first.")
     }
 
     private var dividerLine: some View {
@@ -558,6 +584,14 @@ private struct BoardPlayerSheet: View {
 #if DEBUG
 #Preview("Board", traits: .landscapeLeft) {
     BoardView(onExit: {})
+}
+
+// The open iPhone Duo stand-in (see `FoldLayout`): the hinge runs down the middle of the band.
+#Preview("Board — iPhone Duo inner", traits: .fixedLayout(width: 951, height: 669)) {
+    BoardView(onExit: {})
+        .environment(\.horizontalSizeClass, .regular)
+        .environment(\.verticalSizeClass, .regular)
+        .overlay { Rectangle().fill(.black.opacity(0.3)).frame(width: 40) }
 }
 
 #Preview("Board — score flipped", traits: .landscapeLeft) {
