@@ -122,8 +122,11 @@ private struct FoldDivisionReader: UIViewRepresentable {
 ///
 /// Compact width only: that is the cover screen, and ordinary iPhones in landscape, whose two sides
 /// are already equal. The open Duo's inner display has a status bar down one side, and matching it
-/// would throw away 68 points of a screen the game uses all of.
+/// would throw away 68 points of a screen the game uses all of. A screen that wants to be centered
+/// there anyway (the scoreboard, whose divider should sit on the hinge) asks for `.regular` itself.
 private struct BalancedHorizontalSafeArea: ViewModifier {
+    /// The width class this balances in; nil balances nowhere.
+    var sizeClass: UserInterfaceSizeClass?
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     /// The window's own left and right insets. Read from UIKit, not from SwiftUI's geometry: the
     /// padding below changes the safe area SwiftUI reports, so measuring there read the padding back,
@@ -131,7 +134,7 @@ private struct BalancedHorizontalSafeArea: ViewModifier {
     @State private var insets = WindowSideInsets()
 
     func body(content: Content) -> some View {
-        let balance = horizontalSizeClass == .compact
+        let balance = sizeClass != nil && horizontalSizeClass == sizeClass
         content
             .safeAreaPadding(.leading, balance ? max(0, insets.right - insets.left) : 0)
             .safeAreaPadding(.trailing, balance ? max(0, insets.left - insets.right) : 0)
@@ -206,9 +209,10 @@ private struct WindowInsetsReader: UIViewRepresentable {
 
 extension View {
     /// Centers content on the screen when the device's side safe areas are uneven (iPhone Duo's
-    /// cover screen). See `BalancedHorizontalSafeArea`.
-    func balancedHorizontalSafeArea() -> some View {
-        modifier(BalancedHorizontalSafeArea())
+    /// cover screen). See `BalancedHorizontalSafeArea`. `sizeClass` is the width class it applies in:
+    /// the app's root balances compact width; a screen can add regular width under it (nil adds none).
+    func balancedHorizontalSafeArea(in sizeClass: UserInterfaceSizeClass? = .compact) -> some View {
+        modifier(BalancedHorizontalSafeArea(sizeClass: sizeClass))
     }
 
     /// Keeps `division` up to date with the hinge crossing this view, in this view's coordinates.

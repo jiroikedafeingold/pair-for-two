@@ -106,22 +106,31 @@ struct BoardView: View {
             // passes under the hinge: the near player's on the left, the far player's — whose half is
             // rotated — visually on the right.
             let fold: FoldDivision? = foldDivision
+            // The iPhone Duo in landscape — nearly square, which no other iPhone is — gives each slider
+            // the full width and runs the band's background across the side safe areas. The board
+            // itself stays centered between them (see `body`'s balancing).
+            let duoLandscape: Bool = isPhoneHardware && geo.size.width > geo.size.height
+                && geo.size.width / geo.size.height < 1.6
             VStack(spacing: 0) {
                 // The far player's half, turned to face them — so its page is the right-hand one.
-                panel(for: .top, pageWidth: fold.map { $0.trailingPage - 8 })
+                panel(for: .top, pageWidth: duoLandscape ? nil : fold.map { $0.trailingPage - 8 })
                     .frame(height: sliderHeight)
                     .rotationEffect(.degrees(180))
 
-                sharedBand(height: bandHeight)
+                sharedBand(height: bandHeight, fullBleed: duoLandscape)
                     .frame(height: bandHeight)
 
-                panel(for: .bottom, pageWidth: fold.map { $0.leadingPage - 8 })
+                panel(for: .bottom, pageWidth: duoLandscape ? nil : fold.map { $0.leadingPage - 8 })
                     .frame(height: sliderHeight)
             }
             .padding(.vertical, 8)
             .frame(width: geo.size.width, height: geo.size.height)
         }
         .readingFoldDivision($foldDivision)
+        // The open Duo's inner screen has a status bar down one side. Balanced, the board is centered
+        // on the screen — and its divider on the hinge — rather than in the space beside the bar.
+        // (The cover screen is balanced already, at the app's root; other phones' sides match.)
+        .balancedHorizontalSafeArea(in: isPhoneHardware ? .regular : nil)
         .background(felt)
         .overlay {
             if game.isFinished {
@@ -231,14 +240,17 @@ struct BoardView: View {
 
     /// Both scores, large, turning to face each player in turn. It sits between the two halves because
     /// that's the one place neither player owns.
-    private func sharedBand(height: CGFloat) -> some View {
+    private func sharedBand(height: CGFloat, fullBleed: Bool = false) -> some View {
         // Everything in here scales with the space it's been given: a big region with small numbers in
         // the middle of it would be a waste of the room.
         let scoreSize = min(150, max(40, height * 0.42))
         let nameSize = min(30, max(13, height * 0.085))
         let inset = min(96, max(58, height * 0.16))
         return ZStack {
+            // Edge to edge on the Duo in landscape: the background runs into the side safe areas,
+            // the board inside it doesn't.
             Rectangle().fill(Color.black.opacity(0.22))
+                .ignoresSafeArea(.container, edges: fullBleed ? .horizontal : [])
             HStack(spacing: 0) {
                 exitButton
                 if onFoldInner { resetButton.padding(.leading, 10) }
