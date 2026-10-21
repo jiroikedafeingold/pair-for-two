@@ -61,7 +61,9 @@ APP="${APP_PATH:-}"
 [[ -n "$APP" ]] || APP=$(ls -dt "$HOME/Library/Developer/Xcode/DerivedData/Pair_for_two-"*/Build/Products/Debug-iphonesimulator/*.app 2>/dev/null | head -1)
 if [[ -z "$APP" ]]; then
   CUSTOM=$(defaults read com.apple.dt.Xcode IDECustomDerivedDataLocation 2>/dev/null || true)
-  [[ -n "$CUSTOM" ]] && APP=$(ls -dt "$CUSTOM"/Debug-iphonesimulator/Pair*.app "$CUSTOM"/Pair_for_two-*/Build/Products/Debug-iphonesimulator/*.app 2>/dev/null | head -1)
+  if [[ -n "$CUSTOM" ]]; then   # an `&&` here would abort the script under `set -e` when unset
+    APP=$(ls -dt "$CUSTOM"/Debug-iphonesimulator/Pair*.app "$CUSTOM"/Pair_for_two-*/Build/Products/Debug-iphonesimulator/*.app 2>/dev/null | head -1 || true)
+  fi
 fi
 [[ -n "$APP" ]] || { echo "no Debug simulator build found — build the app first (or set APP_PATH)"; exit 1; }
 
