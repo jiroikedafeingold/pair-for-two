@@ -216,7 +216,12 @@ struct GameTableView: View {
             // Card aspect is height = width * 1.45. Each phase's cards fill as much of the play area as
             // its layout allows, capped by the width the row needs. Discard: a 6-card hand. Pegging: a
             // pile ABOVE the hand, so shorter. Show: the cut + a 4-card row. Cut: just two big cards.
-            let handWidth: CGFloat = min((playWidth - 34) / 7.0, (playHeight - 64) / 1.45)
+            // The Duo's cover screen is too narrow for six in a row beside the rail — they came out
+            // barely 48 points wide — so there the hand deals as two rows of three: three cards and
+            // two gaps across, two rows and the gap between them down (see `discardArea`).
+            let handWidth: CGFloat = coverScreen
+                ? min((playWidth - 8) / 3.36, (playHeight - 64) / 3.14)
+                : min((playWidth - 34) / 7.0, (playHeight - 64) / 1.45)
             // The pegging hand is never more than four cards. On the iPhone Duo — both its screens are
             // nearly square, which no other iPhone is — it's sized for exactly those four rather than
             // inheriting the six-card discard size: four cards and the hand's three gaps (0.18 of a card
@@ -995,12 +1000,19 @@ struct GameTableView: View {
     // MARK: Discard
 
     @ViewBuilder private func discardArea(_ s: PlayerSnapshot, width: CGFloat, railWidth: CGFloat) -> some View {
+        let cards = s.yourHand.sortedForDisplay()
+        let deal = AnyHashable(s.yourHand.map(\.id))   // deal cards in on a fresh hand
         playScene(s, railWidth: railWidth) {
-            HandView(cards: s.yourHand.sortedForDisplay(),
-                     selected: vm.selectedForDiscard,
-                     onTap: { GameFeedback.shared.play(.discardSelect); vm.toggleDiscard($0) },
-                     cardWidth: width,
-                     dealSignal: AnyHashable(s.yourHand.map(\.id)))   // deal cards in on a fresh hand
+            if isDuoCover, cards.count > 3 {
+                // Two rows of three on the Duo's cover screen, where one row of six would be tiny. The
+                // gap is a little more than a selected card's lift, so a lifted card clears the row above.
+                VStack(spacing: width * 0.24) {
+                    discardRow(Array(cards.prefix(3)), width: width, deal: deal)
+                    discardRow(Array(cards.dropFirst(3)), width: width, deal: deal)
+                }
+            } else {
+                discardRow(cards, width: width, deal: deal)
+            }
         } action: {
             RailButton(title: s.yourSeat == .dealer
                        ? String(localized: "Send 2 to your crib", comment: "Button: discard two cards into your own crib")
@@ -1014,6 +1026,14 @@ struct GameTableView: View {
                 vm.confirmDiscard()
             }
         }
+    }
+
+    private func discardRow(_ cards: [Card], width: CGFloat, deal: AnyHashable) -> some View {
+        HandView(cards: cards,
+                 selected: vm.selectedForDiscard,
+                 onTap: { GameFeedback.shared.play(.discardSelect); vm.toggleDiscard($0) },
+                 cardWidth: width,
+                 dealSignal: deal)
     }
 
     // MARK: Starter cut (pone lifts the deck, dealer turns up the cut — like an in-person cut)

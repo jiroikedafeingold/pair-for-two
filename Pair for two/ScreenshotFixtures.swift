@@ -172,6 +172,17 @@ enum ScreenshotFixture {
         return s.snapshot(for: .two)
     }
 
+    /// A fresh hand of six, waiting for the guest to send two to the dealer's crib.
+    static func discard() -> PlayerSnapshot {
+        var s = GameState.newMatch(matchID: UUID(), seed: 11, names: names,
+                                   colorIDs: colorIDs, scoringMode: .off)
+        CribbageEngine.begin(&s)
+        s.dealer = .one
+        CribbageEngine.dealNewHand(&s)
+        score(&s, ann: 22, ben: 18)
+        return s.snapshot(for: .two)
+    }
+
     /// Mid-play with the count too high for anything the guest holds — the rail shows "Go".
     static func mustSayGo() -> PlayerSnapshot {
         for bump in 0..<400 {
@@ -227,11 +238,11 @@ struct ScreenshotStage: View {
     /// The `-shot N` argument, if the app was launched for a screenshot. Shots 6–8 aren't store shots:
     /// 6 is the opening held on its first frame (what the splash artwork's connector is baked from),
     /// and 7 and 8 are the two rail buttons — "Deal" and "Go" — that otherwise need a live two-device
-    /// game to lay eyes on.
+    /// game to lay eyes on. 9 is the discard, for checking the six-card hand's size.
     static var requested: Int? {
         guard UserDefaults.standard.object(forKey: "shot") != nil else { return nil }
         let shot = UserDefaults.standard.integer(forKey: "shot")
-        return (1...8).contains(shot) ? shot : nil
+        return (1...9).contains(shot) ? shot : nil
     }
 
     var body: some View {
@@ -244,6 +255,7 @@ struct ScreenshotStage: View {
             case 6: OpeningView(onFinish: {}, frozen: true)
             case 7: GuestShot(ScreenshotFixture.deal())
             case 8: GuestShot(ScreenshotFixture.mustSayGo())
+            case 9: GuestShot(ScreenshotFixture.discard())
             default: GuestShot(ScreenshotFixture.winner())
             }
         }
