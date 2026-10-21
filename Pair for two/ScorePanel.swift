@@ -25,6 +25,9 @@ struct ScorePanel: View {
     /// A brighter shade for the +1 button (`PlayerTheme.plusOne`); `primary` when nil.
     var plusColor: Color? = nil
     private var plus: Color { plusColor ?? primary }
+    /// False drops the +1's cream outline and halo and draws it in `plusColor` alone — for a bright
+    /// enough `plusColor` not to need them (the scoreboard).
+    var plusRimmed: Bool = true
     /// When true this is the only panel on screen (networked play), so it carries *both* players'
     /// progress loops — your color on the outer edge, the opponent's just inside it. When false
     /// (pass-and-play, one panel per player) only this player's own loop is drawn.
@@ -152,9 +155,12 @@ struct ScorePanel: View {
                         .foregroundStyle(
                             highlighted
                             ? AnyShapeStyle(.white)
-                            : AnyShapeStyle(LinearGradient(colors: [plus, primary], startPoint: .top, endPoint: .bottom))
+                            : plusRimmed
+                            ? AnyShapeStyle(LinearGradient(colors: [plus, primary], startPoint: .top, endPoint: .bottom))
+                            : AnyShapeStyle(plus)
                         )
-                        .playerColorRim()   // the deep palette needs the same edge here as on the scores
+                        // The deep palette needs the same edge here as on the scores.
+                        .modifier(OptionalPlayerColorRim(enabled: plusRimmed))
                         .monospacedDigit()
                         .contentTransition(.numericText(value: Double(displayValue)))
                         .frame(minWidth: 56 * scale, minHeight: 44 * scale)
@@ -169,12 +175,14 @@ struct ScorePanel: View {
                                     // a one-point line. Kept soft: a bright, wide one read as a second
                                     // line rather than an edge.
                                     ZStack {
-                                        Capsule().stroke(Color.cardFace.opacity(0.45),
-                                                         lineWidth: (highlighted ? 1.6 : 1) + 1)
+                                        if plusRimmed {
+                                            Capsule().stroke(Color.cardFace.opacity(0.45),
+                                                             lineWidth: (highlighted ? 1.6 : 1) + 1)
+                                        }
                                         Capsule().stroke(plus.opacity(highlighted ? 1 : 0.9),
                                                          lineWidth: highlighted ? 1.6 : 1)
                                     }
-                                    .shadow(color: .cardFace.opacity(0.30), radius: 8)
+                                    .shadow(color: .cardFace.opacity(plusRimmed ? 0.30 : 0), radius: 8)
                                 )
                         )
                         .scaleEffect(highlighted ? 1.05 : 1.0)
@@ -301,6 +309,15 @@ struct ScorePanel: View {
     /// How much of the loop a score fills: 0 at the start, a full loop (1) at the 121 game point.
     private func loopFraction(_ points: Int) -> Double {
         min(1, max(0, Double(points) / 121))
+    }
+}
+
+/// `playerColorRim`, or nothing.
+private struct OptionalPlayerColorRim: ViewModifier {
+    let enabled: Bool
+
+    func body(content: Content) -> some View {
+        if enabled { content.playerColorRim() } else { content }
     }
 }
 

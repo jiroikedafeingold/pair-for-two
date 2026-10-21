@@ -38,6 +38,9 @@ struct PlayerTheme: Identifiable, Hashable {
     var ring: Color { Self.color(hex, brightness: 2) }
     /// Half again as bright, for the +1 button: a small control that has to read at a glance.
     var plusOne: Color { Self.color(hex, brightness: 1.5) }
+    /// As bright as the color goes, for player-colored text and controls drawn with no rim to carry
+    /// them (the scoreboard's names and +1).
+    var vivid: Color { Self.color(hex, brightness: 2.4) }
 
     /// `hex` with its HSB brightness scaled by `brightness` (capped at full brightness).
     private static func color(_ hex: UInt32, brightness factor: Double) -> Color {

@@ -191,7 +191,8 @@ struct BoardView: View {
                    canUndo: game.canUndo(side),
                    requireConfirm: confirmRelease,
                    opponentColor: otherTheme.primary,
-                   plusColor: theme.plusOne,
+                   plusColor: theme.vivid,   // bright enough on its own; no rim (see `plusRimmed`)
+                   plusRimmed: false,
                    showsScore: false,   // the shared band between the halves carries the score
                    uncommitted: isNear ? $bottomPending : $topPending,
                    onAdd: { peg($0, to: side) },
@@ -247,10 +248,7 @@ struct BoardView: View {
         let nameSize = min(30, max(13, height * 0.085))
         let inset = min(96, max(58, height * 0.16))
         return ZStack {
-            // Edge to edge on the Duo in landscape: the background runs into the side safe areas,
-            // the board inside it doesn't.
             Rectangle().fill(Color.black.opacity(0.22))
-                .ignoresSafeArea(.container, edges: fullBleed ? .horizontal : [])
             HStack(spacing: 0) {
                 exitButton
                 if onFoldInner { resetButton.padding(.leading, 10) }
@@ -266,7 +264,9 @@ struct BoardView: View {
                 // Balances the button(s) on the other side so the scores stay centered.
                 Color.clear.frame(width: onFoldInner ? 34 + 48 : 34, height: 1)
             }
-            .padding(.horizontal, 12)
+            // On the Duo in landscape the ring runs near the band's edges (below), so the buttons at the
+            // ends move in to sit inside it.
+            .padding(.horizontal, fullBleed ? 24 : 12)
 
             // The 121 track, with both players' loops and the skunk marks on it — the same overlay the
             // connected game draws, here framing the shared score.
@@ -278,10 +278,15 @@ struct BoardView: View {
                                   cornerRadius: min(60, height * 0.28))
                     // Clear of the buttons at either end of the band, so the loop doesn't run through them
                     // — two buttons on the open iPhone Duo, where the reset sits beside the exit.
-                    .padding(.horizontal, onFoldInner ? inset + 48 : inset)
+                    // On the Duo in landscape it takes the full width instead, around them.
+                    .padding(.horizontal, fullBleed ? 6 : onFoldInner ? inset + 48 : inset)
                     .padding(.vertical, 6)
             }
         }
+        // Edge to edge on the Duo in landscape, board and all: the side safe areas there are a corner
+        // camera above the band (the cover screen) and a status bar strip (the inner one), so the
+        // board can use their width. Symmetric, so it stays centered.
+        .ignoresSafeArea(.container, edges: fullBleed ? .horizontal : [])
         // Tap it to turn it now rather than waiting for the timer.
         .contentShape(Rectangle())
         .onTapGesture {
@@ -301,8 +306,7 @@ struct BoardView: View {
         VStack(spacing: 0) {
             Text(verbatim: (isNear ? nearLabel : farLabel).uppercased())
                 .font(.system(size: nameSize, weight: .heavy, design: .rounded))
-                .foregroundStyle(theme.primary)
-                .playerColorRim()
+                .foregroundStyle(theme.vivid)   // bright enough to need no rim
                 .lineLimit(1).minimumScaleFactor(0.6)
             Text(verbatim: "\(game.score(side))")
                 .font(.system(size: scoreSize, weight: .heavy, design: .rounded))
