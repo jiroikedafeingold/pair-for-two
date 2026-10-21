@@ -74,6 +74,14 @@ final class WiFiAwareTransport: NearbyTransport {
     /// Reads the live link. Cancelling it is also what closes an inbound link (see `serve`).
     private var receiveTask: Task<Void, Never>?
     private var link: Link?
+    /// Abandons a dial that hasn't become ready in time — see `found`.
+    private var dialWatchdog: Task<Void, Never>?
+    /// Dials that failed on this search. A paired host that keeps turning up but can't be reached
+    /// (its record outliving it, say) must not keep this side busy forever: after a few, the search
+    /// gives up and the other transports carry the connect screen.
+    private var failedDials = 0
+    private static let maxFailedDials = 3
+    private static let dialTimeout: Duration = .seconds(8)
     /// Once true, a drop is treated as recoverable and we re-pair rather than going terminal — the
     /// same rule as the other nearby transports.
     private var didConnect = false
@@ -98,6 +106,7 @@ final class WiFiAwareTransport: NearbyTransport {
     func startBrowsing() {
         isHost = false
         phase = .browsing
+        failedDials = 0
         startRole()
     }
 
@@ -218,6 +227,15 @@ final class WiFiAwareTransport: NearbyTransport {
         let connection = Link(to: endpoint, using: .parameters { Self.stack() })
         connectedPeerName = device.name ?? device.pairingInfo?.pairingName
         receiveTask = adopt(connection)
+        // A connection has no timeout of its own, and a host that has gone away can leave one
+        // waiting indefinitely. Give it a fair chance, then treat it as a failed dial.
+        dialWatchdog?.cancel()
+        dialWatchdog = Task { @MainActor [weak self] in
+            try? await Task.sleep(for: Self.dialTimeout)
+            guard let self, !Task.isCancelled, self.link === connection, self.phase != .connected else { return }
+            self.link = nil
+            self.handleDrop()
+        }
     }
 
     /// The host side of a dial. A newcomer replaces whatever link is live: only a paired device can
@@ -270,6 +288,7 @@ final class WiFiAwareTransport: NearbyTransport {
     }
 
     private func dropLink() {
+        dialWatchdog?.cancel(); dialWatchdog = nil
         receiveTask?.cancel(); receiveTask = nil
         link = nil
     }
@@ -277,6 +296,8 @@ final class WiFiAwareTransport: NearbyTransport {
     private func markConnected() {
         phase = .connected
         didConnect = true
+        failedDials = 0
+        dialWatchdog?.cancel(); dialWatchdog = nil
         // The guest has what it was looking for; the host keeps publishing for a re-dial.
         if !isHost { roleTask?.cancel(); roleTask = nil }
         flushOutbox()
@@ -299,9 +320,17 @@ final class WiFiAwareTransport: NearbyTransport {
         if didConnect { reconnect(force: true); return }
         if isHost { return }   // the listener is still up; the guest will dial again
         // A dial that failed before ever connecting — the host may not be publishing yet. Look again,
-        // after a pause so a host that keeps refusing isn't dialed in a tight loop.
-        phase = .browsing
+        // after a pause so a host that keeps refusing isn't dialed in a tight loop; and not forever.
+        dialWatchdog?.cancel(); dialWatchdog = nil
+        receiveTask?.cancel(); receiveTask = nil
+        failedDials += 1
         roleTask?.cancel(); roleTask = nil
+        guard failedDials < Self.maxFailedDials else {
+            // Enough. Whoever is advertising isn't reachable; leave the connect screen to Multipeer.
+            phase = .disconnected
+            return
+        }
+        phase = .browsing
         Task { @MainActor [weak self] in
             try? await Task.sleep(for: .seconds(2))
             guard let self, self.phase == .browsing else { return }

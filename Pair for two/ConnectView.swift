@@ -92,7 +92,9 @@ struct ConnectView: View {
         if mc.phase == .connected || (lanActive && lan.phase == .connected) || waIsConnected { return .connected }
         if mc.phase == .connecting || mc.phase == .reconnecting { return .connecting }
         if lanActive, lan.phase == .connecting || lan.phase == .reconnecting { return .connecting }
-        if waIsConnecting { return .connecting }
+        // Wi-Fi Aware dialing a paired host does *not* take the screen over: the join list stays
+        // up, with a status line, so a paired host that can't be reached never blocks joining
+        // someone else. (A resume shows "connecting" through Multipeer's own rendezvous anyway.)
         if mc.phase == .hosting || (lanActive && lan.phase == .hosting) { return .hosting }
         if mc.phase == .browsing || (lanActive && lan.phase == .browsing) { return .browsing }
         // Only terminal once every transport in play has given up.
@@ -347,6 +349,12 @@ struct ConnectView: View {
                 HStack(spacing: 8) {
                     ProgressView().tint(.white)
                     Text("Looking for nearby games…").foregroundStyle(.white)
+                }
+                if waIsConnecting {
+                    Text("Connecting to \(waPeerName ?? String(localized: "a paired phone", comment: "Stand-in for a Wi-Fi Aware device whose name is unknown")) over Wi-Fi Aware…",
+                         comment: "Status while a previously paired phone is being connected to automatically; %@ is its name")
+                        .font(.caption).foregroundStyle(Color.cribGold)
+                        .multilineTextAlignment(.center)
                 }
                 if rows.isEmpty && !holdingWiFiPeers {
                     VStack(spacing: 6) {
