@@ -85,7 +85,39 @@ private struct FoldDivisionReader: UIViewRepresentable {
     }
 }
 
+/// Evens out the left and right safe areas, so a layout centered in the safe area is centered on the
+/// screen.
+///
+/// The iPhone Duo's cover screen puts its camera in one corner, and in landscape that becomes an
+/// 84-point safe area on one side and none on the other — every screen sat visibly to one side. This
+/// pads the smaller side up to match the larger. Backgrounds that ignore the safe area still run edge
+/// to edge; only the content moves.
+///
+/// Compact width only: that is the cover screen, and ordinary iPhones in landscape, whose two sides
+/// are already equal. The open Duo's inner display has a status bar down one side, and matching it
+/// would throw away 68 points of a screen the game uses all of.
+private struct BalancedHorizontalSafeArea: ViewModifier {
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    @State private var insets = EdgeInsets()
+
+    func body(content: Content) -> some View {
+        let balance = horizontalSizeClass == .compact
+        content
+            .safeAreaPadding(.leading, balance ? max(0, insets.trailing - insets.leading) : 0)
+            .safeAreaPadding(.trailing, balance ? max(0, insets.leading - insets.trailing) : 0)
+            // Read outside the padding above, so this sees the device's own insets rather than the
+            // ones just added — otherwise the two would chase each other.
+            .onGeometryChange(for: EdgeInsets.self) { $0.safeAreaInsets } action: { insets = $0 }
+    }
+}
+
 extension View {
+    /// Centers content on the screen when the device's side safe areas are uneven (iPhone Duo's
+    /// cover screen). See `BalancedHorizontalSafeArea`.
+    func balancedHorizontalSafeArea() -> some View {
+        modifier(BalancedHorizontalSafeArea())
+    }
+
     /// Keeps `division` up to date with the hinge crossing this view, in this view's coordinates.
     func readingFoldDivision(_ division: Binding<FoldDivision?>) -> some View {
         background(FoldDivisionReader(division: division))

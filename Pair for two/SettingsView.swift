@@ -143,6 +143,7 @@ struct SettingsView: View {
         }
         .fullScreenCover(isPresented: $showOnboarding) {
             OnboardingView(onFinish: { showOnboarding = false })
+                .balancedHorizontalSafeArea()   // a cover doesn't inherit the root's balancing
         }
     }
 

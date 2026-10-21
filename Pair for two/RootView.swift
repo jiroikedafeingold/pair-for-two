@@ -131,6 +131,7 @@ struct RootView: View {
             .task { if !hasOnboarded { showOnboarding = true } }   // first-run welcome
             .fullScreenCover(isPresented: $showOnboarding) {
                 OnboardingView(onFinish: { hasOnboarded = true; showOnboarding = false })
+                    .balancedHorizontalSafeArea()   // a cover doesn't inherit the root's balancing
             }
             .sheet(isPresented: $showingHelp) {
                 HelpView(onDone: { showingHelp = false },

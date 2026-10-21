@@ -13,6 +13,8 @@ struct PairForTwoApp: App {
     var body: some Scene {
         WindowGroup {
             content
+                // Centered on the screen, not just in the safe area — see `BalancedHorizontalSafeArea`.
+                .balancedHorizontalSafeArea()
                 // Every screen here is a fixed landscape geometry: cards measured from the screen, a
                 // rail of a set width, two players' halves sharing one display. There is nowhere for
                 // larger text to reflow to, so the system's text size clipped labels and pushed
