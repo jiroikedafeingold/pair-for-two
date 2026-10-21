@@ -39,10 +39,8 @@ struct ConnectView: View {
     @State private var handedOff = false       // both transports can report .connected; only hand up once
     @State private var offerWiFiPeers = false  // see `rows`: Multipeer gets first refusal
     @Environment(\.scenePhase) private var scenePhase
-    @Environment(\.horizontalSizeClass) private var hSizeClass
-    @Environment(\.verticalSizeClass) private var vSizeClass
-    /// The open iPhone Duo: keep the two big buttons off the hinge down the middle. See `FoldLayout`.
-    private var onFoldInner: Bool { FoldLayout.isInnerDisplay(horizontal: hSizeClass, vertical: vSizeClass) }
+    /// The hinge on an open iPhone Duo: the two big buttons stand either side of it. See `FoldDivision`.
+    @State private var foldDivision: FoldDivision?
 
     private var resuming: Bool { resumeRole != nil }
 
@@ -194,6 +192,7 @@ struct ConnectView: View {
             }
             .padding(20)
         }
+        .readingFoldDivision($foldDivision)
         .onChange(of: mc.phase) { _, phase in
             if phase == .connected { handOff(mc) }
         }
@@ -304,7 +303,7 @@ struct ConnectView: View {
             VStack(spacing: 16) {
                 Text("Playing as **\(localName)**")
                     .foregroundStyle(.white.opacity(0.85))
-                HStack(spacing: onFoldInner ? FoldLayout.hingeWidth + 24 : 18) {
+                HStack(spacing: foldDivision.map { $0.width + 24 } ?? 18) {
                     bigButton("Host a game", systemImage: "wifi.router.fill", action: startHosting)
                     bigButton("Join a game", systemImage: "magnifyingglass", action: startBrowsing)
                 }

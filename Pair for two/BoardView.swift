@@ -49,12 +49,10 @@ struct BoardView: View {
     /// Compact height means a phone in landscape; regular means an iPad. Drives how much of the screen
     /// the sliders keep versus the score — not a device check, a space check.
     @Environment(\.verticalSizeClass) private var verticalSizeClass
-    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
-    /// The open iPhone Duo: its hinge runs down the middle of the board and takes no touches while
-    /// the phone lies flat, which is exactly where the reset button sat. See `FoldLayout`.
-    private var onFoldInner: Bool {
-        FoldLayout.isInnerDisplay(horizontal: horizontalSizeClass, vertical: verticalSizeClass)
-    }
+    /// The hinge on an open iPhone Duo, in the board's coordinates; nil everywhere else. It runs
+    /// down the middle of the board, which is exactly where the reset button sat. See `FoldDivision`.
+    @State private var foldDivision: FoldDivision?
+    private var onFoldInner: Bool { foldDivision != nil }
 
     /// How much of the loop a score fills: nothing at the start, a closed ring at game point.
     private func loopFraction(_ points: Int) -> Double {
@@ -98,27 +96,31 @@ struct BoardView: View {
             // thing both players are actually reading, so it should dominate. A phone in landscape is
             // tight, so its sliders go close to the edges to leave the middle as much room as possible;
             // an iPad keeps them comfortably inset and still has hundreds of points to spare.
-            let sliderHeight: CGFloat = verticalSizeClass == .compact ? 86 : 250
+            // Regular height isn't always iPad height: the open iPhone Duo is regular both ways at only
+            // 669 points tall, where two fixed 250-point slider zones squeezed the score to a strip.
+            // A share of the height keeps an iPad at (or near) 250 and gives the Duo's score room.
+            let sliderHeight: CGFloat = verticalSizeClass == .compact ? 86 : min(250, (geo.size.height - 16) * 0.3)
             let bandHeight = max(140, geo.size.height - 16 - sliderHeight * 2)
             // On the open iPhone Duo each player's controls sit on one page, so no slider's knob ever
             // passes under the hinge: the near player's on the left, the far player's — whose half is
             // rotated — visually on the right.
-            let pageWidth: CGFloat? = onFoldInner ? geo.size.width / 2 - FoldLayout.hingeWidth / 2 - 8 : nil
+            let fold: FoldDivision? = foldDivision
             VStack(spacing: 0) {
-                // The far player's half, turned to face them.
-                panel(for: .top, pageWidth: pageWidth)
+                // The far player's half, turned to face them — so its page is the right-hand one.
+                panel(for: .top, pageWidth: fold.map { $0.trailingPage - 8 })
                     .frame(height: sliderHeight)
                     .rotationEffect(.degrees(180))
 
                 sharedBand(height: bandHeight)
                     .frame(height: bandHeight)
 
-                panel(for: .bottom, pageWidth: pageWidth)
+                panel(for: .bottom, pageWidth: fold.map { $0.leadingPage - 8 })
                     .frame(height: sliderHeight)
             }
             .padding(.vertical, 8)
             .frame(width: geo.size.width, height: geo.size.height)
         }
+        .readingFoldDivision($foldDivision)
         .background(felt)
         .overlay {
             if game.isFinished {
@@ -584,14 +586,6 @@ private struct BoardPlayerSheet: View {
 #if DEBUG
 #Preview("Board", traits: .landscapeLeft) {
     BoardView(onExit: {})
-}
-
-// The open iPhone Duo stand-in (see `FoldLayout`): the hinge runs down the middle of the band.
-#Preview("Board — iPhone Duo inner", traits: .fixedLayout(width: 951, height: 669)) {
-    BoardView(onExit: {})
-        .environment(\.horizontalSizeClass, .regular)
-        .environment(\.verticalSizeClass, .regular)
-        .overlay { Rectangle().fill(.black.opacity(0.3)).frame(width: 40) }
 }
 
 #Preview("Board — score flipped", traits: .landscapeLeft) {

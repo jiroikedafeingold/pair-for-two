@@ -1,25 +1,93 @@
 import SwiftUI
 import UIKit
 
-/// iPhone Duo, unfolded. Its inner display is the first iPhone screen to report regular size
-/// classes in both directions, and a 40-point hinge strip down its middle takes no touches while the
-/// phone lies flat — so interactive controls have to keep clear of the center. The screens lay
-/// themselves out like a book there: the table on the left page, the controls on the right, the
-/// hinge in the gutter. Folded, the outer display is an ordinary small phone and needs nothing.
+/// Where a foldable's hinge crosses a view, in that view's own coordinates.
 ///
-/// iOS 27.1 adds a reserved-region API that reports the hinge exactly; this project is on the 27.0
-/// SDK, where the only signal is "an iPhone with iPad-like size classes". Apple advises against
-/// branching on the idiom, and so does this project's own style guide — this is the one exception,
-/// kept to a single predicate so it can be swapped for the real API when the SDK moves. Verified
-/// so far only against stand-in previews at the published geometry (951 × 669 points); Xcode 27.1's
-/// simulator is the real test.
-enum FoldLayout {
-    /// The hinge strip's width in points, centered on the inner display.
-    static let hingeWidth: CGFloat = 40
+/// iPhone Duo's inner display has a hinge strip down the middle. iOS 27.1 reports it as a reserved
+/// region of kind `.division`: "a region where an element should divide into two separate regions".
+/// The screens that care lay themselves out like a book around it — content on the left page,
+/// controls on the right, the hinge in the gutter — so nothing that has to be touched sits across
+/// it when the phone is half-folded.
+///
+/// Read from the system rather than inferred. The previous version guessed from "regular size
+/// classes on a phone", which Apple advises against and which assumed the hinge was centered.
+struct FoldDivision: Equatable {
+    /// The hinge's leading and trailing edges, including the margin the system asks interactive
+    /// content to keep.
+    var minX: CGFloat
+    var maxX: CGFloat
+    /// Width of the view the division was measured in, so a layout can size its right-hand page.
+    var containerWidth: CGFloat
 
-    /// Whether a layout with these size classes is on the open iPhone Duo's inner display.
-    @MainActor
-    static func isInnerDisplay(horizontal: UserInterfaceSizeClass?, vertical: UserInterfaceSizeClass?) -> Bool {
-        horizontal == .regular && vertical == .regular && UIDevice.current.userInterfaceIdiom == .phone
+    var width: CGFloat { maxX - minX }
+    /// Room left of the hinge, and right of it.
+    var leadingPage: CGFloat { minX }
+    var trailingPage: CGFloat { containerWidth - maxX }
+}
+
+/// Reports the vertical hinge crossing the view it's attached to, or nil where there isn't one: every
+/// non-foldable device, the folded Duo's outer display, and any OS before 27.1.
+///
+/// Inactive divisions are included. The Duo's division is inactive while the phone lies flat and
+/// active once it's bent into the book pose; including both keeps the layout still as the phone
+/// folds, instead of reflowing the table the moment someone props it up.
+private struct FoldDivisionReader: UIViewRepresentable {
+    @Binding var division: FoldDivision?
+
+    func makeUIView(context: Context) -> ProbeView {
+        let view = ProbeView()
+        view.isUserInteractionEnabled = false
+        view.onChange = { division = $0 }
+        return view
+    }
+
+    func updateUIView(_ view: ProbeView, context: Context) {
+        view.onChange = { division = $0 }
+    }
+
+    final class ProbeView: UIView {
+        var onChange: ((FoldDivision?) -> Void)?
+        private var reported: FoldDivision??
+
+        // Bounds change on every fold, unfold and rotation, each of which lays the view out again.
+        override func layoutSubviews() {
+            super.layoutSubviews()
+            report()
+        }
+
+        override func didMoveToWindow() {
+            super.didMoveToWindow()
+            report()
+        }
+
+        private func report() {
+            let current = measure()
+            if let reported, reported == current { return }
+            reported = .some(current)
+            // Not inside SwiftUI's own update pass: publish on the next turn of the main actor.
+            let onChange = onChange
+            Task { @MainActor in onChange?(current) }
+        }
+
+        private func measure() -> FoldDivision? {
+            guard window != nil else { return nil }
+            if #available(iOS 27.1, *) {
+                // Only a hinge running top to bottom splits this landscape layout into pages; one
+                // across the middle (a portrait-held inner display) leaves the layout as it is.
+                let vertical = reservedRegions(kind: .division, options: .includeInactive)
+                    .map(\.frame)
+                    .filter { $0.height > $0.width && $0.minX > 0 && $0.maxX < bounds.width }
+                guard let frame = vertical.first else { return nil }
+                return FoldDivision(minX: frame.minX, maxX: frame.maxX, containerWidth: bounds.width)
+            }
+            return nil
+        }
+    }
+}
+
+extension View {
+    /// Keeps `division` up to date with the hinge crossing this view, in this view's coordinates.
+    func readingFoldDivision(_ division: Binding<FoldDivision?>) -> some View {
+        background(FoldDivisionReader(division: division))
     }
 }
