@@ -214,8 +214,10 @@ enum ScreenshotFixture {
 /// One screenshot: the guest's own device, showing a prepared position.
 struct GuestShot: View {
     @State private var vm: GameViewModel
+    var onExit: () -> Void = {}
 
-    init(_ snapshot: PlayerSnapshot) {
+    init(_ snapshot: PlayerSnapshot, onExit: @escaping () -> Void = {}) {
+        self.onExit = onExit
         dealsCardsInstantly = true
         // A finished game otherwise opens on the pre-win scoring replay, which is what would get
         // photographed instead of the win itself.
@@ -223,7 +225,7 @@ struct GuestShot: View {
         _vm = State(initialValue: GameViewModel.previewGuest(snapshot: snapshot))
     }
 
-    var body: some View { GameTableView(vm: vm) }
+    var body: some View { GameTableView(vm: vm, onExit: onExit) }
 }
 
 /// The five shots, addressable from the command line: `-shot 1` … `-shot 5`.
@@ -234,6 +236,9 @@ struct GuestShot: View {
 /// images need no scaling to hit Apple's required sizes.
 struct ScreenshotStage: View {
     let shot: Int
+    /// Quitting a shot's game drops into the real app, so a fixture left running doesn't look like a
+    /// "Quit game" button that does nothing.
+    var onExit: () -> Void = {}
 
     /// The `-shot N` argument, if the app was launched for a screenshot. Shots 6–8 aren't store shots:
     /// 6 is the opening held on its first frame (what the splash artwork's connector is baked from),
@@ -248,15 +253,15 @@ struct ScreenshotStage: View {
     var body: some View {
         Group {
             switch shot {
-            case 1: GuestShot(ScreenshotFixture.pegging())
-            case 2: GuestShot(ScreenshotFixture.show())
-            case 3: GuestShot(ScreenshotFixture.starterCut())
+            case 1: GuestShot(ScreenshotFixture.pegging(), onExit: onExit)
+            case 2: GuestShot(ScreenshotFixture.show(), onExit: onExit)
+            case 3: GuestShot(ScreenshotFixture.starterCut(), onExit: onExit)
             case 4: BoardShot()
             case 6: OpeningView(onFinish: {}, frozen: true)
-            case 7: GuestShot(ScreenshotFixture.deal())
-            case 8: GuestShot(ScreenshotFixture.mustSayGo())
-            case 9: GuestShot(ScreenshotFixture.discard())
-            default: GuestShot(ScreenshotFixture.winner())
+            case 7: GuestShot(ScreenshotFixture.deal(), onExit: onExit)
+            case 8: GuestShot(ScreenshotFixture.mustSayGo(), onExit: onExit)
+            case 9: GuestShot(ScreenshotFixture.discard(), onExit: onExit)
+            default: GuestShot(ScreenshotFixture.winner(), onExit: onExit)
             }
         }
         // No status bar in a store screenshot — the phone hides it in landscape anyway, and an iPad

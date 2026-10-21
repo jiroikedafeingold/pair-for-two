@@ -9,6 +9,10 @@ struct PairForTwoApp: App {
 
     /// The opening plays once per launch, then hands over to the menu.
     @State private var opening = true
+#if DEBUG
+    /// The screenshot fixture this launch opened on, until its game is quit.
+    @State private var shot = ScreenshotStage.requested
+#endif
 
     var body: some Scene {
         WindowGroup {
@@ -37,8 +41,8 @@ struct PairForTwoApp: App {
         // fixtures, so the whole matrix of shots × languages × devices can be captured with
         // simctl instead of by hand. Debug-only, like the fixtures themselves — and it skips the
         // opening, which would otherwise be in every screenshot.
-        if let shot = ScreenshotStage.requested {
-            ScreenshotStage(shot: shot)
+        if let shot {
+            ScreenshotStage(shot: shot, onExit: { self.shot = nil })
         } else {
             launch
         }
