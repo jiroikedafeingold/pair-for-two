@@ -665,10 +665,12 @@ struct GameTableView: View {
                     }
                 }
                 .frame(maxWidth: 900)
-                .padding(.horizontal, isDuoCover ? 6 : 12)
+                .padding(.horizontal, isDuoCover ? 14 : 12)
                 // The Duo's cover screen: the panel runs into the side margins, the same on both sides so
                 // it stays centered. Its controls sit below the corner camera, which only the panel's
-                // rounded border reaches.
+                // rounded border reaches. 14 rather than hard against the edge: the skunk mark on the
+                // ring's left side is centered on the ring, so it hangs a few points outside the panel
+                // and went off the screen.
                 .ignoresSafeArea(.container, edges: isDuoCover ? .horizontal : [])
             }
         }
