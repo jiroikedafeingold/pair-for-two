@@ -1,5 +1,6 @@
-• Connexions plus rapides entre deux iPhone. Sur iPhone 12 ou plus récent, la première fois que deux téléphones jouent ensemble, le jeu propose de les jumeler via Wi-Fi Aware. Confirmez une fois sur chacun et ils se retrouveront ensuite en une ou deux secondes, y compris quand l'un revient après une coupure. La reconnexion en Bluetooth et Wi-Fi est également plus rapide.
-• Plus lisible : des caractères plus grands sur iPad, des noms et libellés plus grands sur iPhone, une palette de couleurs plus profonde avec un liseré crème sur les noms et les scores, et des pistes de score plus lumineuses.
-• La ligne d'aide s'adresse à vous directement : « Vous comptez votre main » plutôt que votre nom.
+• Nouveau : conçu pour l'iPhone Duo. Pair for Two fonctionne sur l'écran extérieur et sur l'écran intérieur déplié, à l'horizontale ou à la verticale, avec la table disposée autour du pli.
+• Des cartes plus grandes : la coupe pour la donne et la coupe du paquet sont bien plus grandes sur iPhone, et sur l'iPhone Duo les six cartes parmi lesquelles vous choisissez celles du crib remplissent l'écran.
+• Un tableau de score plus lumineux : noms des joueurs et boutons +1 aux couleurs vives, et sur l'iPhone Duo le tableau occupe toute la largeur.
+• Quitter une partie vous ramène toujours au menu, même si la connexion est bloquée.
 
-Merci de jouer ! Questions ou remarques ? apps@feingold5.com
+Merci de jouer ! Des questions ou des remarques ? apps@feingold5.com

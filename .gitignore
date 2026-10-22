@@ -29,3 +29,7 @@ fastlane/.env
 
 # fastlane screenshots are copied from Marketing/screenshots at run time (avoid duplicate binaries)
 fastlane/screenshots/
+
+# iPhone Duo store screenshots (~770 MB a set): regenerate with tools/duo-screenshots.sh, upload with
+# tools/upload-duo-screenshots.rb
+Marketing/screenshots/iphone-duo/

@@ -1,5 +1,6 @@
-• Faster connections between two iPhones. On iPhone 12 or later, the first time two phones play each other the game offers to pair them over Wi-Fi Aware. Confirm once on both, and from then on they find each other in a second or two, including when one comes back after a drop. Reconnecting over Bluetooth and Wi-Fi is quicker as well.
-• Easier to read: larger type throughout on iPad and bigger names and labels on iPhone, a deeper color palette with a cream edge on names and scores, and brighter score tracks.
-• The coach line speaks to you directly: "You count your hand" rather than your name.
+• New: made for iPhone Duo. Pair for Two plays on both the cover screen and the open inner screen, in landscape or held upright, with the table laid out around the fold.
+• Bigger cards: the cut for the deal and cutting the deck are much larger on iPhone, and on iPhone Duo the six cards you choose your crib from fill the screen.
+• A brighter Scoreboard: player names and +1 buttons in vivid color, and on iPhone Duo the board spans the full width.
+• Quitting a game always returns you to the menu, even if the connection has stalled.
 
 Thanks for playing! Questions or feedback? apps@feingold5.com

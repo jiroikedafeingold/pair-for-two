@@ -1,5 +1,8 @@
 Pair for Two, cribbage'i olması gerektiği gibi oynatır: karşı karşıya, ama iki cihazla. Her oyuncunun eli kendi cihazında durur, kimse bakamaz. Dağıt, kes, oyna ve 121'e kadar say.
 
+IPHONE DUO İÇİN TASARLANDI
+Kapak ekranında oyna ya da aç ve iç ekranda, yatay veya dikey oyna. Masa katlanma çizgisinin çevresine yerleşir; dokunduğun hiçbir şey menteşenin üzerine gelmez ve kartlar her ekranı dolduracak boyuttadır.
+
 İKİ CİHAZ, TEK MASA
 Herkesin kendi ekranı ve kendine ait bir eli var. Bir arkadaşının karşısına geç ve gerçek bir cribbage partisi oyna: kartların sana kalır.
 

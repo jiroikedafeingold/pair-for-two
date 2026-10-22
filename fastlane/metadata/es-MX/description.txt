@@ -1,5 +1,8 @@
 Pair for Two es el cribbage como debe jugarse: cara a cara, pero en dos móviles. Cada jugador tiene su propia mano en su propio dispositivo, así que nadie mira. Reparte, corta, juega y cuenta hasta 121.
 
+PENSADO PARA EL IPHONE DUO
+Juega en la pantalla exterior o ábrelo y juega en la interior, en horizontal o en vertical. La mesa se organiza alrededor del pliegue, así que nada de lo que tocas queda sobre la bisagra, y las cartas se ajustan para llenar cada pantalla.
+
 DOS MÓVILES, UNA MESA
 Cada jugador tiene su pantalla y su mano privada. Siéntate frente a un amigo y juega una partida de cribbage de verdad: tus cartas son tuyas.
 
